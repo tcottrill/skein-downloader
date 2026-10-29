@@ -10,9 +10,67 @@
 #elif defined(__WXGTK__)
 #include <gtk/gtk.h>
 #endif
+#include <wx/graphics.h>
+#include <wx/imagpng.h>
+#include <wx/mstream.h>
 #include <regex>
 #include "util/sys_log.h"
+#include "kofi_cup.h"
 namespace lite {
+namespace {
+const char* const kofiPage="https://ko-fi.com/timcottrill";
+// Ko-fi's "Support me on Ko-fi" button, drawn at the exact pixel size of each monitor: the
+// label in the system font and the rounded outline as anti-aliased shapes, so only the cup
+// logo is an image (scaled down with high-quality filtering). A scaled picture of the whole
+// badge blurs its small text. Light or dark following the toolbar, like Ko-fi's two badges.
+class KofiButton:public wxControl {
+ bool hover=false,pressed=false;wxImage cup;wxBitmap cupBitmap;int cupHeight=0;
+ wxFont labelFont()const{return GetFont().Bold();}
+ int height()const{return FromDIP(30);}
+ bool dark()const{return GetParent()->GetBackgroundColour().GetLuminance()<0.5;}
+ void paint(){
+  wxAutoBufferedPaintDC dc(this);dc.SetBackground(GetParent()->GetBackgroundColour());dc.Clear();
+  const auto r=GetClientRect();const int h=r.height;const bool isDark=dark();
+  // Ko-fi's colours: cream with a near-black outline, or near-black with white text.
+  wxColour fill=isDark?wxColour(32,32,32):wxColour(244,239,231),edge=isDark?wxColour(32,32,32):wxColour(41,41,41);
+  if(pressed)fill=fill.ChangeLightness(isDark?115:92);else if(hover)fill=fill.ChangeLightness(isDark?125:103);
+  if(isDark&&(hover||pressed))edge=fill;
+  {
+   std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+   const double line=std::max(1.0,h/15.0);
+   gc->SetPen(wxPen(edge,int(std::lround(line))));gc->SetBrush(fill);
+   gc->DrawRoundedRectangle(line/2,line/2,r.width-line,h-line,h*0.3);
+  }
+  const int ch=int(std::lround(h*0.58));
+  if(ch!=cupHeight&&cup.IsOk()){cupBitmap=wxBitmap(cup.Scale(int(std::lround(cup.GetWidth()*double(ch)/cup.GetHeight())),ch,wxIMAGE_QUALITY_HIGH));cupHeight=ch;}
+  const int x=int(std::lround(h*0.3));
+  if(cupBitmap.IsOk())dc.DrawBitmap(cupBitmap,x,(h-cupBitmap.GetHeight())/2,true);
+  dc.SetFont(labelFont());dc.SetTextForeground(isDark?*wxWHITE:wxColour(32,32,32));
+  const auto text=dc.GetTextExtent(GetLabel());
+  dc.DrawText(GetLabel(),x+(cupBitmap.IsOk()?cupBitmap.GetWidth():0)+int(std::lround(h*0.22)),(h-text.y)/2);
+ }
+public:
+ explicit KofiButton(wxWindow* parent):wxControl(parent,wxID_ANY,wxDefaultPosition,wxDefaultSize,wxBORDER_NONE){
+  if(!wxImage::FindHandler(wxBITMAP_TYPE_PNG))wxImage::AddHandler(new wxPNGHandler);
+  wxMemoryInputStream in(kofiCup,sizeof kofiCup);
+  if(!cup.LoadFile(in,wxBITMAP_TYPE_PNG))LOG_ERROR("Ko-fi logo could not be decoded");
+  SetLabel("Support me on Ko-fi");SetBackgroundStyle(wxBG_STYLE_PAINT);SetCursor(wxCursor(wxCURSOR_HAND));
+  Bind(wxEVT_PAINT,[this](wxPaintEvent&){paint();});
+  Bind(wxEVT_ENTER_WINDOW,[this](wxMouseEvent&){hover=true;Refresh();});Bind(wxEVT_LEAVE_WINDOW,[this](wxMouseEvent&){hover=pressed=false;Refresh();});
+  Bind(wxEVT_LEFT_DOWN,[this](wxMouseEvent&){pressed=true;Refresh();});
+  Bind(wxEVT_LEFT_UP,[this](wxMouseEvent&){bool click=pressed&&hover;pressed=false;Refresh();if(click){wxCommandEvent event(wxEVT_BUTTON,GetId());event.SetEventObject(this);ProcessWindowEvent(event);}});
+  // A new monitor scale changes the font and the size; the cup is rescaled on the next paint.
+  Bind(wxEVT_DPI_CHANGED,[this](wxDPIChangedEvent& e){e.Skip();InvalidateBestSize();Refresh();});
+ }
+ bool AcceptsFocus()const override{return false;}
+protected:
+ wxSize DoGetBestClientSize()const override{
+  int w=0,h=0;const int H=height();const wxFont font=labelFont();GetTextExtent(GetLabel(),&w,&h,nullptr,nullptr,&font);
+  const int cupWidth=cup.IsOk()?int(std::lround(cup.GetWidth()*H*0.58/cup.GetHeight())):0;
+  return wxSize(int(std::lround(H*0.3))+cupWidth+int(std::lround(H*0.22))+w+int(std::lround(H*0.45)),H);
+ }
+};
+}
 // Qt's ProgressDelegate: a native progress bar with its text centred on the bar.
 class ProgressBar:public wxWindow {
  int percent=-1;wxString text;
@@ -33,8 +91,13 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  action("Resume all",[this]{queue.resumeAll();refresh();});action("Pause all",[this]{queue.pauseAll();refresh();});
  action("Remove",[this]{for(auto id:selected())if(mode==3)queue.removeHistory(id);else queue.remove(id);refresh();});action("Remove All",[this]{queue.removeAll();refresh();});
  action("Open folder",[this]{auto ids=selected();for(auto& j:shown)if(!ids.empty()&&j.id==ids.front()){auto s=j.output.empty()?j.input.value("target",j.input.value("folder",std::string())):j.output;if(s.empty())return;auto path=archive::pathFromUtf8(s);if(j.kind=="Archive"||!j.output.empty())path=path.parent_path();openFolder(w(archive::pathUtf8(path)));return;}openFolder(pref("folder",downloadFolder()));});
- // About sits apart from the queue actions, at the far right of the toolbar.
- tools->AddStretchSpacer();action("About",[this]{showAbout(this);});tools->AddSpacer(FromDIP(8));toolbar->SetSizer(tools);
+ // The Ko-fi badge and About sit apart from the queue actions, at the far right of the toolbar.
+ tools->AddStretchSpacer();
+ auto kofi=new KofiButton(toolbar);
+ kofi->SetToolTip("Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)");
+ kofi->Bind(wxEVT_BUTTON,[](wxCommandEvent&){LOG_INFO("Opening %s",kofiPage);if(!wxLaunchDefaultBrowser(kofiPage))LOG_ERROR("Cannot open %s in the browser",kofiPage);});
+ tools->Add(kofi,0,wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM,FromDIP(4));
+ action("About",[this]{showAbout(this);});tools->AddSpacer(FromDIP(8));toolbar->SetSizer(tools);
  auto p=panel=new wxPanel(this);
  auto frameBox=new wxBoxSizer(wxVERTICAL);frameBox->Add(toolbar,0,wxEXPAND|wxLEFT,FromDIP(2));frameBox->Add(new wxStaticLine(this),0,wxEXPAND);frameBox->Add(p,1,wxEXPAND);SetSizer(frameBox);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxLEFT|wxRIGHT,FromDIP(18));box->AddSpacer(FromDIP(16));
  auto row=new wxBoxSizer(wxHORIZONTAL);url=field(p,{},"Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link");row->Add(url,1,wxRIGHT,FromDIP(6));auto load=new wxButton(p,wxID_ANY,"Load");load->Bind(wxEVT_BUTTON,[this](wxCommandEvent&){route();});row->Add(load,0,wxALIGN_CENTER_VERTICAL);box->Add(row,0,wxEXPAND|wxBOTTOM,FromDIP(12));

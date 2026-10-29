@@ -10,12 +10,17 @@ set(wxBUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(wxBUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(wxBUILD_LOCALES OFF CACHE BOOL "" FORCE)
 set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
-foreach(feature ZLIB LIBJPEG LIBPNG LIBTIFF NANOSVG EXPAT REGEX)
+foreach(feature LIBJPEG LIBTIFF NANOSVG EXPAT REGEX)
   set(wxUSE_${feature} OFF CACHE STRING "" FORCE)
+endforeach()
+# PNG (with the zlib it needs) for the Ko-fi badge, from wx's own copies so no system
+# library is added to the Linux packages.
+foreach(feature LIBPNG ZLIB)
+  set(wxUSE_${feature} builtin CACHE STRING "" FORCE)
 endforeach()
 # DETECT_SM, UIACTIONSIMULATOR and XTEST would link libSM, libICE and libXtst, which a
 # Wayland-only system may lack and the AppImage would then fail to start without.
-foreach(feature WEBVIEW WEBVIEW_EDGE WEBVIEW_IE WEBREQUEST MEDIACTRL HTML XML XRC RICHTEXT STC AUI RIBBON PROPGRID GL SVG ARCHIVE_STREAMS ZIPSTREAM TARSTREAM ZLIB JOYSTICK SOCKETS PROTOCOL URL PROTOCOL_FTP PROTOCOL_HTTP PROTOCOL_FILE FS_INET FS_ARCHIVE FS_ZIP SECRETSTORE LIBLZMA GIF PCX TGA IFF PNM ARTPROVIDER_TANGO IPC HELP WXHTML_HELP MS_HTML_HELP DETECT_SM UIACTIONSIMULATOR XTEST)
+foreach(feature WEBVIEW WEBVIEW_EDGE WEBVIEW_IE WEBREQUEST MEDIACTRL HTML XML XRC RICHTEXT STC AUI RIBBON PROPGRID GL SVG ARCHIVE_STREAMS ZIPSTREAM TARSTREAM JOYSTICK SOCKETS PROTOCOL URL PROTOCOL_FTP PROTOCOL_HTTP PROTOCOL_FILE FS_INET FS_ARCHIVE FS_ZIP SECRETSTORE LIBLZMA GIF PCX TGA IFF PNM ARTPROVIDER_TANGO IPC HELP WXHTML_HELP MS_HTML_HELP DETECT_SM UIACTIONSIMULATOR XTEST)
   set(wxUSE_${feature} OFF CACHE BOOL "" FORCE)
 endforeach()
 if(NOT WIN32)
@@ -46,6 +51,15 @@ target_link_libraries(ui_logic PUBLIC download_queue)
 add_executable(skein-downloader WIN32 src/wx/app.cpp src/wx/manager.cpp src/wx/file_picker.cpp src/wx/video_dialog.cpp)
 target_link_libraries(skein-downloader PRIVATE ui_logic wx::core wx::base)
 target_compile_definitions(skein-downloader PRIVATE SKEIN_VERSION="${PROJECT_VERSION}")
+target_include_directories(skein-downloader PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+# The Ko-fi cup logo for the toolbar's Ko-fi button, compiled in (src/wx/res/kofi-cup.png,
+# cut from Ko-fi's badge, src/wx/res/kofi-badge.png). The rest of the button is drawn.
+set(png "${CMAKE_CURRENT_SOURCE_DIR}/src/wx/res/kofi-cup.png")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${png}")
+file(READ "${png}" hex HEX)
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," hex "${hex}")
+file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/kofi_cup.h"
+  CONTENT "// Generated from src/wx/res/kofi-cup.png by CMakeLists.txt.\nstatic const unsigned char kofiCup[] = {${hex}};\n")
 # Program icon, built by tools/make-icons.py into packaging/icons.
 set(SKEIN_ICONS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons")
 if(WIN32)
@@ -101,7 +115,6 @@ else()
   string(APPEND header "struct SkeinIcon {const unsigned char* data; unsigned long size;};\n"
     "static const SkeinIcon skeinIcons[] = {${list}};\n")
   file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/skein_icons.h" CONTENT "${header}")
-  target_include_directories(skein-downloader PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 endif()
 if(MSVC)
   target_compile_options(skein-downloader PRIVATE /utf-8 /W4)
