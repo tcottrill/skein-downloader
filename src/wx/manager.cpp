@@ -42,7 +42,7 @@ protected:
  wxSize DoGetBestClientSize()const override{return wxSize(GetTextExtent(GetLabel()).x+FromDIP(16),FromDIP(25));}
 };
 bool fileHost(const wxString& link){auto host=wxURI(link).GetServer().Lower();for(auto name:{"archive.org","www.archive.org","huggingface.co","www.huggingface.co","hf.co","github.com","www.github.com"})if(host==name)return true;return archive::isFileSiteLink(u(link));}
-MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Download Manager"),queue(q),timer(this) {
+MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Downloader"),queue(q),timer(this) {
  // Qt's text-only QToolBar: flat buttons with even padding, a separator and a line underneath.
  // wxToolBar with text-only tools gives uneven widths on both MSW and GTK, so it is built from flat buttons.
  auto toolbar=new wxPanel(this);auto tools=new wxBoxSizer(wxHORIZONTAL);
@@ -59,7 +59,7 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Download M
  row->AddStretchSpacer();search=field(p,{},"Search downloads");search->SetMinSize(FromDIP(wxSize(180,-1)));search->SetMaxSize(FromDIP(wxSize(240,-1)));row->Add(search,1);box->Add(row,0,wxEXPAND|wxBOTTOM,FromDIP(12));
  historyRow=row=new wxBoxSizer(wxHORIZONTAL);again=button(p,row,"Download Again",[this]{try{for(auto id:selected())queue.downloadAgain(id);refresh();}catch(const std::exception& e){wxMessageBox(w(e.what()),"Download Again",wxOK|wxICON_WARNING,this);}});clear=button(p,row,"Clear History",[this]{queue.clearHistory();refresh();});row->AddStretchSpacer();box->Add(row,0,wxEXPAND|wxBOTTOM,FromDIP(12));
  list=new wxListCtrl(p,wxID_ANY,wxDefaultPosition,wxDefaultSize,wxLC_REPORT|wxCLIP_CHILDREN);int c=0;for(auto s:{"Name","Type","Size","Progress","Status","Speed"})list->InsertColumn(c++,s);
- auto images=new wxImageList(1,FromDIP(54),true);wxImage blank(1,FromDIP(54),true);blank.InitAlpha();std::fill_n(blank.GetAlpha(),FromDIP(54),0);images->Add(wxBitmap(blank));list->AssignImageList(images,wxIMAGE_LIST_SMALL);
+ rowHeight();
  int widths[]={300,75,100,210,105,120};for(int i=0;i<6;++i)list->SetColumnWidth(i,FromDIP(widths[i]));box->Add(list,1,wxEXPAND);
  // A QLabel centres its text vertically in the 40 px minimum height.
  detail=new wxStaticText(p,wxID_ANY,"",wxDefaultPosition,wxDefaultSize,wxST_NO_AUTORESIZE);auto detailBox=new wxBoxSizer(wxVERTICAL);detailBox->SetMinSize(wxSize(-1,FromDIP(40)));detailBox->AddStretchSpacer();detailBox->Add(detail,0,wxEXPAND);detailBox->AddStretchSpacer();box->Add(detailBox,0,wxEXPAND|wxTOP,FromDIP(12));
@@ -79,10 +79,19 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Download M
  auto tooltip=[this](wxMouseEvent& e){e.Skip();auto target=static_cast<wxWindow*>(e.GetEventObject());int flags=0;long column=-1;long row=list->HitTest(e.GetPosition(),flags,&column);wxString tip;if(row>=0&&size_t(row)<shown.size())tip=column==5?w("Transfer speed in bytes per second"):w(shown[size_t(row)].detail+"\n"+shown[size_t(row)].output);if(target->GetToolTipText()!=tip){if(tip.empty())target->UnsetToolTip();else target->SetToolTip(tip);}};
  list->Bind(wxEVT_MOTION,tooltip);for(auto child:list->GetChildren())child->Bind(wxEVT_MOTION,tooltip);
  list->Bind(wxEVT_SIZE,[this](wxSizeEvent& e){e.Skip();CallAfter([this]{columns();progressCells();});});
+#ifdef __WXMSW__
+ // Moving to a monitor with another scale (Per-Monitor V2): wx rescales fonts, sizers, min sizes and
+ // column widths itself, but not a plain image list or sizes this window computed from text.
+ // Windows only: wxGTK sizes are logical pixels that GTK scales, and it sends no DPI-change event.
+ Bind(wxEVT_DPI_CHANGED,[this](wxDPIChangedEvent& e){e.Skip();LOG_INFO("DPI changed from %d to %d (scale %.2f)",e.GetOldDPI().y,e.GetNewDPI().y,GetDPIScaleFactor());rowHeight();fitTabs();CallAfter([this]{columns();progressCells();logLayout();});});
+#endif
  list->Bind(wxEVT_SCROLLWIN_THUMBTRACK,[this](wxScrollWinEvent& e){e.Skip();CallAfter([this]{progressCells();});});list->Bind(wxEVT_SCROLLWIN_THUMBRELEASE,[this](wxScrollWinEvent& e){e.Skip();CallAfter([this]{progressCells();});});list->Bind(wxEVT_MOUSEWHEEL,[this](wxMouseEvent& e){e.Skip();CallAfter([this]{progressCells();});});list->Bind(wxEVT_LIST_COL_END_DRAG,[this](wxListEvent& e){e.Skip();CallAfter([this]{progressCells();});});
  Bind(wxEVT_TIMER,[this](wxTimerEvent&){if(stopping){if(ready(closing)){try{closing.get();}catch(...){}Destroy();}}else if(closeRequested)Close();else {auto request=dataPath/"activate.request";std::ifstream in(request);if(in){std::string message;std::getline(in,message);in.close();std::error_code ec;std::filesystem::remove(request,ec);activate(message=="video");}refresh();}});Bind(wxEVT_CLOSE_WINDOW,&MainWindow::close,this);
  timer.Start(250);refresh();CallAfter([this]{columns();});
 }
+// A transparent 1 x 54 DIP image sets the row height (Qt's taller rows, room for the progress bar).
+// Rebuilt on DPI changes: wxListCtrl rescales image lists set as bitmap bundles, not this one.
+void MainWindow::rowHeight(){auto height=FromDIP(54);auto images=new wxImageList(1,height,true);wxImage blank(1,height,true);blank.InitAlpha();std::fill_n(blank.GetAlpha(),height,0);images->Add(wxBitmap(blank));list->AssignImageList(images,wxIMAGE_LIST_SMALL);}
 void MainWindow::columns(){int rest=0;for(int c=1;c<6;++c)rest+=list->GetColumnWidth(c);list->SetColumnWidth(0,std::max(FromDIP(140),list->GetClientSize().x-rest-FromDIP(4)));}
 std::vector<uint64_t> MainWindow::selected()const{std::vector<uint64_t> ids;long i=-1;while((i=list->GetNextItem(i,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)if(size_t(i)<shown.size())ids.push_back(shown[size_t(i)].id);return ids;}
 void MainWindow::updateRates(const std::vector<downloads::Job>& jobs){

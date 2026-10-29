@@ -58,7 +58,7 @@ class MainWindow:public wxFrame {
  std::vector<ProgressBar*> bars;
  struct Sample{uint64_t bytes;std::chrono::steady_clock::time_point time;wxString rate=w("—");};std::map<uint64_t,Sample> samples;
  std::map<uint64_t,wxString> rates;wxString selectedDetail;long selectionAnchor=-1;std::map<uint64_t,std::string> loggedStates;std::string loggedError;
- void refresh();void route();void fitTabs();std::vector<uint64_t> selected()const;void close(wxCloseEvent&);void progressCells();void columns();void updateRates(const std::vector<downloads::Job>&);
+ void refresh();void route();void fitTabs();void rowHeight();std::vector<uint64_t> selected()const;void close(wxCloseEvent&);void progressCells();void columns();void updateRates(const std::vector<downloads::Job>&);
 public:MainWindow(downloads::Queue&);void openVideo(){showVideo(this,queue);}void activate(bool video=false);void smokeCheck();void logLayout();
 };
 }
