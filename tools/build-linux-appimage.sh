@@ -72,7 +72,7 @@ inroot() {
     bash -euo pipefail -c "$1"
 }
 
-if [ ! -f "$ROOTFS/.deps-wx-v1" ]; then
+if [ ! -f "$ROOTFS/.deps-wx-v2" ]; then
   inroot '
     # apt cannot switch to its _apt user inside a user namespace, and only one uid/gid
     # is mapped there, so package scripts that chown to other groups (e.g. staff) would
@@ -101,13 +101,13 @@ if [ ! -f "$ROOTFS/.deps-wx-v1" ]; then
     apt-get update
     # xvfb and xauth run the smoke test without a display.
     PACKAGES="ca-certificates g++-12 ninja-build pkg-config python3 python3-venv file unzip xz-utils
-      libgtk-3-dev libcurl4-openssl-dev libssl-dev xvfb xauth"
+      libgtk-3-dev libpng-dev zlib1g-dev libcurl4-openssl-dev libssl-dev xvfb xauth"
     apt-get install -y --no-install-recommends $PACKAGES || { settle; apt-get install -y --no-install-recommends $PACKAGES; }
     test -z "$(dpkg --audit)" || { dpkg --audit; exit 1; }
     python3 -m venv /opt/venv
     pip install --no-cache-dir cmake==3.31.6
   '
-  touch "$ROOTFS/.deps-wx-v1"
+  touch "$ROOTFS/.deps-wx-v2"
 fi
 
 inroot '

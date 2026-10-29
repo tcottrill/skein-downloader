@@ -13,10 +13,16 @@ set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
 foreach(feature LIBJPEG LIBTIFF NANOSVG EXPAT REGEX)
   set(wxUSE_${feature} OFF CACHE STRING "" FORCE)
 endforeach()
-# PNG (with the zlib it needs) for the Ko-fi badge, from wx's own copies so no system
-# library is added to the Linux packages.
+# PNG (with the zlib it needs) for the Ko-fi logo. Windows uses wx's own copies. Linux uses
+# the system's, which every desktop has (GTK's image loading needs them) and which the
+# Flatpak runtime provides; wx's bundled zlib does not build with GCC 14 (implicit lseek).
+if(WIN32)
+  set(wx_image_libs builtin)
+else()
+  set(wx_image_libs sys)
+endif()
 foreach(feature LIBPNG ZLIB)
-  set(wxUSE_${feature} builtin CACHE STRING "" FORCE)
+  set(wxUSE_${feature} ${wx_image_libs} CACHE STRING "" FORCE)
 endforeach()
 # DETECT_SM, UIACTIONSIMULATOR and XTEST would link libSM, libICE and libXtst, which a
 # Wayland-only system may lack and the AppImage would then fail to start without.
