@@ -20,12 +20,15 @@ cannot start. Controls use each platform's own theme.
 
 ## Build
 
-wxWidgets is built from source, pinned to tag `v3.2.12` (commit
-`3b7c7fc839093ad28146bd17555af2565c792c96`). Fetch it into `vendor/wxWidgets`:
+wxWidgets is built from source. It is a git submodule in `vendor/wxWidgets`, pinned to
+tag `v3.2.12` (commit `3b7c7fc839093ad28146bd17555af2565c792c96`), so clone with:
 
 ```
-git clone --depth 1 --branch v3.2.12 --recurse-submodules --shallow-submodules https://github.com/wxWidgets/wxWidgets.git vendor/wxWidgets
+git clone --recursive https://github.com/tcottrill/skein-downloader.git
 ```
+
+In a copy cloned without `--recursive`, fetch it with
+`git submodule update --init --recursive`.
 
 Windows (Visual Studio 2022 C++ tools and CMake):
 

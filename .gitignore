@@ -1,5 +1,4 @@
 /build/
-/vendor/
 /dist/
 *.log
 # The designer's zip duplicates the folders next to it.

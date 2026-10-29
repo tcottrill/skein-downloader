@@ -21,7 +21,7 @@ ROOTFS="$WORK/rootfs-ubuntu-22.04"
 OUT="$ROOT/dist/linux"
 APPIMAGE="SkeinDownloader-x86_64.AppImage"
 ID=io.github.tcottrill.SkeinDownloader
-[ -f "$ROOT/vendor/wxWidgets/CMakeLists.txt" ] || { echo "Fetch wxWidgets into vendor/wxWidgets first (see README)." >&2; exit 1; }
+[ -f "$ROOT/vendor/wxWidgets/CMakeLists.txt" ] || { echo "wxWidgets is missing: run git submodule update --init --recursive" >&2; exit 1; }
 mkdir -p "$CACHE" "$WORK/build" "$OUT/sources"
 
 # fetch URL FILE SHA256: download into the cache once and always verify.
