@@ -89,8 +89,12 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  auto toolbar=new wxPanel(this);auto tools=new wxBoxSizer(wxHORIZONTAL);
  auto action=[this,toolbar,tools](const wxString& title,std::function<void()> fn){auto b=new wxButton(toolbar,wxID_ANY,title);b->Bind(wxEVT_BUTTON,[fn](wxCommandEvent&){fn();});tools->Add(b,0,wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT,FromDIP(6));}; action("+ File",[this]{showFiles(this,queue);});action("+ Video",[this]{wxString link;if(wxTheClipboard->Open()){wxTextDataObject d;if(wxTheClipboard->GetData(d))link=d.GetText().Strip(wxString::both);wxTheClipboard->Close();}if(fileHost(link)||archive::looksLikeFileUrl(u(link))||!video::validUrl(link.ToStdWstring()))link.clear();showVideo(this,queue,link);});tools->Add(new wxStaticLine(toolbar,wxID_ANY,wxDefaultPosition,FromDIP(wxSize(1,24)),wxLI_VERTICAL),0,wxALIGN_CENTER_VERTICAL|wxLEFT,FromDIP(10));tools->AddSpacer(FromDIP(4));
  action("Resume all",[this]{queue.resumeAll();refresh();});action("Pause all",[this]{queue.pauseAll();refresh();});
- action("Remove",[this]{for(auto id:selected())if(mode==3)queue.removeHistory(id);else queue.remove(id);refresh();});action("Remove All",[this]{queue.removeAll();refresh();});
- action("Open folder",[this]{auto ids=selected();for(auto& j:shown)if(!ids.empty()&&j.id==ids.front()){auto s=j.output.empty()?j.input.value("target",j.input.value("folder",std::string())):j.output;if(s.empty())return;auto path=archive::pathFromUtf8(s);if(j.kind=="Archive"||!j.output.empty())path=path.parent_path();openFolder(w(archive::pathUtf8(path)));return;}openFolder(pref("folder",downloadFolder()));});
+ // In History, Remove deletes the record; elsewhere it takes the job off the list (a finished
+ // one stays in History). Files on disk are never touched.
+ auto removeSelected=[this]{for(auto id:selected())if(mode==3)queue.removeHistory(id);else queue.remove(id);refresh();};
+ action("Remove",removeSelected);action("Remove All",[this]{queue.removeAll();refresh();});
+ auto openSelected=[this]{auto ids=selected();for(auto& j:shown)if(!ids.empty()&&j.id==ids.front()){auto s=j.output.empty()?j.input.value("target",j.input.value("folder",std::string())):j.output;if(s.empty())return;auto path=archive::pathFromUtf8(s);if(j.kind=="Archive"||!j.output.empty())path=path.parent_path();openFolder(w(archive::pathUtf8(path)));return;}openFolder(pref("folder",downloadFolder()));};
+ action("Open folder",openSelected);
  // The Ko-fi badge and About sit apart from the queue actions, at the far right of the toolbar.
  tools->AddStretchSpacer();
  auto kofi=new KofiButton(toolbar);
@@ -127,6 +131,30 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  auto tooltip=[this](wxMouseEvent& e){e.Skip();auto target=static_cast<wxWindow*>(e.GetEventObject());int flags=0;long column=-1;long row=list->HitTest(e.GetPosition(),flags,&column);wxString tip;if(row>=0&&size_t(row)<shown.size())tip=column==5?w("Transfer speed in bytes per second"):w(shown[size_t(row)].detail+"\n"+shown[size_t(row)].output);if(target->GetToolTipText()!=tip){if(tip.empty())target->UnsetToolTip();else target->SetToolTip(tip);}};
  list->Bind(wxEVT_MOTION,tooltip);for(auto child:list->GetChildren())child->Bind(wxEVT_MOTION,tooltip);
  list->Bind(wxEVT_SIZE,[this](wxSizeEvent& e){e.Skip();CallAfter([this]{columns();progressCells();});});
+ // Right-click a download for the actions that apply to it, on its own or with the other
+ // selected rows (a click outside the selection selects just that row first).
+ list->Bind(wxEVT_LIST_ITEM_RIGHT_CLICK,[this,removeSelected,openSelected](wxListEvent& e){
+  if(!list->GetItemState(e.GetIndex(),wxLIST_STATE_SELECTED)){
+   for(long i=-1;(i=list->GetNextItem(i,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1;)list->SetItemState(i,0,wxLIST_STATE_SELECTED);
+   list->SetItemState(e.GetIndex(),wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED,wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
+  }
+  const auto ids=selected();if(ids.empty())return;
+  bool canPause=false,canResume=false;
+  for(auto& j:shown)if(std::find(ids.begin(),ids.end(),j.id)!=ids.end()){canPause|=j.state=="Active"||j.state=="Queued";canResume|=j.state=="Paused"||j.state=="Failed";}
+  enum {Pause=1,Resume,OpenFolder,Remove};
+  wxMenu menu;
+  // Access keys: P, R, O and M (Resume and Remove both start with R).
+  menu.Append(Pause,"&Pause")->Enable(canPause);menu.Append(Resume,"&Resume")->Enable(canResume);menu.AppendSeparator();
+  menu.Append(OpenFolder,"&Open folder");menu.AppendSeparator();
+  menu.Append(Remove,mode==3?"Re&move from history\tDel":"Re&move from list\tDel");
+  switch(list->GetPopupMenuSelectionFromUser(menu,e.GetPoint())){
+   case Pause:for(auto id:ids)queue.pause(id);refresh();break;
+   case Resume:for(auto id:ids)queue.resume(id);refresh();break;
+   case OpenFolder:openSelected();break;
+   case Remove:removeSelected();break;
+  }
+ });
+ list->Bind(wxEVT_LIST_KEY_DOWN,[removeSelected](wxListEvent& e){if(e.GetKeyCode()==WXK_DELETE)removeSelected();else e.Skip();});
 #ifdef __WXMSW__
  // Moving to a monitor with another scale (Per-Monitor V2): wx rescales fonts, sizers, min sizes and
  // column widths itself, but not a plain image list or sizes this window computed from text.
