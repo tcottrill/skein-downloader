@@ -1,0 +1,26 @@
+Skein Downloader: bundled video tools and where to get their source
+
+Skein Downloader is GPL-3.0-or-later. Its Flatpak also ships these programs,
+unmodified, under their own licenses. The source archives named below are published
+with every Skein Downloader release, next to the package:
+https://github.com/tcottrill/skein-downloader/releases
+
+yt-dlp 2026.08.19, official yt-dlp_linux executable
+  https://github.com/yt-dlp/yt-dlp/releases/tag/2026.08.19
+  License: Unlicense (yt-dlp-LICENSE.txt).
+  Source: yt-dlp-2026.08.19-source.tar.gz, the upstream yt-dlp.tar.gz of that release.
+  The standalone executable also contains Python and other components with their own
+  licenses, some GPL (yt-dlp-THIRD-PARTY.txt). yt-dlp's maintainers provide those
+  sources from the original projects or on request to maintainers@yt-dlp.org.
+
+Deno v2.9.8, official x86_64 Linux executable
+  https://github.com/denoland/deno/releases/tag/v2.9.8
+  License: MIT (deno-LICENSE.md).
+  Source: deno-v2.9.8-source.tar.gz, the upstream deno_src.tar.gz of that release.
+
+FFmpeg and ffprobe
+  Provided by the org.freedesktop.Platform 24.08 runtime, not by this package. Their
+  sources and notices come from the Freedesktop runtime distributors.
+
+wxWidgets 3.2.12 is linked into the program (wxWindows Library Licence, wxWidgets.txt);
+its source is https://github.com/wxWidgets/wxWidgets/tree/v3.2.12.

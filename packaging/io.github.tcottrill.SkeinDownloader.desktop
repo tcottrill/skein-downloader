@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Skein Downloader
+Comment=Queue file and video downloads
+Exec=skein-downloader
+Icon=io.github.tcottrill.SkeinDownloader
+Terminal=false
+Categories=Network;FileTransfer;
+StartupNotify=true
+StartupWMClass=io.github.tcottrill.SkeinDownloader

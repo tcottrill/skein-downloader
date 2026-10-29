@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.tcottrill.SkeinDownloader</id>
+  <name>Skein Downloader</name>
+  <summary>Queue file and video downloads</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <description>
+    <p>An open-source download manager, still a work in progress. Download up to four files or videos at a time with multiple connections, pause and resume, checksums and saved history.</p>
+  </description>
+  <launchable type="desktop-id">io.github.tcottrill.SkeinDownloader.desktop</launchable>
+  <url type="homepage">https://github.com/tcottrill/skein-downloader</url>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="0.1" date="2026-10-29"/></releases>
+</component>
