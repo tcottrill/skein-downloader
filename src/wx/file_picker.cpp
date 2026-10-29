@@ -48,6 +48,7 @@ class FilePicker:public wxDialog {
  }
 public:
  FilePicker(wxWindow* parent,downloads::Queue& q,const wxString& link):wxDialog(parent,wxID_ANY,"File downloads",wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER),queue(q),timer(this){
+  appIcons(this);
   // Qt's default dialog layout: 11 px margins and 6 px between items and rows.
   const int gap=FromDIP(6);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxALL,FromDIP(11));
   auto title=new wxStaticText(this,wxID_ANY,"File downloads");auto font=title->GetFont();font.SetPointSize(21);title->SetFont(font);box->Add(title,0,wxBOTTOM,gap);auto row=new wxBoxSizer(wxHORIZONTAL);url=field(this,link.empty()?pref("fileLink"):link,"Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier");row->Add(url,1,wxALIGN_CENTER_VERTICAL);button(this,row,"Load files",[this]{load();});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SkeinDownloader VERSION 0.1 LANGUAGES C CXX)
+project(SkeinDownloader VERSION 0.6 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -13,7 +13,9 @@ set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
 foreach(feature ZLIB LIBJPEG LIBPNG LIBTIFF NANOSVG EXPAT REGEX)
   set(wxUSE_${feature} OFF CACHE STRING "" FORCE)
 endforeach()
-foreach(feature WEBVIEW WEBVIEW_EDGE WEBVIEW_IE WEBREQUEST MEDIACTRL HTML XML XRC RICHTEXT STC AUI RIBBON PROPGRID GL SVG ARCHIVE_STREAMS ZIPSTREAM TARSTREAM ZLIB JOYSTICK SOCKETS PROTOCOL URL PROTOCOL_FTP PROTOCOL_HTTP PROTOCOL_FILE FS_INET FS_ARCHIVE FS_ZIP SECRETSTORE LIBLZMA GIF PCX TGA IFF PNM ARTPROVIDER_TANGO IPC HELP WXHTML_HELP MS_HTML_HELP)
+# DETECT_SM, UIACTIONSIMULATOR and XTEST would link libSM, libICE and libXtst, which a
+# Wayland-only system may lack and the AppImage would then fail to start without.
+foreach(feature WEBVIEW WEBVIEW_EDGE WEBVIEW_IE WEBREQUEST MEDIACTRL HTML XML XRC RICHTEXT STC AUI RIBBON PROPGRID GL SVG ARCHIVE_STREAMS ZIPSTREAM TARSTREAM ZLIB JOYSTICK SOCKETS PROTOCOL URL PROTOCOL_FTP PROTOCOL_HTTP PROTOCOL_FILE FS_INET FS_ARCHIVE FS_ZIP SECRETSTORE LIBLZMA GIF PCX TGA IFF PNM ARTPROVIDER_TANGO IPC HELP WXHTML_HELP MS_HTML_HELP DETECT_SM UIACTIONSIMULATOR XTEST)
   set(wxUSE_${feature} OFF CACHE BOOL "" FORCE)
 endforeach()
 if(NOT WIN32)
@@ -44,16 +46,70 @@ target_link_libraries(ui_logic PUBLIC download_queue)
 add_executable(skein-downloader WIN32 src/wx/app.cpp src/wx/manager.cpp src/wx/file_picker.cpp src/wx/video_dialog.cpp)
 target_link_libraries(skein-downloader PRIVATE ui_logic wx::core wx::base)
 target_compile_definitions(skein-downloader PRIVATE SKEIN_VERSION="${PROJECT_VERSION}")
-if(NOT WIN32)
+# Program icon, built by tools/make-icons.py into packaging/icons.
+set(SKEIN_ICONS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons")
+if(WIN32)
+  # Explorer shows the exe's first icon group; app.cpp gives windows the same icons for the
+  # title bar, taskbar and Alt+Tab, in every size the .ico holds (16-256 px for each DPI).
+  # The version block fills the exe's Properties > Details tab.
+  set(rc_version "${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},0,0")
+  file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/skein-downloader.rc" CONTENT
+"appicon ICON \"${SKEIN_ICONS}/skein-downloader.ico\"
+1 VERSIONINFO
+FILEVERSION ${rc_version}
+PRODUCTVERSION ${rc_version}
+BEGIN
+  BLOCK \"StringFileInfo\"
+  BEGIN
+    BLOCK \"040904B0\"
+    BEGIN
+      VALUE \"CompanyName\", \"Tim Cottrill\"
+      VALUE \"FileDescription\", \"Skein Downloader\"
+      VALUE \"FileVersion\", \"${PROJECT_VERSION}\"
+      VALUE \"InternalName\", \"skein-downloader\"
+      VALUE \"LegalCopyright\", \"Copyright (C) 2026 Tim Cottrill. GPL-3.0-or-later.\"
+      VALUE \"OriginalFilename\", \"skein-downloader.exe\"
+      VALUE \"ProductName\", \"Skein Downloader\"
+      VALUE \"ProductVersion\", \"${PROJECT_VERSION}\"
+    END
+  END
+  BLOCK \"VarFileInfo\"
+  BEGIN
+    VALUE \"Translation\", 0x409, 1200
+  END
+END
+")
+  target_sources(skein-downloader PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/skein-downloader.rc")
+else()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
   target_link_libraries(skein-downloader PRIVATE PkgConfig::GTK3)
+  install(TARGETS skein-downloader RUNTIME DESTINATION bin)
+  install(DIRECTORY "${SKEIN_ICONS}/hicolor" DESTINATION share/icons)
+  # The same PNGs compiled in, for X11 window icons where no installed theme icon is found
+  # (an AppImage that was never integrated); Wayland compositors use the .desktop icon.
+  set(header "// Generated from packaging/icons by CMakeLists.txt.\n")
+  set(list "")
+  foreach(size 16 24 32 48 64 128 256)
+    set(png "${SKEIN_ICONS}/hicolor/${size}x${size}/apps/io.github.tcottrill.SkeinDownloader.png")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${png}")
+    file(READ "${png}" hex HEX)
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," hex "${hex}")
+    string(APPEND header "static const unsigned char skeinIcon${size}[] = {${hex}};\n")
+    string(APPEND list "{skeinIcon${size}, sizeof skeinIcon${size}},")
+  endforeach()
+  string(APPEND header "struct SkeinIcon {const unsigned char* data; unsigned long size;};\n"
+    "static const SkeinIcon skeinIcons[] = {${list}};\n")
+  file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/skein_icons.h" CONTENT "${header}")
+  target_include_directories(skein-downloader PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 endif()
 if(MSVC)
   target_compile_options(skein-downloader PRIVATE /utf-8 /W4)
   target_link_options(skein-downloader PRIVATE /MANIFEST:EMBED "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/app.manifest")
 endif()
-set_target_properties(skein-downloader PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
+# Packaging builds with a read-only source tree (tools/build-linux-appimage.sh) set their own folder.
+set(SKEIN_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dist" CACHE PATH "Folder for the built executable")
+set_target_properties(skein-downloader PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SKEIN_OUTPUT_DIR}")
 if(WIN32)
   add_custom_command(TARGET skein-downloader POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/install-video-tools.ps1" "$<TARGET_FILE_DIR:skein-downloader>/install-video-tools.ps1")

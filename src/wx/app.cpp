@@ -8,8 +8,74 @@
 #include <gtk/gtk.h>
 #include <glib-unix.h>
 #include <csignal>
+#include "skein_icons.h"
 #endif
-namespace lite {archive::Path dataPath;std::unique_ptr<wxFileConfig> config;bool smoke=false;}
+#ifdef __WXMSW__
+#include <wx/msw/wrapwin.h>
+#endif
+#include <wx/aboutdlg.h>
+namespace {
+#ifdef __WXMSW__
+// Every size of the exe's "appicon" group (16-256 px).
+const wxIconBundle& iconBundle(){
+ static const wxIconBundle icons(wxString("appicon"),static_cast<WXHINSTANCE>(::GetModuleHandleW(nullptr)));
+ return icons;
+}
+#endif
+#ifdef __WXGTK__
+// One of the compiled-in PNGs as a pixbuf (the caller owns the reference), or null.
+GdkPixbuf* pixbuf(const SkeinIcon& icon){
+ GdkPixbuf* result=nullptr;auto loader=gdk_pixbuf_loader_new();
+ if(gdk_pixbuf_loader_write(loader,icon.data,icon.size,nullptr)&&gdk_pixbuf_loader_close(loader,nullptr)){
+  if(auto image=gdk_pixbuf_loader_get_pixbuf(loader))result=GDK_PIXBUF(g_object_ref(image));
+ }else gdk_pixbuf_loader_close(loader,nullptr);
+ g_object_unref(loader);return result;
+}
+// Window icons for X11 from the compiled-in PNGs, so they show even when the theme has no
+// installed icon (an AppImage that was never integrated). Wayland uses the .desktop icon.
+void defaultIcons(){
+ GList* list=nullptr;
+ for(const auto& icon:skeinIcons)if(auto image=pixbuf(icon))list=g_list_append(list,image);
+ gtk_window_set_default_icon_list(list);
+ LOG_INFO("Window icons: %u sizes",g_list_length(list));
+ g_list_free_full(list,g_object_unref);
+}
+#endif
+}
+namespace lite {archive::Path dataPath;std::unique_ptr<wxFileConfig> config;bool smoke=false;
+void appIcons(wxTopLevelWindow* window){
+#ifdef __WXMSW__
+ // wx gives the title bar and the taskbar the size that matches the window's monitor DPI,
+ // and picks again after a DPI change.
+ if(!iconBundle().IsEmpty())window->SetIcons(iconBundle());
+#else
+ (void)window; // GTK: the default icon list set at startup covers every window.
+#endif
+}
+void showAbout(wxWindow* parent){
+ wxAboutDialogInfo info;
+ info.SetName("Skein Downloader");
+ info.SetVersion(SKEIN_VERSION);
+ info.SetDescription("An open-source download manager for files and video.\nStill a work in progress.");
+ info.SetCopyright(wxString::FromUTF8("Copyright \xC2\xA9 2026 Tim Cottrill"));
+ info.SetLicence(
+  "This program is free software: you can redistribute it and/or modify it under the terms of the "
+  "GNU General Public License as published by the Free Software Foundation, either version 3 of the "
+  "License, or (at your option) any later version.\n\n"
+  "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without "
+  "even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU "
+  "General Public License for more details: https://www.gnu.org/licenses/gpl-3.0.html\n\n"
+  "Third-party components keep their own licenses: wxWidgets (wxWindows Library Licence), "
+  "nlohmann/json (MIT), and the yt-dlp, FFmpeg and Deno video tools.");
+#ifdef __WXMSW__
+ info.SetIcon(iconBundle().GetIcon(parent->FromDIP(wxSize(64,64)),wxIconBundle::FALLBACK_NEAREST_LARGER));
+#else
+ if(auto image=pixbuf(skeinIcons[5])){wxIcon icon;icon.CopyFromBitmap(wxBitmap(image));info.SetIcon(icon);} // 128 px
+#endif
+ LOG_INFO("About box opened");
+ wxAboutBox(info,parent);
+}
+}
 namespace {
 // wx errors and warnings go to the log file as well as to wx's usual dialogs.
 class LogBridge:public wxLog {
@@ -88,6 +154,7 @@ public:
    g_log_set_writer_func([](GLogLevelFlags level,const GLogField* fields,gsize count,gpointer)->GLogWriterOutput{
     if(level&(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL|G_LOG_LEVEL_WARNING|G_LOG_LEVEL_MESSAGE)){auto text=g_log_writer_format_fields(level,fields,count,FALSE);LOG_WARN("%s",text);g_free(text);}
     return g_log_writer_default(level,fields,count,nullptr);},nullptr,nullptr);
+   defaultIcons();
    {gchar* theme=nullptr;g_object_get(gtk_settings_get_default(),"gtk-theme-name",&theme,nullptr);LOG_INFO("Display backend %s, GTK %d.%d.%d, theme %s",G_OBJECT_TYPE_NAME(gdk_display_get_default()),gtk_get_major_version(),gtk_get_minor_version(),gtk_get_micro_version(),theme?theme:"(none)");g_free(theme);}
 #endif
    {wxDisplay display;auto area=display.GetClientArea();LOG_INFO("Screen %dx%d, work area %dx%d, scale %.2f",display.GetGeometry().width,display.GetGeometry().height,area.width,area.height,display.GetScaleFactor());}

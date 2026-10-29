@@ -48,6 +48,10 @@ inline wxButton* button(wxWindow* parent,wxSizer* row,const wxString& label,std:
 inline void folderBrowse(wxWindow* parent,wxTextCtrl* target){wxDirDialog d(parent,"Download folder",target->GetValue());if(d.ShowModal()==wxID_OK)target->SetValue(d.GetPath());}
 inline void openFolder(const wxString& path){if(wxDirExists(path))wxLaunchDefaultApplication(path);}
 inline bool ready(std::future<void>& f){return f.valid()&&f.wait_for(std::chrono::seconds(0))==std::future_status::ready;}
+// The program icon for a top-level window (title bar, taskbar, Alt+Tab); see app.cpp.
+void appIcons(wxTopLevelWindow*);
+// Name, version, copyright and license (app.cpp).
+void showAbout(wxWindow*);
 void showFiles(wxWindow*,downloads::Queue&,const wxString& link={});
 void showVideo(wxWindow*,downloads::Queue&,const wxString& link={});
 bool fileHost(const wxString&);

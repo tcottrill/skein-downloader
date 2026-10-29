@@ -54,6 +54,20 @@ On SteamOS install the Flatpak (`flatpak install --user ./SkeinDownloader-x86_64
 then `flatpak run io.github.tcottrill.SkeinDownloader//preview`) rather than copying
 `dist/skein-downloader`.
 
+AppImage, for Ubuntu 22.04 and newer without Flatpak. Any x86_64 Linux (or WSL) with bash,
+curl and bubblewrap builds it, no root needed:
+
+```
+bash tools/build-linux-appimage.sh
+```
+
+The script builds inside a pinned Ubuntu 22.04 userland, runs the tests and a smoke test
+there, and writes `dist/linux/SkeinDownloader-x86_64.AppImage` with yt-dlp, Deno and
+FFmpeg bundled. It uses the system's GTK 3, which every Ubuntu desktop has, so the
+desktop's theme and Wayland support apply. Run it with
+`chmod +x SkeinDownloader-x86_64.AppImage && ./SkeinDownloader-x86_64.AppImage`; without
+FUSE 2 (`libfuse2`) add `--appimage-extract-and-run`.
+
 ## Run
 
 Windows: `dist/skein-downloader.exe`. Linux: `dist/skein-downloader`.
@@ -78,6 +92,7 @@ Video downloads use yt-dlp, FFmpeg/ffprobe and Deno.
   (kept next to the executable), which downloads the official releases into
   `video-tools` and verifies their SHA-256 digests.
 - Flatpak: yt-dlp and Deno are bundled; FFmpeg comes from the Freedesktop runtime.
+- AppImage: yt-dlp, Deno and FFmpeg are bundled.
 - Other Linux builds: set `SKEIN_VIDEO_TOOLS` to a folder containing Linux `yt-dlp`,
   `ffmpeg`, `ffprobe` and `deno`, or put them in `../libexec/skein-downloader` next to
   the executable.
@@ -86,10 +101,13 @@ Access to browser cookies is opt-in and is never restored across launches.
 
 ## Publishing a Linux release
 
-The bundled yt-dlp executable contains GPL code, so each Flatpak release must offer its
-source. `tools/package-flatpak.sh` writes it to `dist/linux/sources/` (the yt-dlp and Deno
-source releases and `video-tools-notices.txt`); upload those files to the same release as
-the Flatpak and keep them available as long as it is offered.
+The bundled yt-dlp executable and the AppImage's static FFmpeg contain GPL code, so each
+Linux release must offer their source. `tools/package-flatpak.sh` and
+`tools/build-linux-appimage.sh` write it to `dist/linux/sources/`: the yt-dlp and Deno
+source releases, `video-tools-notices.txt` and, for the AppImage,
+`ffmpeg-source-manifest.txt`, which lists every revision the bundled FFmpeg was built from.
+Upload those files to the same release as the packages and keep them available as long as
+they are offered.
 
 ## Known limits
 

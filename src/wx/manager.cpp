@@ -23,33 +23,18 @@ public:
  }
  void set(int value,const wxString& label){if(value==percent&&label==text)return;percent=value;text=label;Refresh();}
 };
-// A text-only QToolButton: plain label, light rounded highlight on hover, darker while pressed, never focused.
-// Borderless wxButtons still draw a frame on MSW, and wxToolBar spaces text-only tools unevenly.
-class ToolButton:public wxControl {
- bool hover=false,pressed=false;
-public:
- ToolButton(wxWindow* parent,const wxString& label):wxControl(parent,wxID_ANY,wxDefaultPosition,wxDefaultSize,wxBORDER_NONE){
-  SetLabel(label);SetToolTip(label);SetBackgroundStyle(wxBG_STYLE_PAINT);
-  Bind(wxEVT_PAINT,[this](wxPaintEvent&){wxAutoBufferedPaintDC dc(this);auto back=GetParent()->GetBackgroundColour();dc.SetBackground(back);dc.Clear();auto r=GetClientRect();
-   if(hover||pressed){dc.SetPen(*wxTRANSPARENT_PEN);dc.SetBrush(back.ChangeLightness(pressed?84:92));dc.DrawRoundedRectangle(r.Deflate(FromDIP(1)),FromDIP(4));}
-   dc.SetFont(GetFont());dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));dc.DrawLabel(GetLabel(),r,wxALIGN_CENTER);});
-  Bind(wxEVT_ENTER_WINDOW,[this](wxMouseEvent&){hover=true;Refresh();});Bind(wxEVT_LEAVE_WINDOW,[this](wxMouseEvent&){hover=pressed=false;Refresh();});
-  Bind(wxEVT_LEFT_DOWN,[this](wxMouseEvent&){pressed=true;Refresh();});
-  Bind(wxEVT_LEFT_UP,[this](wxMouseEvent&){bool click=pressed&&hover;pressed=false;Refresh();if(click){wxCommandEvent event(wxEVT_BUTTON,GetId());event.SetEventObject(this);ProcessWindowEvent(event);}});
- }
- bool AcceptsFocus()const override{return false;}
-protected:
- wxSize DoGetBestClientSize()const override{return wxSize(GetTextExtent(GetLabel()).x+FromDIP(16),FromDIP(25));}
-};
 bool fileHost(const wxString& link){auto host=wxURI(link).GetServer().Lower();for(auto name:{"archive.org","www.archive.org","huggingface.co","www.huggingface.co","hf.co","github.com","www.github.com"})if(host==name)return true;return archive::isFileSiteLink(u(link));}
 MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Downloader"),queue(q),timer(this) {
- // Qt's text-only QToolBar: flat buttons with even padding, a separator and a line underneath.
- // wxToolBar with text-only tools gives uneven widths on both MSW and GTK, so it is built from flat buttons.
+ appIcons(this);
+ // Native buttons, so the toolbar actions look and press like buttons on Windows and GTK; a
+ // separator and a line underneath. wxToolBar spaces text-only tools unevenly on both.
  auto toolbar=new wxPanel(this);auto tools=new wxBoxSizer(wxHORIZONTAL);
- auto action=[this,toolbar,tools](const wxString& title,std::function<void()> fn){auto b=new ToolButton(toolbar,title);b->Bind(wxEVT_BUTTON,[fn](wxCommandEvent&){fn();});tools->Add(b,0,wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM,FromDIP(3));}; action("+ File",[this]{showFiles(this,queue);});action("+ Video",[this]{wxString link;if(wxTheClipboard->Open()){wxTextDataObject d;if(wxTheClipboard->GetData(d))link=d.GetText().Strip(wxString::both);wxTheClipboard->Close();}if(fileHost(link)||archive::looksLikeFileUrl(u(link))||!video::validUrl(link.ToStdWstring()))link.clear();showVideo(this,queue,link);});tools->Add(new wxStaticLine(toolbar,wxID_ANY,wxDefaultPosition,FromDIP(wxSize(1,18)),wxLI_VERTICAL),0,wxALIGN_CENTER_VERTICAL|wxLEFT|wxRIGHT,FromDIP(2));
+ auto action=[this,toolbar,tools](const wxString& title,std::function<void()> fn){auto b=new wxButton(toolbar,wxID_ANY,title);b->Bind(wxEVT_BUTTON,[fn](wxCommandEvent&){fn();});tools->Add(b,0,wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT,FromDIP(6));}; action("+ File",[this]{showFiles(this,queue);});action("+ Video",[this]{wxString link;if(wxTheClipboard->Open()){wxTextDataObject d;if(wxTheClipboard->GetData(d))link=d.GetText().Strip(wxString::both);wxTheClipboard->Close();}if(fileHost(link)||archive::looksLikeFileUrl(u(link))||!video::validUrl(link.ToStdWstring()))link.clear();showVideo(this,queue,link);});tools->Add(new wxStaticLine(toolbar,wxID_ANY,wxDefaultPosition,FromDIP(wxSize(1,24)),wxLI_VERTICAL),0,wxALIGN_CENTER_VERTICAL|wxLEFT,FromDIP(10));tools->AddSpacer(FromDIP(4));
  action("Resume all",[this]{queue.resumeAll();refresh();});action("Pause all",[this]{queue.pauseAll();refresh();});
  action("Remove",[this]{for(auto id:selected())if(mode==3)queue.removeHistory(id);else queue.remove(id);refresh();});action("Remove All",[this]{queue.removeAll();refresh();});
- action("Open folder",[this]{auto ids=selected();for(auto& j:shown)if(!ids.empty()&&j.id==ids.front()){auto s=j.output.empty()?j.input.value("target",j.input.value("folder",std::string())):j.output;if(s.empty())return;auto path=archive::pathFromUtf8(s);if(j.kind=="Archive"||!j.output.empty())path=path.parent_path();openFolder(w(archive::pathUtf8(path)));return;}openFolder(pref("folder",downloadFolder()));});toolbar->SetSizer(tools);
+ action("Open folder",[this]{auto ids=selected();for(auto& j:shown)if(!ids.empty()&&j.id==ids.front()){auto s=j.output.empty()?j.input.value("target",j.input.value("folder",std::string())):j.output;if(s.empty())return;auto path=archive::pathFromUtf8(s);if(j.kind=="Archive"||!j.output.empty())path=path.parent_path();openFolder(w(archive::pathUtf8(path)));return;}openFolder(pref("folder",downloadFolder()));});
+ // About sits apart from the queue actions, at the far right of the toolbar.
+ tools->AddStretchSpacer();action("About",[this]{showAbout(this);});tools->AddSpacer(FromDIP(8));toolbar->SetSizer(tools);
  auto p=panel=new wxPanel(this);
  auto frameBox=new wxBoxSizer(wxVERTICAL);frameBox->Add(toolbar,0,wxEXPAND|wxLEFT,FromDIP(2));frameBox->Add(new wxStaticLine(this),0,wxEXPAND);frameBox->Add(p,1,wxEXPAND);SetSizer(frameBox);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxLEFT|wxRIGHT,FromDIP(18));box->AddSpacer(FromDIP(16));
  auto row=new wxBoxSizer(wxHORIZONTAL);url=field(p,{},"Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link");row->Add(url,1,wxRIGHT,FromDIP(6));auto load=new wxButton(p,wxID_ANY,"Load");load->Bind(wxEVT_BUTTON,[this](wxCommandEvent&){route();});row->Add(load,0,wxALIGN_CENTER_VERTICAL);box->Add(row,0,wxEXPAND|wxBOTTOM,FromDIP(12));
@@ -87,7 +72,8 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
 #endif
  list->Bind(wxEVT_SCROLLWIN_THUMBTRACK,[this](wxScrollWinEvent& e){e.Skip();CallAfter([this]{progressCells();});});list->Bind(wxEVT_SCROLLWIN_THUMBRELEASE,[this](wxScrollWinEvent& e){e.Skip();CallAfter([this]{progressCells();});});list->Bind(wxEVT_MOUSEWHEEL,[this](wxMouseEvent& e){e.Skip();CallAfter([this]{progressCells();});});list->Bind(wxEVT_LIST_COL_END_DRAG,[this](wxListEvent& e){e.Skip();CallAfter([this]{progressCells();});});
  Bind(wxEVT_TIMER,[this](wxTimerEvent&){if(stopping){if(ready(closing)){try{closing.get();}catch(...){}Destroy();}}else if(closeRequested)Close();else {auto request=dataPath/"activate.request";std::ifstream in(request);if(in){std::string message;std::getline(in,message);in.close();std::error_code ec;std::filesystem::remove(request,ec);activate(message=="video");}refresh();}});Bind(wxEVT_CLOSE_WINDOW,&MainWindow::close,this);
- timer.Start(250);refresh();CallAfter([this]{columns();});
+ // Start in the URL box, ready for a pasted link; the toolbar buttons would otherwise take focus first.
+ timer.Start(250);refresh();CallAfter([this]{columns();url->SetFocus();});
 }
 // A transparent 1 x 54 DIP image sets the row height (Qt's taller rows, room for the progress bar).
 // Rebuilt on DPI changes: wxListCtrl rescales image lists set as bitmap bundles, not this one.
