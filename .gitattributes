@@ -1,1 +1,6 @@
+# Files read on Linux (scripts, desktop entry, AppStream metadata) keep LF even when git on
+# Windows converts text to CRLF; a CRLF .desktop file breaks its Icon= lookup.
 *.sh text eol=lf
+*.py text eol=lf
+*.desktop text eol=lf
+*.xml text eol=lf
