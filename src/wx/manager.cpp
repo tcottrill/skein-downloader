@@ -139,17 +139,21 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
    list->SetItemState(e.GetIndex(),wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED,wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
   }
   const auto ids=selected();if(ids.empty())return;
-  bool canPause=false,canResume=false;
-  for(auto& j:shown)if(std::find(ids.begin(),ids.end(),j.id)!=ids.end()){canPause|=j.state=="Active"||j.state=="Queued";canResume|=j.state=="Paused"||j.state=="Failed";}
-  enum {Pause=1,Resume,OpenFolder,Remove};
+  bool canPause=false,canResume=false,canRetry=false;
+  for(auto& j:shown)if(std::find(ids.begin(),ids.end(),j.id)!=ids.end()){canPause|=j.state=="Active"||j.state=="Queued";canResume|=j.state=="Paused";canRetry|=j.state=="Failed";}
+  enum {Pause=1,Resume,Retry,OpenFolder,Remove};
   wxMenu menu;
-  // Access keys: P, R, O and M (Resume and Remove both start with R).
-  menu.Append(Pause,"&Pause")->Enable(canPause);menu.Append(Resume,"&Resume")->Enable(canResume);menu.AppendSeparator();
+  // Access keys: P, R, T, O and M (Resume, Retry and Remove all start with R).
+  menu.Append(Pause,"&Pause")->Enable(canPause);menu.Append(Resume,"&Resume")->Enable(canResume);
+  menu.Append(Retry,"Re&try")->Enable(canRetry);menu.AppendSeparator();
   menu.Append(OpenFolder,"&Open folder");menu.AppendSeparator();
   menu.Append(Remove,mode==3?"Re&move from history\tDel":"Re&move from list\tDel");
   switch(list->GetPopupMenuSelectionFromUser(menu,e.GetPoint())){
    case Pause:for(auto id:ids)queue.pause(id);refresh();break;
    case Resume:for(auto id:ids)queue.resume(id);refresh();break;
+   // Failed downloads go back in the queue; the engine keeps any partial data it can still
+   // verify (same file, size and checksum or ETag) and fetches the rest.
+   case Retry:for(auto& j:shown)if(j.state=="Failed"&&std::find(ids.begin(),ids.end(),j.id)!=ids.end()){LOG_INFO("Retrying %s",j.name.c_str());queue.resume(j.id);}refresh();break;
    case OpenFolder:openSelected();break;
    case Remove:removeSelected();break;
   }
