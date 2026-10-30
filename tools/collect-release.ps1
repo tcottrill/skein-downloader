@@ -21,7 +21,7 @@ if (Test-Path -LiteralPath $exe) {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath "$stage.zip"
     Remove-Item -LiteralPath $stage -Recurse -Force
 } else { Write-Warning "No Windows build ($exe)" }
-$setup = Join-Path $dist "SkeinDownloader-$version-windows-x64-setup.exe"
+$setup = Join-Path $repo "build/installer/SkeinDownloader-$version-windows-x64-setup.exe"
 if (Test-Path -LiteralPath $setup) { Copy-Item -LiteralPath $setup -Destination $out }
 else { Write-Warning "No Windows installer ($setup): run tools/build-installer.ps1" }
 

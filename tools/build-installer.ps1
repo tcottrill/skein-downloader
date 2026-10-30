@@ -1,4 +1,5 @@
-# Builds the Windows installer, dist/SkeinDownloader-<version>-windows-x64-setup.exe, from
+# Builds the Windows installer, build/installer/SkeinDownloader-<version>-windows-x64-setup.exe
+# (collect-release.ps1 copies it to dist/release), from
 # packaging/windows/skein-downloader.iss. Run after tools/build-windows.ps1.
 # Needs Inno Setup 6 (https://jrsoftware.org/isinfo.php, or
 # "winget install JRSoftware.InnoSetup"); pass -Iscc when ISCC.exe is somewhere else.
@@ -16,5 +17,5 @@ if (!$Iscc) {
 if (!(Test-Path -LiteralPath (Join-Path $repo 'dist/skein-downloader.exe'))) { throw 'dist/skein-downloader.exe is missing: run tools/build-windows.ps1 first' }
 & $Iscc /Q (Join-Path $repo 'packaging/windows/skein-downloader.iss')
 if ($LASTEXITCODE) { throw 'Building the installer failed' }
-Get-ChildItem (Join-Path $repo 'dist/SkeinDownloader-*-windows-x64-setup.exe') | Sort-Object LastWriteTime | Select-Object -Last 1 |
+Get-ChildItem (Join-Path $repo 'build/installer/SkeinDownloader-*-windows-x64-setup.exe') | Sort-Object LastWriteTime | Select-Object -Last 1 |
     ForEach-Object { Write-Host "Installer: $($_.FullName) ($([math]::Round($_.Length / 1MB, 1)) MB)" }

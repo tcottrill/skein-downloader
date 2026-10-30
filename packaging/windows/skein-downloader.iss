@@ -1,5 +1,6 @@
-; Inno Setup script for the Windows installer: dist\SkeinDownloader-<version>-windows-x64-setup.exe.
-; Build it with tools\build-installer.ps1 after tools\build-windows.ps1.
+; Inno Setup script for the Windows installer, SkeinDownloader-<version>-windows-x64-setup.exe.
+; Build it with tools\build-installer.ps1 after tools\build-windows.ps1. It is written to
+; build\installer; tools\collect-release.ps1 copies it to dist\release with the other downloads.
 ;
 ; Installs for the current user (no administrator rights) into
 ; %LOCALAPPDATA%\Programs\Skein Downloader, where the program can update its video tools.
@@ -34,7 +35,7 @@ SetupIconFile={#Root}\packaging\icons\skein-downloader.ico
 UninstallDisplayIcon={app}\skein-downloader.exe
 UninstallDisplayName=Skein Downloader
 VersionInfoVersion={#AppVersion}
-OutputDir={#Root}\dist
+OutputDir={#Root}\build\installer
 OutputBaseFilename=SkeinDownloader-{#AppVersion}-windows-x64-setup
 Compression=lzma2
 SolidCompression=yes

@@ -45,7 +45,7 @@ cmake --preset vs2022
 ```
 
 Windows installer (Inno Setup 6, `winget install JRSoftware.InnoSetup`), after the build:
-`dist/SkeinDownloader-<version>-windows-x64-setup.exe`. It installs for the current user without
+`SkeinDownloader-<version>-windows-x64-setup.exe` (in `dist/release/` after `tools/collect-release.ps1`). It installs for the current user without
 administrator rights and needs an internet connection: it lists, then downloads and
 checks, the video tools (yt-dlp, Deno, FFmpeg) from GitHub, and installs nothing if that
 fails. Its uninstaller removes the program and the tools; settings and history in
