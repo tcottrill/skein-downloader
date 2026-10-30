@@ -10,7 +10,8 @@ set(wxBUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(wxBUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(wxBUILD_LOCALES OFF CACHE BOOL "" FORCE)
 set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
-foreach(feature LIBJPEG LIBTIFF NANOSVG EXPAT REGEX)
+# LIBWEBP: wx 3.3 builds or links libwebp by default; nothing here shows WebP images.
+foreach(feature LIBJPEG LIBTIFF LIBWEBP NANOSVG EXPAT REGEX)
   set(wxUSE_${feature} OFF CACHE STRING "" FORCE)
 endforeach()
 # PNG (with the zlib it needs) for the Ko-fi logo. Windows uses wx's own copies. Linux uses
