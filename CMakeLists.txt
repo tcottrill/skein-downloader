@@ -133,7 +133,11 @@ if(MSVC)
 endif()
 # Packaging builds with a read-only source tree (tools/build-linux-appimage.sh) set their own folder.
 set(SKEIN_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dist" CACHE PATH "Folder for the built executable")
-set_target_properties(skein-downloader PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SKEIN_OUTPUT_DIR}")
+# Release in that folder, Debug in its debug/ subfolder (Visual Studio builds both; the
+# generator expression also stops it adding a Release/ or Debug/ folder of its own).
+set_target_properties(skein-downloader PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${SKEIN_OUTPUT_DIR}$<$<CONFIG:Debug>:/debug>")
+# Visual Studio (CMakePresets.json, preset vs2022): F5 starts the program, not ALL_BUILD.
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT skein-downloader)
 if(WIN32)
   add_custom_command(TARGET skein-downloader POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/install-video-tools.ps1" "$<TARGET_FILE_DIR:skein-downloader>/install-video-tools.ps1")

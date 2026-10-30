@@ -36,6 +36,14 @@ Windows (Visual Studio 2022 C++ tools and CMake):
 powershell -ExecutionPolicy Bypass -File tools/build-windows.ps1
 ```
 
+Or in the Visual Studio 2022 IDE: generate a solution with the `vs2022` preset and open
+`build/vs2022/SkeinDownloader.sln` (Release builds go to `dist/`, Debug to `dist/debug/`).
+Visual Studio's File > Open > Folder also picks up the preset.
+
+```
+cmake --preset vs2022
+```
+
 Linux (C++20 compiler, CMake, Ninja, pkg-config, GTK3, curl and OpenSSL development files).
 On Ubuntu: `build-essential cmake ninja-build pkg-config libgtk-3-dev libcurl4-openssl-dev libssl-dev`.
 
