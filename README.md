@@ -148,6 +148,13 @@ activation is subject to the compositor's focus policy. Mixed-DPI monitor change
 Windows and SteamOS/Batocera devices still need hands-on testing. The Windows installer
 is not code-signed.
 
+## Requests and problems
+
+Missing support for a site you want? [File an issue](https://github.com/tcottrill/skein-downloader/issues)
+and ask for it. People who support me on [Ko-fi](https://ko-fi.com/timcottrill) get
+priority on their requests. When reporting a problem, include `skein-downloader.log`
+(see [Quick start](#quick-start) for where it is).
+
 ## Building from source
 
 See [BUILDING.md](BUILDING.md) for Windows and Linux builds, packaging, dependencies,
