@@ -15,20 +15,20 @@ New-Item -ItemType Directory $out | Out-Null
 # Windows: the program and the video tool installer it runs from the same folder.
 $exe = Join-Path $dist 'skein-downloader.exe'
 if (Test-Path -LiteralPath $exe) {
-    $stage = Join-Path $out "SkeinDownloader-$version-windows-x64"
+    $stage = Join-Path $out "SkeinDownloader-$version-windows-x64-portable"
     New-Item -ItemType Directory $stage | Out-Null
     Copy-Item -LiteralPath $exe, (Join-Path $repo 'tools/install-video-tools.ps1'), (Join-Path $repo 'LICENSE'), (Join-Path $repo 'README.md') -Destination $stage
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath "$stage.zip"
     Remove-Item -LiteralPath $stage -Recurse -Force
 } else { Write-Warning "No Windows build ($exe)" }
-$setup = Join-Path $dist "SkeinDownloader-$version-Setup.exe"
+$setup = Join-Path $dist "SkeinDownloader-$version-windows-x64-setup.exe"
 if (Test-Path -LiteralPath $setup) { Copy-Item -LiteralPath $setup -Destination $out }
 else { Write-Warning "No Windows installer ($setup): run tools/build-installer.ps1" }
 
 # Linux packages, and the source of the bundled tools that must be published with them.
 $linux = Join-Path $dist 'linux'
-foreach ($package in @(@('SkeinDownloader-x86_64.AppImage', "SkeinDownloader-$version-x86_64.AppImage"),
-                       @('SkeinDownloader-x86_64.flatpak', "SkeinDownloader-$version-x86_64.flatpak"))) {
+foreach ($package in @(@('SkeinDownloader-x86_64.AppImage', "SkeinDownloader-$version-linux-x86_64.AppImage"),
+                       @('SkeinDownloader-x86_64.flatpak', "SkeinDownloader-$version-linux-x86_64.flatpak"))) {
     $file = Join-Path $linux $package[0]
     if (Test-Path -LiteralPath $file) { Copy-Item -LiteralPath $file -Destination (Join-Path $out $package[1]) }
     else { Write-Warning "No $($package[0]) in $linux" }
