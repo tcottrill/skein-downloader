@@ -1,6 +1,7 @@
 # Gathers the files for a GitHub release into dist/release/, named with the version from
-# CMakeLists.txt, with SHA256SUMS.txt. Run after tools/build-windows.ps1 and the Linux
-# builds (tools/build-linux-appimage.sh, tools/package-flatpak.sh). Missing packages are
+# CMakeLists.txt, with SHA256SUMS.txt. Run after tools/build-windows.ps1,
+# tools/build-installer.ps1 and the Linux builds (tools/build-linux-appimage.sh,
+# tools/package-flatpak.sh), or use tools/build-all.ps1 for all of it. Missing packages are
 # reported and skipped. Upload everything in dist/release/ to the release for the tag.
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
@@ -20,6 +21,9 @@ if (Test-Path -LiteralPath $exe) {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath "$stage.zip"
     Remove-Item -LiteralPath $stage -Recurse -Force
 } else { Write-Warning "No Windows build ($exe)" }
+$setup = Join-Path $dist "SkeinDownloader-$version-Setup.exe"
+if (Test-Path -LiteralPath $setup) { Copy-Item -LiteralPath $setup -Destination $out }
+else { Write-Warning "No Windows installer ($setup): run tools/build-installer.ps1" }
 
 # Linux packages, and the source of the bundled tools that must be published with them.
 $linux = Join-Path $dist 'linux'

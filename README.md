@@ -44,6 +44,24 @@ Visual Studio's File > Open > Folder also picks up the preset.
 cmake --preset vs2022
 ```
 
+Windows installer (Inno Setup 6, `winget install JRSoftware.InnoSetup`), after the build:
+`dist/SkeinDownloader-<version>-Setup.exe`. It installs for the current user without
+administrator rights and needs an internet connection: it lists, then downloads and
+checks, the video tools (yt-dlp, Deno, FFmpeg) from GitHub, and installs nothing if that
+fails. Its uninstaller removes the program and the tools; settings and history in
+`%LOCALAPPDATA%\SkeinDownloader` stay.
+
+```
+powershell -ExecutionPolicy Bypass -File tools/build-installer.ps1
+```
+
+Everything at once (Windows program and installer, then the AppImage and Flatpak through
+WSL, then `dist/release/`; `-SkipLinux` for Windows only):
+
+```
+powershell -ExecutionPolicy Bypass -File tools/build-all.ps1
+```
+
 Linux (C++20 compiler, CMake, Ninja, pkg-config, GTK3, curl and OpenSSL development files).
 On Ubuntu: `build-essential cmake ninja-build pkg-config libgtk-3-dev libcurl4-openssl-dev libssl-dev`.
 
