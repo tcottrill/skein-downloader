@@ -1,27 +1,71 @@
+<p align="center">
+  <img src="images/skein-brand/skein-banner-2200x680.png" alt="Skein Downloader — Many connections. One file." width="100%">
+</p>
+
 # Skein Downloader
 
-> **Work in progress.** Skein Downloader is under active development; expect missing
-> features, rough edges and changes between releases.
+**A native download manager for files and video.**
 
-Skein Downloader aims to be an open-source replacement for Free Download Manager:
-multi-connection downloads with pause/resume, a download queue, and video downloads,
-under the GPL. It is an independent project, not affiliated with or endorsed by the
-makers of Free Download Manager.
+Skein brings multi-connection downloads, pause and resume, a download queue, and
+video downloads together in a native Windows and Linux app. Choose a Windows
+installer or portable ZIP, a Flatpak with SteamOS support, or a Linux AppImage.
 
-A native C++20 desktop app for Windows and Linux built with wxWidgets 3.3.4. It runs
-up to four downloads at a time with pause/resume, checksums and saved history; picks
-files from Internet Archive collections, GitHub and GitLab releases, Hugging Face
-repositories, file lockers and direct links; and downloads video through yt-dlp.
+Similar in purpose to Free Download Manager, Skein is an independent, open-source
+project. It is not affiliated with or endorsed by the makers of Free Download Manager.
 
-Windows uses wxMSW with wxWidgets and the C runtime linked statically. Linux uses wxGTK3,
-which picks Wayland when available and X11 otherwise. Do not force `GDK_BACKEND=wayland`
-on SteamOS: its desktop mode and Game mode (Gamescope) are X11 sessions, where GTK then
-cannot start.
+**[Downloads](#downloads) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Build guide](BUILDING.md)**
+
+> **Work in progress.** Skein is under active development. Expect rough edges,
+> missing features, and changes between releases.
+
+## Features
+
+- **Files and video in one place** — direct links, supported file hosts, and video downloads through yt-dlp.
+- **Multiple connections** — download a file using multiple connections, with up to four downloads running at once.
+- **A manageable queue** — pause and resume, search downloads, and keep saved history.
+- **Pick the files you want** — browse Internet Archive collections, GitHub and GitLab releases, and Hugging Face repositories before adding downloads.
+- **Native light and dark themes** — follow the system theme or choose your own.
+- **Open source** — C++20 and wxWidgets, licensed under GPL-3.0-or-later.
+
+## Screenshots
+
+### Your downloads, in light or dark
+
+<table>
+  <tr><th>Light theme</th><th>Dark theme</th></tr>
+  <tr>
+    <td><a href="images/main_screen_lite.png"><img src="images/main_screen_lite.png" alt="Skein main window in light mode with an empty download queue" width="100%"></a></td>
+    <td><a href="images/main_screen_dark.png"><img src="images/main_screen_dark.png" alt="Skein main window in dark mode with an empty download queue" width="100%"></a></td>
+  </tr>
+</table>
+
+### Choose files before downloading
+
+Load a supported link, filter the file list, select what you need, and choose the
+destination and connections per file.
+
+![File download selection window](images/file_downloads_lite.png)
+
+### Video options in one window
+
+Choose quality, MP4 or MKV, a destination folder, and optional browser-cookie access.
+Install or repair the video tools from the same window.
+
+![Video download options](images/video_downloads_lite.png)
+
+<details>
+<summary>Theme settings</summary>
+
+Choose **Same as system**, **Light**, or **Dark** under **About → Theme**.
+
+![About window with theme selector](images/theme_setting.png)
+
+</details>
 
 ## Downloads
 
-Each release on the [Releases page](https://github.com/tcottrill/skein-downloader/releases)
-has four downloads:
+Find release packages on the [Releases page](https://github.com/tcottrill/skein-downloader/releases).
+Skein is packaged in four formats:
 
 | Download | File |
 |---|---|
@@ -31,7 +75,7 @@ has four downloads:
 | Linux AppImage (Ubuntu 22.04 and newer) | `SkeinDownloader-<version>-linux-x86_64.AppImage` |
 
 `SHA256SUMS.txt` lists their checksums. The release also carries the source of the
-video tools bundled in the Linux packages (see [Publishing a release](#publishing-a-release)).
+video tools bundled in the Linux packages (see [Publishing a release](BUILDING.md#publishing-a-release)).
 
 - **Windows installer:** installs for the current user without administrator rights,
   into `%LOCALAPPDATA%\Programs\Skein Downloader`, with a Start menu shortcut, an
@@ -49,7 +93,13 @@ video tools bundled in the Linux packages (see [Publishing a release](#publishin
 - **AppImage:** `chmod +x SkeinDownloader-<version>-linux-x86_64.AppImage` and run it;
   without FUSE 2 (`libfuse2`) add `--appimage-extract-and-run`.
 
-## Using it
+## Quick start
+
+1. Install or unpack the package for your platform.
+2. Paste a link into the main window and click **Load**, or choose **+ File** or **+ Video**.
+3. Select your files or video options, choose a destination, and add the download.
+4. Manage downloads from the main window with **Pause all**, **Resume all**, and the queue tabs.
+
 
 - **+ File** and **+ Video** open their windows with the link on the clipboard when it
   is one they handle, sorted as the main window's **Load** sorts it: file hosts and file
@@ -90,120 +140,6 @@ Video downloads use yt-dlp, FFmpeg/ffprobe and Deno.
 
 Access to browser cookies is opt-in and is never restored across launches.
 
-## Build
-
-wxWidgets is built from source. It is a git submodule in `vendor/wxWidgets`, pinned to
-tag `v3.3.4` (commit `6a42a4b999b127cf28a8b5fe686da6b8ca93a9b8`), so clone with:
-
-```
-git clone --recursive https://github.com/tcottrill/skein-downloader.git
-```
-
-In a copy cloned without `--recursive`, fetch it with
-`git submodule update --init --recursive`.
-
-Build output goes to two folders:
-- `dist/`: the program itself, for running and testing (`dist/skein-downloader.exe` on
-  Windows, `dist/skein-downloader` on Linux; Visual Studio Debug builds in `dist/debug/`).
-- `dist/release/`: the four downloads, `SHA256SUMS.txt` and the tool sources, named with
-  the version from `CMakeLists.txt`. Upload everything in it to the GitHub release.
-
-Intermediate files go to `build/`, which can be deleted at any time; the next build
-recreates it (and takes longer).
-
-### Everything at once
-
-On Windows, with the tools below installed:
-
-```
-powershell -ExecutionPolicy Bypass -File tools/build-all.ps1
-```
-
-It builds the Windows program and installer, then the AppImage and Flatpak through WSL,
-then collects `dist/release/`. `-SkipLinux` builds only Windows; `-Distro <name>` picks
-the WSL distribution (default `Ubuntu`).
-
-Needed:
-- Visual Studio 2022 with the C++ desktop tools (CMake and Ninja come with it).
-- Inno Setup 6 for the installer: `winget install JRSoftware.InnoSetup`.
-- For Linux: a WSL distribution with bash, curl, bubblewrap and `flatpak` with the
-  `org.freedesktop.Sdk//24.08` SDK, and Python 3.
-
-### Windows step by step
-
-```
-powershell -ExecutionPolicy Bypass -File tools/build-windows.ps1
-powershell -ExecutionPolicy Bypass -File tools/build-installer.ps1
-powershell -ExecutionPolicy Bypass -File tools/collect-release.ps1
-```
-
-`build-windows.ps1` writes `dist/skein-downloader.exe`. `build-installer.ps1` writes the
-installer to `build/installer/` from `packaging/windows/skein-downloader.iss`.
-`collect-release.ps1` gathers whatever has been built into `dist/release/` and reports
-anything missing.
-
-In the Visual Studio 2022 IDE: generate a solution with the `vs2022` preset and open
-`build/vs2022/SkeinDownloader.sln` (Release builds go to `dist/`, Debug to `dist/debug/`;
-F5 starts the program). Visual Studio's File > Open > Folder also picks up the preset.
-
-```
-cmake --preset vs2022
-```
-
-### Linux
-
-Linux (C++20 compiler, CMake, Ninja, pkg-config, GTK3, curl and OpenSSL development files).
-On Ubuntu: `build-essential cmake ninja-build pkg-config libgtk-3-dev libcurl4-openssl-dev libssl-dev`.
-
-```
-bash tools/build-linux.sh
-./dist/skein-downloader
-```
-
-An executable built inside the Freedesktop 24.08 SDK must run inside that SDK or runtime,
-not against an older distribution's system libraries.
-
-Flatpak (needs `flatpak` with the Freedesktop 24.08 SDK and Python 3), after the Linux
-build inside that SDK:
-
-```
-flatpak run --filesystem=$PWD --share=network --command=bash org.freedesktop.Sdk//24.08 -c "bash tools/build-linux.sh"
-bash tools/package-flatpak.sh
-```
-
-It writes `dist/linux/SkeinDownloader-x86_64.flatpak`. On SteamOS install the Flatpak
-rather than copying `dist/skein-downloader`.
-
-AppImage, for Ubuntu 22.04 and newer without Flatpak. Any x86_64 Linux (or WSL) with bash,
-curl and bubblewrap builds it, no root needed:
-
-```
-bash tools/build-linux-appimage.sh
-```
-
-The script builds inside a pinned Ubuntu 22.04 userland, runs a smoke test there, and
-writes `dist/linux/SkeinDownloader-x86_64.AppImage` with yt-dlp, Deno and FFmpeg bundled.
-It uses the system's GTK 3, which every Ubuntu desktop has, so the desktop's theme and
-Wayland support apply. `collect-release.ps1` adds the version and `linux-` to both
-package names when it copies them to `dist/release/`.
-
-### Icons
-
-`icons/` holds the master artwork (1024 px, Windows .ico and Linux sizes).
-`tools/make-icons.py` (Python 3 with Pillow) builds `packaging/icons/` from it: the
-Windows `.ico` and the Linux icon theme sizes. Run it again whenever the artwork changes,
-then rebuild.
-
-## Publishing a release
-
-The bundled yt-dlp executable and the AppImage's static FFmpeg contain GPL code, so each
-Linux release must offer their source. `tools/package-flatpak.sh` and
-`tools/build-linux-appimage.sh` write it to `dist/linux/sources/`, and
-`collect-release.ps1` copies it to `dist/release/`: the yt-dlp and Deno source releases,
-`video-tools-notices.txt` and, for the AppImage, `ffmpeg-source-manifest.txt`, which lists
-every revision the bundled FFmpeg was built from. Upload those files to the same release
-as the packages and keep them available as long as they are offered.
-
 ## Known limits
 
 Native themes differ between Windows and GTK. On Windows a theme change applies after a
@@ -212,13 +148,10 @@ activation is subject to the compositor's focus policy. Mixed-DPI monitor change
 Windows and SteamOS/Batocera devices still need hands-on testing. The Windows installer
 is not code-signed.
 
-## Dependencies
+## Building from source
 
-Only wxWidgets core and base are linked, with PNG and zlib for the toolbar's Ko-fi logo;
-its other image formats (JPEG, TIFF, WebP, SVG), regex, WebView, media, XML, HTML/help,
-rich text, docking and editor modules are disabled. Windows transfers use WinHTTP and
-Windows cryptography; Linux uses libcurl and OpenSSL. JSON parsing uses the bundled
-nlohmann/json 3.12.0 header.
+See [BUILDING.md](BUILDING.md) for Windows and Linux builds, packaging, dependencies,
+release preparation, and the local showcase page.
 
 ## License
 
