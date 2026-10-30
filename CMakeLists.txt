@@ -105,6 +105,9 @@ BEGIN
 END
 ")
   target_sources(skein-downloader PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/skein-downloader.rc")
+  # The resource compiler reports no dependencies, so a new .ico would not relink the exe.
+  set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/skein-downloader.rc"
+    PROPERTIES OBJECT_DEPENDS "${SKEIN_ICONS}/skein-downloader.ico")
 else()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(GTK3 REQUIRED IMPORTED_TARGET gtk+-3.0)
