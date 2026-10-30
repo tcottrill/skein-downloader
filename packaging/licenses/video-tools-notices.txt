@@ -1,8 +1,8 @@
 Skein Downloader: bundled video tools and where to get their source
 
 Skein Downloader is GPL-3.0-or-later. Its Flatpak and AppImage also ship these programs,
-unmodified, under their own licenses. The source archives named below are published
-with every Skein Downloader release, next to the packages:
+unmodified, under their own licenses. The yt-dlp source and the FFmpeg manifest named
+below are published with every Skein Downloader release, next to the packages:
 https://github.com/tcottrill/skein-downloader/releases
 
 yt-dlp 2026.08.19, official yt-dlp_linux executable
@@ -16,7 +16,7 @@ yt-dlp 2026.08.19, official yt-dlp_linux executable
 Deno v2.9.8, official x86_64 Linux executable
   https://github.com/denoland/deno/releases/tag/v2.9.8
   License: MIT (deno-LICENSE.md).
-  Source: deno-v2.9.8-source.tar.gz, the upstream deno_src.tar.gz of that release.
+  Source: deno_src.tar.gz on the release page above.
 
 FFmpeg and ffprobe
   Flatpak: provided by the org.freedesktop.Platform 24.08 runtime, not by this package.

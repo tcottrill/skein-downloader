@@ -116,7 +116,8 @@ then rebuild.
 The bundled yt-dlp executable and the AppImage's static FFmpeg contain GPL code, so each
 Linux release must offer their source. `tools/package-flatpak.sh` and
 `tools/build-linux-appimage.sh` write it to `dist/linux/sources/`, and
-`collect-release.ps1` copies it to `dist/release/`: the yt-dlp and Deno source releases,
+`collect-release.ps1` copies it to `dist/release/`: the yt-dlp source release (Deno is MIT,
+which needs only its notice),
 `video-tools-notices.txt` and, for the AppImage, `ffmpeg-source-manifest.txt`, which lists
 every revision the bundled FFmpeg was built from. Upload those files to the same release
 as the packages and keep them available as long as they are offered.
