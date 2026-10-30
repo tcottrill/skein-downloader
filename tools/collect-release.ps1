@@ -35,7 +35,7 @@ foreach ($package in @(@('SkeinDownloader-x86_64.AppImage', "SkeinDownloader-$ve
 }
 $sources = Join-Path $linux 'sources'
 if (Test-Path -LiteralPath $sources) { Copy-Item -Path (Join-Path $sources '*') -Destination $out }
-else { Write-Warning "No $sources: the Linux packages need their tool sources published with them" }
+else { Write-Warning "No ${sources}: the Linux packages need their tool sources published with them" }
 
 $sums = Get-ChildItem -LiteralPath $out -File | Sort-Object Name | ForEach-Object {
     '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
