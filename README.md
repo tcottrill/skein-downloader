@@ -8,7 +8,7 @@ multi-connection downloads with pause/resume, a download queue, and video downlo
 under the GPL. It is an independent project, not affiliated with or endorsed by the
 makers of Free Download Manager.
 
-A native C++20 desktop app for Windows and Linux built with wxWidgets 3.2.12. It runs
+A native C++20 desktop app for Windows and Linux built with wxWidgets 3.3.4. It runs
 up to four downloads at a time with pause/resume, checksums and saved history; picks
 files from Internet Archive collections, GitHub and GitLab releases, Hugging Face
 repositories, file lockers and direct links; and downloads video through yt-dlp.
@@ -16,12 +16,12 @@ repositories, file lockers and direct links; and downloads video through yt-dlp.
 Windows uses wxMSW with wxWidgets and the C runtime linked statically. Linux uses wxGTK3,
 which picks Wayland when available and X11 otherwise. Do not force `GDK_BACKEND=wayland`
 on SteamOS: its desktop mode and Game mode (Gamescope) are X11 sessions, where GTK then
-cannot start. Controls use each platform's own theme.
+cannot start. Controls use each platform's own theme, light or dark (About > Theme).
 
 ## Build
 
 wxWidgets is built from source. It is a git submodule in `vendor/wxWidgets`, pinned to
-tag `v3.2.12` (commit `3b7c7fc839093ad28146bd17555af2565c792c96`), so clone with:
+tag `v3.3.4` (commit `6a42a4b999b127cf28a8b5fe686da6b8ca93a9b8`), so clone with:
 
 ```
 git clone --recursive https://github.com/tcottrill/skein-downloader.git

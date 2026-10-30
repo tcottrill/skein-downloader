@@ -14,7 +14,32 @@
 #include <wx/msw/wrapwin.h>
 #endif
 #include <wx/aboutdlg.h>
+#include <wx/generic/aboutdlgg.h>
 namespace {
+// The "theme" setting: "system" (the default), "light" or "dark", chosen in the About box.
+const char* const themeNames[]={"system","light","dark"};
+wxApp::Appearance appearance(const wxString& theme){return theme=="light"?wxApp::Appearance::Light:theme=="dark"?wxApp::Appearance::Dark:wxApp::Appearance::System;}
+// wx's own About box with a theme choice under the text. GTK changes the theme of open windows
+// at once; Windows (wx's dark mode) only when windows are created, so there it applies on the
+// next start.
+class AboutDialog:public wxGenericAboutDialog {
+ void DoAddCustomControls() override {
+  auto row=new wxPanel(this);auto box=new wxBoxSizer(wxHORIZONTAL);
+  box->Add(new wxStaticText(row,wxID_ANY,"Theme"),0,wxALIGN_CENTER_VERTICAL|wxRIGHT,FromDIP(8));
+  auto choice=new wxChoice(row,wxID_ANY);for(auto s:{"Same as system","Light","Dark"})choice->Append(s);
+  const auto saved=lite::pref("theme","system");choice->SetSelection(0);for(int i=0;i<3;++i)if(saved==themeNames[i])choice->SetSelection(i);
+  box->Add(choice,0,wxALIGN_CENTER_VERTICAL);row->SetSizer(box);AddControl(row,wxSizerFlags().Border(wxUP|wxDOWN));
+  choice->Bind(wxEVT_CHOICE,[this](wxCommandEvent& e){
+   const wxString theme=themeNames[std::clamp(e.GetSelection(),0,2)];lite::save("theme",theme);LOG_INFO("Theme set to %s",lite::u(theme).c_str());
+#ifdef __WXMSW__
+   wxMessageBox("The new theme applies the next time Skein Downloader starts.","Theme",wxOK|wxICON_INFORMATION,this);
+#else
+   wxTheApp->SetAppearance(appearance(theme));
+#endif
+  });
+ }
+};
+
 #ifdef __WXMSW__
 // Every size of the exe's "appicon" group (16-256 px).
 const wxIconBundle& iconBundle(){
@@ -73,7 +98,7 @@ void showAbout(wxWindow* parent){
  if(auto image=pixbuf(skeinIcons[5])){wxIcon icon;icon.CopyFromBitmap(wxBitmap(image));info.SetIcon(icon);} // 128 px
 #endif
  LOG_INFO("About box opened");
- wxAboutBox(info,parent);
+ AboutDialog dialog;if(dialog.Create(info,parent))dialog.ShowModal();
 }
 }
 namespace {
@@ -159,6 +184,8 @@ public:
 #endif
    {wxDisplay display;auto area=display.GetClientArea();LOG_INFO("Screen %dx%d, work area %dx%d, scale %.2f",display.GetGeometry().width,display.GetGeometry().height,area.width,area.height,display.GetScaleFactor());}
    lite::config=std::make_unique<wxFileConfig>("SkeinDownloader","",dir+"/settings.ini","",wxCONFIG_USE_LOCAL_FILE);
+   // Before the first window: Windows applies the theme only to windows created afterwards.
+   {auto theme=lite::pref("theme","system");auto result=SetAppearance(appearance(theme));LOG_INFO("Theme %s%s",lite::u(theme).c_str(),result==AppearanceResult::Ok?"":" (not supported here)");}
    queue=std::make_unique<downloads::Queue>(lite::dataPath/"history.json",downloads::runJob);
    queue->start();auto main=new lite::MainWindow(*queue);SetTopWindow(main);main->Show();
    if(video)main->openVideo();

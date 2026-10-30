@@ -26,5 +26,5 @@ FFmpeg and ffprobe
   every library revision it was built from, all in public repositories. It is inside
   the AppImage (usr/share/licenses/skein-downloader) and published beside it.
 
-wxWidgets 3.2.12 is linked into the program (wxWindows Library Licence, wxWidgets.txt);
-its source is https://github.com/wxWidgets/wxWidgets/tree/v3.2.12.
+wxWidgets 3.3.4 is linked into the program (wxWindows Library Licence, wxWidgets.txt);
+its source is https://github.com/wxWidgets/wxWidgets/tree/v3.3.4.
