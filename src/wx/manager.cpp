@@ -87,7 +87,11 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  // Native buttons, so the toolbar actions look and press like buttons on Windows and GTK; a
  // separator and a line underneath. wxToolBar spaces text-only tools unevenly on both.
  auto toolbar=new wxPanel(this);auto tools=new wxBoxSizer(wxHORIZONTAL);
- auto action=[this,toolbar,tools](const wxString& title,std::function<void()> fn){auto b=new wxButton(toolbar,wxID_ANY,title);b->Bind(wxEVT_BUTTON,[fn](wxCommandEvent&){fn();});tools->Add(b,0,wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT,FromDIP(6));}; action("+ File",[this]{showFiles(this,queue);});action("+ Video",[this]{wxString link;if(wxTheClipboard->Open()){wxTextDataObject d;if(wxTheClipboard->GetData(d))link=d.GetText().Strip(wxString::both);wxTheClipboard->Close();}if(fileHost(link)||archive::looksLikeFileUrl(u(link))||!video::validUrl(link.ToStdWstring()))link.clear();showVideo(this,queue,link);});tools->Add(new wxStaticLine(toolbar,wxID_ANY,wxDefaultPosition,FromDIP(wxSize(1,24)),wxLI_VERTICAL),0,wxALIGN_CENTER_VERTICAL|wxLEFT,FromDIP(10));tools->AddSpacer(FromDIP(4));
+ auto action=[this,toolbar,tools](const wxString& title,std::function<void()> fn){auto b=new wxButton(toolbar,wxID_ANY,title);b->Bind(wxEVT_BUTTON,[fn](wxCommandEvent&){fn();});tools->Add(b,0,wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT,FromDIP(6));};
+ // The dialogs start with the link on the clipboard when it is theirs (sorted as Load does), else empty.
+ auto clipboard=[]{wxString link;if(wxTheClipboard->Open()){wxTextDataObject d;if(wxTheClipboard->GetData(d))link=d.GetText().Strip(wxString::both);wxTheClipboard->Close();}return link;};
+ auto fileLink=[](const wxString& link){return fileHost(link)||archive::looksLikeFileUrl(u(link));};
+ action("+ File",[this,clipboard,fileLink]{auto link=clipboard();if(!fileLink(link))link.clear();showFiles(this,queue,link,false);});action("+ Video",[this,clipboard,fileLink]{auto link=clipboard();if(fileLink(link)||!video::validUrl(link.ToStdWstring()))link.clear();showVideo(this,queue,link);});tools->Add(new wxStaticLine(toolbar,wxID_ANY,wxDefaultPosition,FromDIP(wxSize(1,24)),wxLI_VERTICAL),0,wxALIGN_CENTER_VERTICAL|wxLEFT,FromDIP(10));tools->AddSpacer(FromDIP(4));
  action("Resume all",[this]{queue.resumeAll();refresh();});action("Pause all",[this]{queue.pauseAll();refresh();});
  // In History, Remove deletes the record; elsewhere it takes the job off the list (a finished
  // one stays in History). Files on disk are never touched.

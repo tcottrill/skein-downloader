@@ -52,7 +52,8 @@ inline bool ready(std::future<void>& f){return f.valid()&&f.wait_for(std::chrono
 void appIcons(wxTopLevelWindow*);
 // Name, version, copyright and license (app.cpp).
 void showAbout(wxWindow*);
-void showFiles(wxWindow*,downloads::Queue&,const wxString& link={});
+// With load, a given link is loaded at once (the main window's Load); otherwise it is only filled in.
+void showFiles(wxWindow*,downloads::Queue&,const wxString& link={},bool load=true);
 void showVideo(wxWindow*,downloads::Queue&,const wxString& link={});
 bool fileHost(const wxString&);
 class ProgressBar;

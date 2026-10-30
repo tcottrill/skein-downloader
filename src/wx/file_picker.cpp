@@ -9,7 +9,7 @@ class FilePicker:public wxDialog {
  std::shared_ptr<std::atomic_bool> stop=std::make_shared<std::atomic_bool>(false);wxTimer timer;bool closing=false,rebuilding=false;
  bool busy()const{return loading.valid()||measuring.valid();}
  void summary(){size_t n=0;uint64_t bytes=0;bool unknown=false;for(size_t i=0;i<checked.size();++i)if(checked[i]){++n;bytes+=item.files[i].size;unknown|=!item.files[i].sizeKnown;}status->SetLabel(wxString::Format("%zu selected / %zu files / ",n,item.files.size())+w(archive::formatBytes(bytes))+(unknown?" + unknown sizes":""));}
- void preferences(){save("folder",folder->GetValue());save("fileLink",url->GetValue());save("connections",wxString::Format("%d",connections->GetSelection()));if(!item.files.empty()&&archive::isArchiveItem(item)&&servers->GetSelection()>=0)save("server",w(routes[size_t(servers->GetSelection())]));if(!item.files.empty()){nlohmann::json names=nlohmann::json::array();for(size_t i=0;i<checked.size();++i)if(checked[i])names.push_back(item.files[i].name);save("fileItem",w(item.id));save("fileSelection",w(names.dump()));}}
+ void preferences(){save("folder",folder->GetValue());save("connections",wxString::Format("%d",connections->GetSelection()));if(!item.files.empty()&&archive::isArchiveItem(item)&&servers->GetSelection()>=0)save("server",w(routes[size_t(servers->GetSelection())]));if(!item.files.empty()){nlohmann::json names=nlohmann::json::array();for(size_t i=0;i<checked.size();++i)if(checked[i])names.push_back(item.files[i].name);save("fileItem",w(item.id));save("fileSelection",w(names.dump()));}}
  void refresh(){
   // Keep highlighted rows across filtering, as Qt's filter proxy does.
   std::set<size_t> highlighted;for(long r=-1;(r=list->GetNextItem(r,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1;)if(size_t(r)<rows.size())highlighted.insert(rows[size_t(r)]);
@@ -47,11 +47,11 @@ class FilePicker:public wxDialog {
   measuring=std::async(std::launch::async,[file,urls,flag]{return archive::measureServers(file,urls,*flag);});status->SetLabel(w("Testing server speeds… up to 256 KiB per source. No file is saved."));
  }
 public:
- FilePicker(wxWindow* parent,downloads::Queue& q,const wxString& link):wxDialog(parent,wxID_ANY,"File downloads",wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER),queue(q),timer(this){
+ FilePicker(wxWindow* parent,downloads::Queue& q,const wxString& link,bool loadLink):wxDialog(parent,wxID_ANY,"File downloads",wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER),queue(q),timer(this){
   appIcons(this);
   // Qt's default dialog layout: 11 px margins and 6 px between items and rows.
   const int gap=FromDIP(6);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxALL,FromDIP(11));
-  auto title=new wxStaticText(this,wxID_ANY,"File downloads");auto font=title->GetFont();font.SetPointSize(21);title->SetFont(font);box->Add(title,0,wxBOTTOM,gap);auto row=new wxBoxSizer(wxHORIZONTAL);url=field(this,link.empty()?pref("fileLink"):link,"Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier");row->Add(url,1,wxALIGN_CENTER_VERTICAL);button(this,row,"Load files",[this]{load();});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
+  auto title=new wxStaticText(this,wxID_ANY,"File downloads");auto font=title->GetFont();font.SetPointSize(21);title->SetFont(font);box->Add(title,0,wxBOTTOM,gap);auto row=new wxBoxSizer(wxHORIZONTAL);url=field(this,link,"Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier");row->Add(url,1,wxALIGN_CENTER_VERTICAL);button(this,row,"Load files",[this]{load();});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
   row=new wxBoxSizer(wxHORIZONTAL);filter=field(this,{},w("Filter by filename…"));row->Add(filter,1,wxALIGN_CENTER_VERTICAL);button(this,row,"Select all",[this]{select(true,false);});button(this,row,"Clear selection",[this]{select(false,false);});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
   list=new wxListCtrl(this,wxID_ANY,wxDefaultPosition,wxDefaultSize,wxLC_REPORT);list->EnableCheckBoxes();list->InsertColumn(0,"Name");list->InsertColumn(1,"Size");list->InsertColumn(2,"Type");list->InsertColumn(3,"Selection");list->SetColumnWidth(0,FromDIP(500));for(int c=1;c<4;++c)list->SetColumnWidth(c,FromDIP(100));box->Add(list,1,wxEXPAND|wxBOTTOM,gap);
   row=new wxBoxSizer(wxHORIZONTAL);button(this,row,"Check highlighted",[this]{select(true,true);});button(this,row,"Uncheck highlighted",[this]{select(false,true);});box->Add(row,0,wxBOTTOM,gap);
@@ -68,7 +68,7 @@ public:
   list->Bind(wxEVT_LIST_ITEM_RIGHT_CLICK,[this](wxListEvent& e){if(e.GetIndex()>=0&&!(list->GetItemState(e.GetIndex(),wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)){long row=-1;while((row=list->GetNextItem(row,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)list->SetItemState(row,0,wxLIST_STATE_SELECTED);list->SetItemState(e.GetIndex(),wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}wxMenu menu;menu.Append(1,"Check highlighted");menu.Append(2,"Uncheck highlighted");auto id=GetPopupMenuSelectionFromUser(menu);if(id==1||id==2)select(id==1,true);});
   // Qt closes at once; a lookup still running is stopped and the hidden dialog is destroyed when it returns.
   Bind(wxEVT_TIMER,[this](wxTimerEvent&){tick();});Bind(wxEVT_CLOSE_WINDOW,[this](wxCloseEvent& e){preferences();*stop=true;if(busy()&&e.CanVeto()){closing=true;Hide();e.Veto();}else Destroy();});
-  timer.Start(100);summary();url->SetFocus();if(!link.empty())CallAfter([this]{load();});
+  timer.Start(100);summary();url->SetFocus();if(loadLink&&!link.empty())CallAfter([this]{load();});
   if(smoke){
    item.id="smoke-files";item.files={{"one.zip","zip","",42,true},{"two.zip","zip","",99,true},{"notes.txt","text","",7,true}};checked.assign(3,false);refresh();
    filter->SetValue(".zip");select(true,false);if(checked!=std::vector<bool>({true,true,false}))throw std::runtime_error("Filtered selection failed");
@@ -78,5 +78,5 @@ public:
  }
  ~FilePicker()override{*stop=true;timer.Stop();}
 };
-void showFiles(wxWindow* p,downloads::Queue& q,const wxString& link){(new FilePicker(p,q,link))->Show();}
+void showFiles(wxWindow* p,downloads::Queue& q,const wxString& link,bool load){(new FilePicker(p,q,link,load))->Show();}
 }
