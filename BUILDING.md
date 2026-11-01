@@ -135,4 +135,8 @@ nlohmann/json 3.12.0 header.
 
 The static showcase is `index.html` at the repository root. Open it directly in a browser, or serve the repository with `python -m http.server 8000` and visit `http://localhost:8000`. It uses the existing `images/` directory and requires no JavaScript dependencies or build step.
 
+Include `website-localization.js` when copying or publishing the page. It contains the initial translations and language selector. The default follows browser language preferences; an explicit choice is stored in browser local storage until **Same as system** is selected again. Without JavaScript the page remains readable in English. The banner artwork and application screenshots retain their original text; their alternative text and captions are translated.
+
+Run `node --test tests/website-localization.test.cjs` to check website catalog coverage, language detection and persistence. Node is only needed for this test, not for hosting the page.
+
 Nothing is published automatically. When ready to publish, push the site and assets, enable GitHub Pages for the repository, and select the desired branch and `/ (root)` as the source. Confirm the release links and package availability before announcing it. The page links to the release listing rather than guessing versioned asset URLs.
