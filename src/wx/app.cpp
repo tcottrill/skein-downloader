@@ -25,14 +25,14 @@ wxApp::Appearance appearance(const wxString& theme){return theme=="light"?wxApp:
 class AboutDialog:public wxGenericAboutDialog {
  void DoAddCustomControls() override {
   auto row=new wxPanel(this);auto box=new wxBoxSizer(wxHORIZONTAL);
-  box->Add(new wxStaticText(row,wxID_ANY,"Theme"),0,wxALIGN_CENTER_VERTICAL|wxRIGHT,FromDIP(8));
-  auto choice=new wxChoice(row,wxID_ANY);for(auto s:{"Same as system","Light","Dark"})choice->Append(s);
+  box->Add(new wxStaticText(row,wxID_ANY,_(L"Theme")),0,wxALIGN_CENTER_VERTICAL|wxRIGHT,FromDIP(8));
+  auto choice=new wxChoice(row,wxID_ANY);for(auto s:{_(L"Same as system"),_(L"Light"),_(L"Dark")})choice->Append(s);
   const auto saved=lite::pref("theme","system");choice->SetSelection(0);for(int i=0;i<3;++i)if(saved==themeNames[i])choice->SetSelection(i);
   box->Add(choice,0,wxALIGN_CENTER_VERTICAL);row->SetSizer(box);AddControl(row,wxSizerFlags().Border(wxUP|wxDOWN));
   choice->Bind(wxEVT_CHOICE,[this](wxCommandEvent& e){
    const wxString theme=themeNames[std::clamp(e.GetSelection(),0,2)];lite::save("theme",theme);LOG_INFO("Theme set to %s",lite::u(theme).c_str());
 #ifdef __WXMSW__
-   wxMessageBox("The new theme applies the next time Skein Downloader starts.","Theme",wxOK|wxICON_INFORMATION,this);
+   wxMessageBox(_(L"The new theme applies the next time Skein Downloader starts."),_(L"Theme"),wxOK|wxICON_INFORMATION,this);
 #else
    wxTheApp->SetAppearance(appearance(theme));
 #endif
@@ -81,7 +81,7 @@ void showAbout(wxWindow* parent){
  wxAboutDialogInfo info;
  info.SetName("Skein Downloader");
  info.SetVersion(SKEIN_VERSION);
- info.SetDescription("An open-source download manager for files and video.\nStill a work in progress.");
+ info.SetDescription(_(L"An open-source download manager for files and video.\nStill a work in progress."));
  info.SetCopyright(wxString::FromUTF8("Copyright \xC2\xA9 2026 Tim Cottrill"));
  info.SetLicence(
   "This program is free software: you can redistribute it and/or modify it under the terms of the "
@@ -184,6 +184,7 @@ public:
 #endif
    {wxDisplay display;auto area=display.GetClientArea();LOG_INFO("Screen %dx%d, work area %dx%d, scale %.2f",display.GetGeometry().width,display.GetGeometry().height,area.width,area.height,display.GetScaleFactor());}
    lite::config=std::make_unique<wxFileConfig>("SkeinDownloader","",dir+"/settings.ini","",wxCONFIG_USE_LOCAL_FILE);
+   lite::initTranslations(lite::pref("language","system"));
    // Before the first window: Windows applies the theme only to windows created afterwards.
    {auto theme=lite::pref("theme","system");auto result=SetAppearance(appearance(theme));LOG_INFO("Theme %s%s",lite::u(theme).c_str(),result==AppearanceResult::Ok?"":" (not supported here)");}
    queue=std::make_unique<downloads::Queue>(lite::dataPath/"history.json",downloads::runJob);
@@ -203,7 +204,7 @@ public:
    std::cout<<"Display backend: "<<G_OBJECT_TYPE_NAME(gdk_display_get_default())<<std::endl;
 #endif
    return true;
-  }catch(const std::exception& e){fallbackLog();LOG_ERROR("Startup failed: %s",e.what());wxMessageBox(lite::w(e.what()),"Startup failed",wxOK|wxICON_ERROR);Log::close();return false;}
+  }catch(const std::exception& e){fallbackLog();LOG_ERROR("Startup failed: %s",e.what());wxMessageBox(lite::translated(e.what()),_(L"Startup failed"),wxOK|wxICON_ERROR);Log::close();return false;}
  }
  bool OnExceptionInMainLoop() override {
   try{throw;}catch(const std::exception& e){LOG_ERROR("Unhandled exception: %s",e.what());}catch(...){LOG_ERROR("Unhandled non-standard exception");}

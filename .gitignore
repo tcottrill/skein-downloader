@@ -1,5 +1,6 @@
 /build/
 /dist/
 *.log
+__pycache__/
 # The designer's zip duplicates the folders next to it.
 /icons/*.zip

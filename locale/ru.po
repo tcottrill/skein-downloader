@@ -1,0 +1,475 @@
+# Skein Downloader translations. GPL-3.0-or-later.
+msgid ""
+msgstr "Project-Id-Version: Skein Downloader\nLanguage: ru\nContent-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : 2);\n"
+
+msgid " + unknown sizes"
+msgstr " + неизвестные размеры"
+
+#, c-format
+msgid "%d / 4 downloading  ·  %d waiting  ·  %d completed"
+msgstr "%d / 4 загружаются  ·  %d ожидают  ·  %d завершены"
+
+#, c-format
+msgid "%zu selected / %zu files / "
+msgstr "Выбрано %zu / файлов %zu / "
+
+msgid "&Open folder"
+msgstr "&Открыть папку"
+
+msgid "&Pause"
+msgstr "&Приостановить"
+
+msgid "&Resume"
+msgstr "П&родолжить"
+
+msgid "+ File"
+msgstr "+ Файл"
+
+msgid "+ Video"
+msgstr "+ Видео"
+
+msgid "About"
+msgstr "О программе"
+
+msgid "Active"
+msgstr "Активные"
+
+msgid "Add to downloads"
+msgstr "Добавить в загрузки"
+
+#, c-format
+msgid "Added %zu downloads. Existing files and duplicate queue entries were kept."
+msgstr "Добавлено загрузок: %zu. Существующие файлы и повторные записи очереди сохранены."
+
+msgid "Added to downloads."
+msgstr "Добавлено в загрузки."
+
+msgid "All"
+msgstr "Все"
+
+msgid "All paused  ·  "
+msgstr "Все приостановлены  ·  "
+
+msgid "Already in downloads. Resume it from the main window."
+msgstr "Уже в загрузках. Продолжите из главного окна."
+
+msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr "Менеджер загрузки файлов и видео с открытым исходным кодом.\nРазработка продолжается."
+
+msgid "Assembling"
+msgstr "Сборка"
+
+msgid "Audio only"
+msgstr "Только аудио"
+
+msgid "Automatic (fastest sample)"
+msgstr "Автоматически (по замеру скорости)"
+
+msgid "Best available"
+msgstr "Лучшее доступное"
+
+msgid "Best available audio, kept in its original audio format.\nChoose MP3 for a widely compatible audio file."
+msgstr "Лучшее доступное аудио в исходном формате.\nВыберите MP3 для широкой совместимости."
+
+msgid "Best available audio, saved as MP3 using the highest VBR quality setting.\nConversion cannot improve the source audio quality."
+msgstr "Лучшее доступное аудио сохраняется в MP3 с максимальным качеством VBR.\nПреобразование не улучшает качество исходного аудио."
+
+msgid "Browse…"
+msgstr "Обзор…"
+
+msgid "Cannot add files"
+msgstr "Не удалось добавить файлы"
+
+msgid "Cannot locate Windows PowerShell."
+msgstr "Не удалось найти Windows PowerShell."
+
+msgid "Check highlighted"
+msgstr "Отметить выделенные"
+
+msgid "Checking for a yt-dlp update…"
+msgstr "Проверка обновления yt-dlp…"
+
+msgid "Checking mirror speeds (HTTPS)"
+msgstr "Проверка скорости зеркал (HTTPS)"
+
+msgid "Choose a non-empty file with a known size to test speeds."
+msgstr "Выберите непустой файл известного размера для проверки скорости."
+
+msgid "Choose an absolute download folder."
+msgstr "Укажите абсолютный путь к папке загрузки."
+
+msgid "Clear History"
+msgstr "Очистить историю"
+
+msgid "Clear selection"
+msgstr "Снять выделение"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Complete"
+msgstr "Завершено"
+
+msgid "Connecting"
+msgstr "Подключение"
+
+msgid "Connections per file"
+msgstr "Соединений на файл"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
+msgstr "Cookie передают сайту ваш вход из браузера. Используйте только с доверенными сайтами. Лучше всего Firefox: Chrome и Edge в Windows часто запрещают другим приложениям читать cookie. Закройте браузер перед загрузкой."
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. The Flatpak cannot see browser profiles until you allow it read access to them, for example ~/.mozilla with Flatseal."
+msgstr "Cookie передают сайту ваш вход из браузера. Используйте только с доверенными сайтами. Flatpak не видит профили браузеров без разрешения на чтение, например ~/.mozilla через Flatseal."
+
+#, c-format
+msgid "Could not start video tools: %s"
+msgstr "Не удалось запустить видеоинструменты: %s"
+
+msgid "Dark"
+msgstr "Тёмная"
+
+msgid "Download Again"
+msgstr "Скачать снова"
+
+msgid "Download folder"
+msgstr "Папка загрузки"
+
+msgid "Downloading"
+msgstr "Загрузка"
+
+msgid "Failed"
+msgstr "Ошибка"
+
+msgid "File"
+msgstr "Файл"
+
+msgid "File downloads"
+msgstr "Загрузка файлов"
+
+msgid "Filter by filename…"
+msgstr "Фильтр по имени файла…"
+
+msgid "Finalizing"
+msgstr "Завершение"
+
+msgid "Finished"
+msgstr "Готово"
+
+msgid "History"
+msgstr "История"
+
+msgid "Install / repair tools"
+msgstr "Установить / исправить инструменты"
+
+msgid "Install the video tools first."
+msgstr "Сначала установите видеоинструменты."
+
+msgid "Install video tools from Add > Video first."
+msgstr "Сначала установите видеоинструменты через «Добавить > Видео»."
+
+msgid "Install video tools once to enable downloads (about 250 MiB). No admin access needed."
+msgstr "Установите видеоинструменты один раз (около 250 МиБ). Права администратора не нужны."
+
+msgid "Installing verified video tools…"
+msgstr "Установка проверенных видеоинструментов…"
+
+msgid "Invalid file selection."
+msgstr "Недопустимый выбор файлов."
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
+msgstr "Позволяет yt-dlp читать cookie сайта из браузера для проверки возраста и других ограничений. Используется ваш вход из браузера."
+
+msgid "Light"
+msgstr "Светлая"
+
+msgid "Load"
+msgstr "Загрузить"
+
+msgid "Load files"
+msgstr "Получить файлы"
+
+msgid "Loading files…"
+msgstr "Загрузка списка файлов…"
+
+msgid "MKV (original formats)"
+msgstr "MKV (исходные форматы)"
+
+msgid "MKV: best available source codecs. Your resolution limit still applies.\nSeparate video and audio are merged; a combined source may keep its original container."
+msgstr "MKV: лучшие доступные исходные кодеки. Ограничение разрешения сохраняется.\nОтдельные видео и аудио объединяются; совмещённый источник может сохранить исходный контейнер."
+
+msgid "MP4 (iPhone compatible)"
+msgstr "MP4 (для iPhone)"
+
+msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
+msgstr "MP4: видео H.264 и аудио AAC для iPhone. Без перехода на несовместимые кодеки.\nОграничение разрешения сохраняется; отсутствие совместимых потоков вызовет ошибку."
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Open folder"
+msgstr "Открыть папку"
+
+msgid "Operation cancelled. You can retry."
+msgstr "Операция отменена. Можно повторить."
+
+msgid "Partial download retained"
+msgstr "Частичная загрузка сохранена"
+
+msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
+msgstr "Вставьте ссылку выше. Перед добавлением загрузок выберите один, все или отдельные файлы."
+
+msgid "Paste a YouTube or other supported video URL"
+msgstr "Вставьте ссылку на YouTube или другой поддерживаемый сайт"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgstr "Вставьте ссылку на файл, релиз, пакет, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org или идентификатор archive.org"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgstr "Вставьте ссылку на файл, релиз, пакет, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org или видео"
+
+msgid "Paste a link, choose a quality, then add it to downloads."
+msgstr "Вставьте ссылку, выберите качество и добавьте в загрузки."
+
+msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgstr "Вставьте допустимую HTTP- или HTTPS-ссылку на файл, archive.org или видео."
+
+msgid "Paste a valid HTTP or HTTPS video URL."
+msgstr "Вставьте допустимую HTTP- или HTTPS-ссылку на видео."
+
+msgid "Pause all"
+msgstr "Приостановить все"
+
+msgid "Pause video downloads in the main window before updating tools."
+msgstr "Перед обновлением инструментов приостановите загрузки видео в главном окне."
+
+msgid "Paused"
+msgstr "Приостановлено"
+
+msgid "Pausing…"
+msgstr "Приостановка…"
+
+msgid "Processing…"
+msgstr "Обработка…"
+
+msgid "Progress"
+msgstr "Прогресс"
+
+msgid "Quality"
+msgstr "Качество"
+
+msgid "Queue"
+msgstr "Очередь"
+
+msgid "Queued"
+msgstr "В очереди"
+
+msgid "Re&move from history\tDel"
+msgstr "У&брать из истории\tDel"
+
+msgid "Re&move from list\tDel"
+msgstr "У&брать из списка\tDel"
+
+msgid "Re&try"
+msgstr "По&вторить"
+
+msgid "Remove"
+msgstr "Убрать"
+
+msgid "Remove All"
+msgstr "Убрать все"
+
+msgid "Resume all"
+msgstr "Продолжить все"
+
+msgid "Retrying after connection error"
+msgstr "Повтор после ошибки соединения"
+
+msgid "Same as system"
+msgstr "Как в системе"
+
+msgid "Save as MP3 (best quality)"
+msgstr "Сохранить как MP3 (лучшее качество)"
+
+msgid "Save to"
+msgstr "Сохранить в"
+
+msgid "Search downloads"
+msgstr "Поиск загрузок"
+
+msgid "Select all"
+msgstr "Выбрать все"
+
+msgid "Select or check a file to measure its server speeds."
+msgstr "Выберите или отметьте файл для проверки скорости серверов."
+
+msgid "Selected"
+msgstr "Выбрано"
+
+msgid "Selection"
+msgstr "Выбор"
+
+msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
+msgstr "Отправляет запросы с сетевым отпечатком Chrome. Помогает с Cloudflare и другими страницами проверки браузера."
+
+msgid "Server"
+msgstr "Сервер"
+
+msgid "Server speeds"
+msgstr "Скорость серверов"
+
+msgid "Site access"
+msgstr "Доступ к сайту"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "Speed"
+msgstr "Скорость"
+
+msgid "Speed test failed."
+msgstr "Проверка скорости не удалась."
+
+msgid "Speed tests compare archive.org servers. This source has a single route."
+msgstr "Тест сравнивает серверы archive.org. У этого источника только один маршрут."
+
+msgid "Standard server route"
+msgstr "Стандартный маршрут сервера"
+
+msgid "Starting parallel download"
+msgstr "Запуск параллельной загрузки"
+
+msgid "Starting single connection"
+msgstr "Запуск одного соединения"
+
+msgid "Startup failed"
+msgstr "Ошибка запуска"
+
+msgid "Status"
+msgstr "Состояние"
+
+msgid "Stop"
+msgstr "Остановить"
+
+msgid "Stopped. Use the same URL, quality and folder to resume."
+msgstr "Остановлено. Для продолжения используйте ту же ссылку, качество и папку."
+
+msgid "Stopping dialog tasks before closing…"
+msgstr "Остановка задач диалогов перед закрытием…"
+
+msgid "Stopping downloads and saving history…"
+msgstr "Остановка загрузок и сохранение истории…"
+
+msgid "Stopping video helpers before closing…"
+msgstr "Остановка видеопроцессов перед закрытием…"
+
+msgid "Stopping video helpers… partial downloads will be kept."
+msgstr "Остановка видеопроцессов… частичные загрузки будут сохранены."
+
+msgid "Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)"
+msgstr "Поддержать Skein Downloader на Ko-fi (откроет ko-fi.com/timcottrill в браузере)"
+
+msgid "Support me on Ko-fi"
+msgstr "Поддержать на Ko-fi"
+
+msgid "Test speeds"
+msgstr "Проверить скорость"
+
+msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr "Проверка скорости… до 256 КиБ на источник. Файлы не сохраняются."
+
+msgid "The new language applies the next time Skein Downloader starts."
+msgstr "Новый язык будет применён при следующем запуске Skein Downloader."
+
+msgid "The new theme applies the next time Skein Downloader starts."
+msgstr "Новая тема будет применена при следующем запуске Skein Downloader."
+
+msgid "Theme"
+msgstr "Тема"
+
+msgid "Transfer speed in bytes per second"
+msgstr "Скорость передачи в байтах в секунду"
+
+msgid "Try as browser"
+msgstr "Имитировать браузер"
+
+msgid "Trying another HTTPS source"
+msgstr "Попытка другого HTTPS-источника"
+
+msgid "Type"
+msgstr "Тип"
+
+msgid "Uncheck highlighted"
+msgstr "Снять отметки с выделенных"
+
+msgid "Unexpected error while managing video tools."
+msgstr "Непредвиденная ошибка управления видеоинструментами."
+
+msgid "Unknown"
+msgstr "Неизвестно"
+
+msgid "Up to 1080p"
+msgstr "До 1080p"
+
+msgid "Up to 1440p"
+msgstr "До 1440p"
+
+msgid "Up to 2160p (4K)"
+msgstr "До 2160p (4K)"
+
+msgid "Up to 360p"
+msgstr "До 360p"
+
+msgid "Up to 480p"
+msgstr "До 480p"
+
+msgid "Up to 720p"
+msgstr "До 720p"
+
+msgid "Update yt-dlp"
+msgstr "Обновить yt-dlp"
+
+msgid "Use cookies from"
+msgstr "Использовать cookie из"
+
+msgid "Verifying SHA-1"
+msgstr "Проверка SHA-1"
+
+msgid "Verifying SHA-256"
+msgstr "Проверка SHA-256"
+
+msgid "Video"
+msgstr "Видео"
+
+msgid "Video URL"
+msgstr "Ссылка на видео"
+
+msgid "Video downloads"
+msgstr "Загрузка видео"
+
+msgid "Video format"
+msgstr "Формат видео"
+
+msgid "Video tools are bundled with this app. Update or reinstall the package to repair them."
+msgstr "Видеоинструменты входят в приложение. Для восстановления обновите или переустановите пакет."
+
+msgid "Video tools are busy. Wait for them to finish, then load the new link."
+msgstr "Видеоинструменты заняты. Дождитесь завершения, затем загрузите новую ссылку."
+
+msgid "Video tools are provided by this app package. Update or reinstall the app to repair them."
+msgstr "Видеоинструменты входят в пакет приложения. Для восстановления обновите или переустановите приложение."
+
+msgid "Video tools are ready. Update yt-dlp if a site stops working."
+msgstr "Видеоинструменты готовы. Если сайт перестал работать, обновите yt-dlp."
+
+msgid "Video tools ready."
+msgstr "Видеоинструменты готовы."
+
+msgid "Working…"
+msgstr "Выполняется…"
+
+msgid "yt-dlp update finished."
+msgstr "Обновление yt-dlp завершено."

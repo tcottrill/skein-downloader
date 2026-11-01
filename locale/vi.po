@@ -1,0 +1,475 @@
+# Skein Downloader translations. GPL-3.0-or-later.
+msgid ""
+msgstr "Project-Id-Version: Skein Downloader\nLanguage: vi\nContent-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=1; plural=0;\n"
+
+msgid " + unknown sizes"
+msgstr " + kích thước chưa biết"
+
+#, c-format
+msgid "%d / 4 downloading  ·  %d waiting  ·  %d completed"
+msgstr "%d / 4 đang tải  ·  %d đang chờ  ·  %d hoàn tất"
+
+#, c-format
+msgid "%zu selected / %zu files / "
+msgstr "Đã chọn %zu / %zu tệp / "
+
+msgid "&Open folder"
+msgstr "&Mở thư mục"
+
+msgid "&Pause"
+msgstr "&Tạm dừng"
+
+msgid "&Resume"
+msgstr "Tiếp tụ&c"
+
+msgid "+ File"
+msgstr "+ Tệp"
+
+msgid "+ Video"
+msgstr "+ Video"
+
+msgid "About"
+msgstr "Giới thiệu"
+
+msgid "Active"
+msgstr "Đang hoạt động"
+
+msgid "Add to downloads"
+msgstr "Thêm vào danh sách tải"
+
+#, c-format
+msgid "Added %zu downloads. Existing files and duplicate queue entries were kept."
+msgstr "Đã thêm %zu lượt tải. Các tệp hiện có và mục trùng lặp trong hàng đợi được giữ nguyên."
+
+msgid "Added to downloads."
+msgstr "Đã thêm vào danh sách tải."
+
+msgid "All"
+msgstr "Tất cả"
+
+msgid "All paused  ·  "
+msgstr "Đã tạm dừng tất cả  ·  "
+
+msgid "Already in downloads. Resume it from the main window."
+msgstr "Đã có trong danh sách tải. Hãy tiếp tục từ cửa sổ chính."
+
+msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr "Trình quản lý tải tệp và video mã nguồn mở.\nVẫn đang được phát triển."
+
+msgid "Assembling"
+msgstr "Đang ghép"
+
+msgid "Audio only"
+msgstr "Chỉ âm thanh"
+
+msgid "Automatic (fastest sample)"
+msgstr "Tự động (mẫu nhanh nhất)"
+
+msgid "Best available"
+msgstr "Chất lượng tốt nhất hiện có"
+
+msgid "Best available audio, kept in its original audio format.\nChoose MP3 for a widely compatible audio file."
+msgstr "Âm thanh tốt nhất hiện có, giữ nguyên định dạng gốc.\nChọn MP3 để có tệp âm thanh tương thích rộng rãi."
+
+msgid "Best available audio, saved as MP3 using the highest VBR quality setting.\nConversion cannot improve the source audio quality."
+msgstr "Âm thanh tốt nhất hiện có, lưu dưới dạng MP3 với chất lượng VBR cao nhất.\nChuyển đổi không thể cải thiện chất lượng âm thanh nguồn."
+
+msgid "Browse…"
+msgstr "Duyệt…"
+
+msgid "Cannot add files"
+msgstr "Không thể thêm tệp"
+
+msgid "Cannot locate Windows PowerShell."
+msgstr "Không tìm thấy Windows PowerShell."
+
+msgid "Check highlighted"
+msgstr "Đánh dấu các mục được chọn"
+
+msgid "Checking for a yt-dlp update…"
+msgstr "Đang kiểm tra bản cập nhật yt-dlp…"
+
+msgid "Checking mirror speeds (HTTPS)"
+msgstr "Đang kiểm tra tốc độ máy chủ dự phòng (HTTPS)"
+
+msgid "Choose a non-empty file with a known size to test speeds."
+msgstr "Chọn một tệp không rỗng có kích thước đã biết để kiểm tra tốc độ."
+
+msgid "Choose an absolute download folder."
+msgstr "Chọn thư mục tải xuống bằng đường dẫn tuyệt đối."
+
+msgid "Clear History"
+msgstr "Xóa lịch sử"
+
+msgid "Clear selection"
+msgstr "Bỏ chọn"
+
+msgid "Close"
+msgstr "Đóng"
+
+msgid "Complete"
+msgstr "Hoàn tất"
+
+msgid "Connecting"
+msgstr "Đang kết nối"
+
+msgid "Connections per file"
+msgstr "Số kết nối mỗi tệp"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
+msgstr "Cookie cho phép trang web sử dụng phiên đăng nhập trong trình duyệt của bạn. Chỉ dùng với trang web đáng tin cậy. Firefox hoạt động tốt nhất: Chrome và Edge trên Windows thường chặn ứng dụng khác đọc cookie. Hãy đóng trình duyệt trước khi tải."
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. The Flatpak cannot see browser profiles until you allow it read access to them, for example ~/.mozilla with Flatseal."
+msgstr "Cookie cho phép trang web sử dụng phiên đăng nhập trong trình duyệt của bạn. Chỉ dùng với trang web đáng tin cậy. Flatpak không thể truy cập hồ sơ trình duyệt cho đến khi được cấp quyền đọc, ví dụ ~/.mozilla qua Flatseal."
+
+#, c-format
+msgid "Could not start video tools: %s"
+msgstr "Không thể khởi động công cụ video: %s"
+
+msgid "Dark"
+msgstr "Tối"
+
+msgid "Download Again"
+msgstr "Tải lại"
+
+msgid "Download folder"
+msgstr "Thư mục tải xuống"
+
+msgid "Downloading"
+msgstr "Đang tải"
+
+msgid "Failed"
+msgstr "Thất bại"
+
+msgid "File"
+msgstr "Tệp"
+
+msgid "File downloads"
+msgstr "Tải tệp"
+
+msgid "Filter by filename…"
+msgstr "Lọc theo tên tệp…"
+
+msgid "Finalizing"
+msgstr "Đang hoàn tất"
+
+msgid "Finished"
+msgstr "Đã xong"
+
+msgid "History"
+msgstr "Lịch sử"
+
+msgid "Install / repair tools"
+msgstr "Cài đặt / sửa chữa công cụ"
+
+msgid "Install the video tools first."
+msgstr "Hãy cài đặt công cụ video trước."
+
+msgid "Install video tools from Add > Video first."
+msgstr "Hãy cài đặt công cụ video từ Thêm > Video trước."
+
+msgid "Install video tools once to enable downloads (about 250 MiB). No admin access needed."
+msgstr "Cài đặt công cụ video một lần để bật tải xuống (khoảng 250 MiB). Không cần quyền quản trị."
+
+msgid "Installing verified video tools…"
+msgstr "Đang cài đặt công cụ video đã xác minh…"
+
+msgid "Invalid file selection."
+msgstr "Lựa chọn tệp không hợp lệ."
+
+msgid "Language"
+msgstr "Ngôn ngữ"
+
+msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
+msgstr "Cho phép yt-dlp đọc cookie của trang web từ trình duyệt để xác minh tuổi hoặc vượt qua các bước kiểm tra khác. Công cụ sử dụng phiên đăng nhập của trình duyệt."
+
+msgid "Light"
+msgstr "Sáng"
+
+msgid "Load"
+msgstr "Nạp"
+
+msgid "Load files"
+msgstr "Nạp tệp"
+
+msgid "Loading files…"
+msgstr "Đang nạp tệp…"
+
+msgid "MKV (original formats)"
+msgstr "MKV (định dạng gốc)"
+
+msgid "MKV: best available source codecs. Your resolution limit still applies.\nSeparate video and audio are merged; a combined source may keep its original container."
+msgstr "MKV: codec nguồn tốt nhất hiện có. Giới hạn độ phân giải vẫn được áp dụng.\nVideo và âm thanh riêng được ghép lại; nguồn đã kết hợp có thể giữ nguyên định dạng chứa gốc."
+
+msgid "MP4 (iPhone compatible)"
+msgstr "MP4 (tương thích iPhone)"
+
+msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
+msgstr "MP4: video H.264 + âm thanh AAC để phát trên iPhone. Không dùng codec không tương thích để thay thế.\nGiới hạn độ phân giải vẫn được áp dụng; sẽ báo lỗi nếu không có luồng tương thích."
+
+msgid "Name"
+msgstr "Tên"
+
+msgid "Open folder"
+msgstr "Mở thư mục"
+
+msgid "Operation cancelled. You can retry."
+msgstr "Đã hủy thao tác. Bạn có thể thử lại."
+
+msgid "Partial download retained"
+msgstr "Đã giữ lại phần đã tải"
+
+msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
+msgstr "Dán URL ở trên. Chọn một, tất cả hoặc các tệp cụ thể trước khi thêm vào danh sách tải."
+
+msgid "Paste a YouTube or other supported video URL"
+msgstr "Dán URL YouTube hoặc video được hỗ trợ khác"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgstr "Dán liên kết tệp, bản phát hành, gói, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org hoặc mã mục archive.org"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgstr "Dán liên kết tệp, bản phát hành, gói, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org hoặc video"
+
+msgid "Paste a link, choose a quality, then add it to downloads."
+msgstr "Dán liên kết, chọn chất lượng, rồi thêm vào danh sách tải."
+
+msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgstr "Dán URL HTTP hoặc HTTPS hợp lệ của tệp, archive.org hoặc video."
+
+msgid "Paste a valid HTTP or HTTPS video URL."
+msgstr "Dán URL video HTTP hoặc HTTPS hợp lệ."
+
+msgid "Pause all"
+msgstr "Tạm dừng tất cả"
+
+msgid "Pause video downloads in the main window before updating tools."
+msgstr "Tạm dừng tải video trong cửa sổ chính trước khi cập nhật công cụ."
+
+msgid "Paused"
+msgstr "Đã tạm dừng"
+
+msgid "Pausing…"
+msgstr "Đang tạm dừng…"
+
+msgid "Processing…"
+msgstr "Đang xử lý…"
+
+msgid "Progress"
+msgstr "Tiến độ"
+
+msgid "Quality"
+msgstr "Chất lượng"
+
+msgid "Queue"
+msgstr "Hàng đợi"
+
+msgid "Queued"
+msgstr "Đang chờ"
+
+msgid "Re&move from history\tDel"
+msgstr "&Xóa khỏi lịch sử\tDel"
+
+msgid "Re&move from list\tDel"
+msgstr "&Xóa khỏi danh sách\tDel"
+
+msgid "Re&try"
+msgstr "Thử &lại"
+
+msgid "Remove"
+msgstr "Xóa"
+
+msgid "Remove All"
+msgstr "Xóa tất cả"
+
+msgid "Resume all"
+msgstr "Tiếp tục tất cả"
+
+msgid "Retrying after connection error"
+msgstr "Đang thử lại sau lỗi kết nối"
+
+msgid "Same as system"
+msgstr "Theo hệ thống"
+
+msgid "Save as MP3 (best quality)"
+msgstr "Lưu dạng MP3 (chất lượng tốt nhất)"
+
+msgid "Save to"
+msgstr "Lưu vào"
+
+msgid "Search downloads"
+msgstr "Tìm kiếm lượt tải"
+
+msgid "Select all"
+msgstr "Chọn tất cả"
+
+msgid "Select or check a file to measure its server speeds."
+msgstr "Chọn hoặc đánh dấu một tệp để đo tốc độ máy chủ."
+
+msgid "Selected"
+msgstr "Đã chọn"
+
+msgid "Selection"
+msgstr "Lựa chọn"
+
+msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
+msgstr "Gửi yêu cầu với dấu vân tay mạng Chrome thực. Hữu ích với Cloudflare và các trang \"đang kiểm tra trình duyệt\" khác."
+
+msgid "Server"
+msgstr "Máy chủ"
+
+msgid "Server speeds"
+msgstr "Tốc độ máy chủ"
+
+msgid "Site access"
+msgstr "Truy cập trang web"
+
+msgid "Size"
+msgstr "Kích thước"
+
+msgid "Speed"
+msgstr "Tốc độ"
+
+msgid "Speed test failed."
+msgstr "Kiểm tra tốc độ thất bại."
+
+msgid "Speed tests compare archive.org servers. This source has a single route."
+msgstr "Kiểm tra tốc độ so sánh các máy chủ archive.org. Nguồn này chỉ có một tuyến kết nối."
+
+msgid "Standard server route"
+msgstr "Tuyến máy chủ tiêu chuẩn"
+
+msgid "Starting parallel download"
+msgstr "Đang bắt đầu tải song song"
+
+msgid "Starting single connection"
+msgstr "Đang bắt đầu kết nối đơn"
+
+msgid "Startup failed"
+msgstr "Khởi động thất bại"
+
+msgid "Status"
+msgstr "Trạng thái"
+
+msgid "Stop"
+msgstr "Dừng"
+
+msgid "Stopped. Use the same URL, quality and folder to resume."
+msgstr "Đã dừng. Dùng cùng URL, chất lượng và thư mục để tiếp tục."
+
+msgid "Stopping dialog tasks before closing…"
+msgstr "Đang dừng tác vụ hộp thoại trước khi đóng…"
+
+msgid "Stopping downloads and saving history…"
+msgstr "Đang dừng tải và lưu lịch sử…"
+
+msgid "Stopping video helpers before closing…"
+msgstr "Đang dừng công cụ hỗ trợ video trước khi đóng…"
+
+msgid "Stopping video helpers… partial downloads will be kept."
+msgstr "Đang dừng công cụ hỗ trợ video… phần đã tải sẽ được giữ lại."
+
+msgid "Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)"
+msgstr "Ủng hộ Skein Downloader trên Ko-fi (mở ko-fi.com/timcottrill trong trình duyệt)"
+
+msgid "Support me on Ko-fi"
+msgstr "Ủng hộ tôi trên Ko-fi"
+
+msgid "Test speeds"
+msgstr "Kiểm tra tốc độ"
+
+msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr "Đang kiểm tra tốc độ máy chủ… tối đa 256 KiB mỗi nguồn. Không lưu tệp nào."
+
+msgid "The new language applies the next time Skein Downloader starts."
+msgstr "Ngôn ngữ mới sẽ được áp dụng khi khởi động Skein Downloader lần tới."
+
+msgid "The new theme applies the next time Skein Downloader starts."
+msgstr "Giao diện mới sẽ được áp dụng khi khởi động Skein Downloader lần tới."
+
+msgid "Theme"
+msgstr "Giao diện"
+
+msgid "Transfer speed in bytes per second"
+msgstr "Tốc độ truyền tính bằng byte mỗi giây"
+
+msgid "Try as browser"
+msgstr "Thử như trình duyệt"
+
+msgid "Trying another HTTPS source"
+msgstr "Đang thử nguồn HTTPS khác"
+
+msgid "Type"
+msgstr "Loại"
+
+msgid "Uncheck highlighted"
+msgstr "Bỏ đánh dấu các mục được chọn"
+
+msgid "Unexpected error while managing video tools."
+msgstr "Lỗi không mong muốn khi quản lý công cụ video."
+
+msgid "Unknown"
+msgstr "Không rõ"
+
+msgid "Up to 1080p"
+msgstr "Tối đa 1080p"
+
+msgid "Up to 1440p"
+msgstr "Tối đa 1440p"
+
+msgid "Up to 2160p (4K)"
+msgstr "Tối đa 2160p (4K)"
+
+msgid "Up to 360p"
+msgstr "Tối đa 360p"
+
+msgid "Up to 480p"
+msgstr "Tối đa 480p"
+
+msgid "Up to 720p"
+msgstr "Tối đa 720p"
+
+msgid "Update yt-dlp"
+msgstr "Cập nhật yt-dlp"
+
+msgid "Use cookies from"
+msgstr "Dùng cookie từ"
+
+msgid "Verifying SHA-1"
+msgstr "Đang xác minh SHA-1"
+
+msgid "Verifying SHA-256"
+msgstr "Đang xác minh SHA-256"
+
+msgid "Video"
+msgstr "Video"
+
+msgid "Video URL"
+msgstr "URL video"
+
+msgid "Video downloads"
+msgstr "Tải video"
+
+msgid "Video format"
+msgstr "Định dạng video"
+
+msgid "Video tools are bundled with this app. Update or reinstall the package to repair them."
+msgstr "Công cụ video được tích hợp trong ứng dụng. Cập nhật hoặc cài lại gói để sửa chữa."
+
+msgid "Video tools are busy. Wait for them to finish, then load the new link."
+msgstr "Công cụ video đang bận. Hãy chờ hoàn tất rồi nạp liên kết mới."
+
+msgid "Video tools are provided by this app package. Update or reinstall the app to repair them."
+msgstr "Công cụ video được cung cấp bởi gói ứng dụng này. Cập nhật hoặc cài lại ứng dụng để sửa chữa."
+
+msgid "Video tools are ready. Update yt-dlp if a site stops working."
+msgstr "Công cụ video đã sẵn sàng. Cập nhật yt-dlp nếu một trang web ngừng hoạt động."
+
+msgid "Video tools ready."
+msgstr "Công cụ video đã sẵn sàng."
+
+msgid "Working…"
+msgstr "Đang xử lý…"
+
+msgid "yt-dlp update finished."
+msgstr "Đã cập nhật xong yt-dlp."

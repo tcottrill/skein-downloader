@@ -1,0 +1,475 @@
+# Skein Downloader translations. GPL-3.0-or-later.
+msgid ""
+msgstr "Project-Id-Version: Skein Downloader\nLanguage: ja\nContent-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=1; plural=0;\n"
+
+msgid " + unknown sizes"
+msgstr " + サイズ不明"
+
+#, c-format
+msgid "%d / 4 downloading  ·  %d waiting  ·  %d completed"
+msgstr "%d / 4 ダウンロード中  ·  %d 待機中  ·  %d 完了"
+
+#, c-format
+msgid "%zu selected / %zu files / "
+msgstr "選択 %zu / ファイル %zu / "
+
+msgid "&Open folder"
+msgstr "フォルダーを開く(&O)"
+
+msgid "&Pause"
+msgstr "一時停止(&P)"
+
+msgid "&Resume"
+msgstr "再開(&R)"
+
+msgid "+ File"
+msgstr "+ ファイル"
+
+msgid "+ Video"
+msgstr "+ 動画"
+
+msgid "About"
+msgstr "このアプリについて"
+
+msgid "Active"
+msgstr "実行中"
+
+msgid "Add to downloads"
+msgstr "ダウンロードに追加"
+
+#, c-format
+msgid "Added %zu downloads. Existing files and duplicate queue entries were kept."
+msgstr "%zu 件のダウンロードを追加しました。既存のファイルと重複するキュー項目は保持されました。"
+
+msgid "Added to downloads."
+msgstr "ダウンロードに追加しました。"
+
+msgid "All"
+msgstr "すべて"
+
+msgid "All paused  ·  "
+msgstr "すべて一時停止  ·  "
+
+msgid "Already in downloads. Resume it from the main window."
+msgstr "すでにダウンロードにあります。メイン画面から再開してください。"
+
+msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr "ファイルと動画用のオープンソースダウンロードマネージャー。\n現在開発中です。"
+
+msgid "Assembling"
+msgstr "結合中"
+
+msgid "Audio only"
+msgstr "音声のみ"
+
+msgid "Automatic (fastest sample)"
+msgstr "自動（測定で最速）"
+
+msgid "Best available"
+msgstr "利用可能な最高品質"
+
+msgid "Best available audio, kept in its original audio format.\nChoose MP3 for a widely compatible audio file."
+msgstr "利用可能な最高品質の音声を元の形式で保存します。\n幅広い互換性が必要な場合は MP3 を選んでください。"
+
+msgid "Best available audio, saved as MP3 using the highest VBR quality setting.\nConversion cannot improve the source audio quality."
+msgstr "利用可能な最高品質の音声を、最高 VBR 品質の MP3 で保存します。\n変換で元の音質を向上させることはできません。"
+
+msgid "Browse…"
+msgstr "参照…"
+
+msgid "Cannot add files"
+msgstr "ファイルを追加できません"
+
+msgid "Cannot locate Windows PowerShell."
+msgstr "Windows PowerShell が見つかりません。"
+
+msgid "Check highlighted"
+msgstr "選択項目にチェック"
+
+msgid "Checking for a yt-dlp update…"
+msgstr "yt-dlp の更新を確認中…"
+
+msgid "Checking mirror speeds (HTTPS)"
+msgstr "ミラーの速度を確認中（HTTPS）"
+
+msgid "Choose a non-empty file with a known size to test speeds."
+msgstr "速度テストにはサイズが分かっている空でないファイルを選んでください。"
+
+msgid "Choose an absolute download folder."
+msgstr "ダウンロード先は絶対パスで指定してください。"
+
+msgid "Clear History"
+msgstr "履歴を消去"
+
+msgid "Clear selection"
+msgstr "選択を解除"
+
+msgid "Close"
+msgstr "閉じる"
+
+msgid "Complete"
+msgstr "完了"
+
+msgid "Connecting"
+msgstr "接続中"
+
+msgid "Connections per file"
+msgstr "ファイルごとの接続数"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
+msgstr "Cookie を使うと、サイトにブラウザーのログイン状態が渡されます。信頼できるサイトでのみ使用してください。Firefox を推奨します。Windows の Chrome と Edge は他のアプリによる Cookie の読み取りを制限することがあります。ダウンロード前にブラウザーを閉じてください。"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. The Flatpak cannot see browser profiles until you allow it read access to them, for example ~/.mozilla with Flatseal."
+msgstr "Cookie を使うと、サイトにブラウザーのログイン状態が渡されます。信頼できるサイトでのみ使用してください。Flatpak からブラウザープロファイルを読むには、Flatseal などで ~/.mozilla への読み取りを許可してください。"
+
+#, c-format
+msgid "Could not start video tools: %s"
+msgstr "動画ツールを起動できませんでした: %s"
+
+msgid "Dark"
+msgstr "ダーク"
+
+msgid "Download Again"
+msgstr "再ダウンロード"
+
+msgid "Download folder"
+msgstr "ダウンロード先フォルダー"
+
+msgid "Downloading"
+msgstr "ダウンロード中"
+
+msgid "Failed"
+msgstr "失敗"
+
+msgid "File"
+msgstr "ファイル"
+
+msgid "File downloads"
+msgstr "ファイルのダウンロード"
+
+msgid "Filter by filename…"
+msgstr "ファイル名で絞り込み…"
+
+msgid "Finalizing"
+msgstr "最終処理中"
+
+msgid "Finished"
+msgstr "完了"
+
+msgid "History"
+msgstr "履歴"
+
+msgid "Install / repair tools"
+msgstr "ツールをインストール / 修復"
+
+msgid "Install the video tools first."
+msgstr "先に動画ツールをインストールしてください。"
+
+msgid "Install video tools from Add > Video first."
+msgstr "先に「追加 > 動画」から動画ツールをインストールしてください。"
+
+msgid "Install video tools once to enable downloads (about 250 MiB). No admin access needed."
+msgstr "動画ツールを一度インストールするとダウンロードできます（約 250 MiB）。管理者権限は不要です。"
+
+msgid "Installing verified video tools…"
+msgstr "検証済みの動画ツールをインストール中…"
+
+msgid "Invalid file selection."
+msgstr "ファイルの選択が無効です。"
+
+msgid "Language"
+msgstr "言語"
+
+msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
+msgstr "年齢確認などの制限のために、yt-dlp がブラウザーからサイトの Cookie を読み取れるようにします。ブラウザーのログイン状態で動作します。"
+
+msgid "Light"
+msgstr "ライト"
+
+msgid "Load"
+msgstr "読み込む"
+
+msgid "Load files"
+msgstr "ファイルを読み込む"
+
+msgid "Loading files…"
+msgstr "ファイルを読み込み中…"
+
+msgid "MKV (original formats)"
+msgstr "MKV（元の形式）"
+
+msgid "MKV: best available source codecs. Your resolution limit still applies.\nSeparate video and audio are merged; a combined source may keep its original container."
+msgstr "MKV: 利用可能な最高品質の元コーデック。解像度の上限は適用されます。\n個別の動画と音声は結合されます。一体型のソースは元のコンテナーを保持する場合があります。"
+
+msgid "MP4 (iPhone compatible)"
+msgstr "MP4（iPhone 対応）"
+
+msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
+msgstr "MP4: iPhone 再生用の H.264 動画 + AAC 音声。非対応コーデックへの代替は行いません。\n解像度の上限は適用されます。対応ストリームがない場合はエラーになります。"
+
+msgid "Name"
+msgstr "名前"
+
+msgid "Open folder"
+msgstr "フォルダーを開く"
+
+msgid "Operation cancelled. You can retry."
+msgstr "操作をキャンセルしました。再試行できます。"
+
+msgid "Partial download retained"
+msgstr "途中までのダウンロードを保持しました"
+
+msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
+msgstr "上に URL を貼り付けてください。ダウンロードに追加する前に、必要なファイルを選択してください。"
+
+msgid "Paste a YouTube or other supported video URL"
+msgstr "YouTube など対応サイトの動画 URL を貼り付け"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgstr "ファイル、リリース、パッケージ、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org のリンク、または archive.org の項目 ID を貼り付け"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgstr "ファイル、リリース、パッケージ、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org、動画のリンクを貼り付け"
+
+msgid "Paste a link, choose a quality, then add it to downloads."
+msgstr "リンクを貼り付け、品質を選んでダウンロードに追加してください。"
+
+msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgstr "有効な HTTP または HTTPS のファイル、archive.org、動画の URL を貼り付けてください。"
+
+msgid "Paste a valid HTTP or HTTPS video URL."
+msgstr "有効な HTTP または HTTPS の動画 URL を貼り付けてください。"
+
+msgid "Pause all"
+msgstr "すべて一時停止"
+
+msgid "Pause video downloads in the main window before updating tools."
+msgstr "ツールの更新前に、メイン画面で動画のダウンロードを一時停止してください。"
+
+msgid "Paused"
+msgstr "一時停止"
+
+msgid "Pausing…"
+msgstr "一時停止中…"
+
+msgid "Processing…"
+msgstr "処理中…"
+
+msgid "Progress"
+msgstr "進捗"
+
+msgid "Quality"
+msgstr "画質"
+
+msgid "Queue"
+msgstr "キュー"
+
+msgid "Queued"
+msgstr "待機中"
+
+msgid "Re&move from history\tDel"
+msgstr "履歴から削除(&M)\tDel"
+
+msgid "Re&move from list\tDel"
+msgstr "一覧から削除(&M)\tDel"
+
+msgid "Re&try"
+msgstr "再試行(&T)"
+
+msgid "Remove"
+msgstr "削除"
+
+msgid "Remove All"
+msgstr "すべて削除"
+
+msgid "Resume all"
+msgstr "すべて再開"
+
+msgid "Retrying after connection error"
+msgstr "接続エラー後に再試行中"
+
+msgid "Same as system"
+msgstr "システムに従う"
+
+msgid "Save as MP3 (best quality)"
+msgstr "MP3 で保存（最高品質）"
+
+msgid "Save to"
+msgstr "保存先"
+
+msgid "Search downloads"
+msgstr "ダウンロードを検索"
+
+msgid "Select all"
+msgstr "すべて選択"
+
+msgid "Select or check a file to measure its server speeds."
+msgstr "サーバー速度を測定するファイルを選択するか、チェックしてください。"
+
+msgid "Selected"
+msgstr "選択済み"
+
+msgid "Selection"
+msgstr "選択"
+
+msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
+msgstr "実際の Chrome のネットワーク特性でリクエストします。Cloudflare などのブラウザー確認ページに役立ちます。"
+
+msgid "Server"
+msgstr "サーバー"
+
+msgid "Server speeds"
+msgstr "サーバー速度"
+
+msgid "Site access"
+msgstr "サイトへのアクセス"
+
+msgid "Size"
+msgstr "サイズ"
+
+msgid "Speed"
+msgstr "速度"
+
+msgid "Speed test failed."
+msgstr "速度テストに失敗しました。"
+
+msgid "Speed tests compare archive.org servers. This source has a single route."
+msgstr "速度テストは archive.org のサーバーを比較します。このソースの経路は1つだけです。"
+
+msgid "Standard server route"
+msgstr "標準サーバー経路"
+
+msgid "Starting parallel download"
+msgstr "並列ダウンロードを開始中"
+
+msgid "Starting single connection"
+msgstr "単一接続を開始中"
+
+msgid "Startup failed"
+msgstr "起動に失敗しました"
+
+msgid "Status"
+msgstr "状態"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Stopped. Use the same URL, quality and folder to resume."
+msgstr "停止しました。同じ URL、品質、フォルダーで再開できます。"
+
+msgid "Stopping dialog tasks before closing…"
+msgstr "終了前にダイアログの処理を停止中…"
+
+msgid "Stopping downloads and saving history…"
+msgstr "ダウンロードを停止して履歴を保存中…"
+
+msgid "Stopping video helpers before closing…"
+msgstr "終了前に動画処理ツールを停止中…"
+
+msgid "Stopping video helpers… partial downloads will be kept."
+msgstr "動画処理ツールを停止中…途中までのダウンロードは保持されます。"
+
+msgid "Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)"
+msgstr "Ko-fi で Skein Downloader を応援（ブラウザーで ko-fi.com/timcottrill を開きます）"
+
+msgid "Support me on Ko-fi"
+msgstr "Ko-fi で応援"
+
+msgid "Test speeds"
+msgstr "速度をテスト"
+
+msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr "サーバー速度をテスト中…各ソース最大 256 KiB。ファイルは保存しません。"
+
+msgid "The new language applies the next time Skein Downloader starts."
+msgstr "新しい言語は Skein Downloader の次回起動時に適用されます。"
+
+msgid "The new theme applies the next time Skein Downloader starts."
+msgstr "新しいテーマは Skein Downloader の次回起動時に適用されます。"
+
+msgid "Theme"
+msgstr "テーマ"
+
+msgid "Transfer speed in bytes per second"
+msgstr "転送速度（バイト/秒）"
+
+msgid "Try as browser"
+msgstr "ブラウザーとして試す"
+
+msgid "Trying another HTTPS source"
+msgstr "別の HTTPS ソースを試行中"
+
+msgid "Type"
+msgstr "種類"
+
+msgid "Uncheck highlighted"
+msgstr "選択項目のチェックを外す"
+
+msgid "Unexpected error while managing video tools."
+msgstr "動画ツールの管理中に予期しないエラーが発生しました。"
+
+msgid "Unknown"
+msgstr "不明"
+
+msgid "Up to 1080p"
+msgstr "最大 1080p"
+
+msgid "Up to 1440p"
+msgstr "最大 1440p"
+
+msgid "Up to 2160p (4K)"
+msgstr "最大 2160p (4K)"
+
+msgid "Up to 360p"
+msgstr "最大 360p"
+
+msgid "Up to 480p"
+msgstr "最大 480p"
+
+msgid "Up to 720p"
+msgstr "最大 720p"
+
+msgid "Update yt-dlp"
+msgstr "yt-dlp を更新"
+
+msgid "Use cookies from"
+msgstr "Cookie の取得元"
+
+msgid "Verifying SHA-1"
+msgstr "SHA-1 を検証中"
+
+msgid "Verifying SHA-256"
+msgstr "SHA-256 を検証中"
+
+msgid "Video"
+msgstr "動画"
+
+msgid "Video URL"
+msgstr "動画 URL"
+
+msgid "Video downloads"
+msgstr "動画のダウンロード"
+
+msgid "Video format"
+msgstr "動画形式"
+
+msgid "Video tools are bundled with this app. Update or reinstall the package to repair them."
+msgstr "動画ツールはアプリに同梱されています。修復するにはパッケージを更新または再インストールしてください。"
+
+msgid "Video tools are busy. Wait for them to finish, then load the new link."
+msgstr "動画ツールは使用中です。完了してから新しいリンクを読み込んでください。"
+
+msgid "Video tools are provided by this app package. Update or reinstall the app to repair them."
+msgstr "動画ツールはこのアプリに含まれています。修復するにはアプリを更新または再インストールしてください。"
+
+msgid "Video tools are ready. Update yt-dlp if a site stops working."
+msgstr "動画ツールの準備ができています。サイトが利用できなくなった場合は yt-dlp を更新してください。"
+
+msgid "Video tools ready."
+msgstr "動画ツールの準備ができました。"
+
+msgid "Working…"
+msgstr "処理中…"
+
+msgid "yt-dlp update finished."
+msgstr "yt-dlp の更新が完了しました。"

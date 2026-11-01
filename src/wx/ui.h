@@ -14,6 +14,7 @@
 #include "logic.h"
 #include "job_runner.h"
 #include "video.h"
+#include "localization.h"
 #include <future>
 #include <set>
 #include <fstream>
@@ -45,13 +46,15 @@ inline wxButton* button(wxWindow* parent,wxSizer* row,const wxString& label,std:
  // Qt box layouts put 6 px between neighbouring items, none after the last one.
  auto b=new wxButton(parent,wxID_ANY,label);row->Add(b,0,(row->GetItemCount()?wxLEFT:0)|wxALIGN_CENTER_VERTICAL,parent->FromDIP(6));b->Bind(wxEVT_BUTTON,[action](wxCommandEvent&){action();});return b;
 }
-inline void folderBrowse(wxWindow* parent,wxTextCtrl* target){wxDirDialog d(parent,"Download folder",target->GetValue());if(d.ShowModal()==wxID_OK)target->SetValue(d.GetPath());}
+inline void folderBrowse(wxWindow* parent,wxTextCtrl* target){wxDirDialog d(parent,_(L"Download folder"),target->GetValue());if(d.ShowModal()==wxID_OK)target->SetValue(d.GetPath());}
 inline void openFolder(const wxString& path){if(wxDirExists(path))wxLaunchDefaultApplication(path);}
 inline bool ready(std::future<void>& f){return f.valid()&&f.wait_for(std::chrono::seconds(0))==std::future_status::ready;}
 // The program icon for a top-level window (title bar, taskbar, Alt+Tab); see app.cpp.
 void appIcons(wxTopLevelWindow*);
 // Name, version, copyright and license (app.cpp).
 void showAbout(wxWindow*);
+// Dedicated toolbar selector with circular flag icons in its native popup menu.
+wxButton* languageButton(wxWindow*);
 // With load, a given link is loaded at once (the main window's Load); otherwise it is only filled in.
 void showFiles(wxWindow*,downloads::Queue&,const wxString& link={},bool load=true);
 void showVideo(wxWindow*,downloads::Queue&,const wxString& link={});

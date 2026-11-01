@@ -1,0 +1,475 @@
+# Skein Downloader translations. GPL-3.0-or-later.
+msgid ""
+msgstr "Project-Id-Version: Skein Downloader\nLanguage: zh_TW\nContent-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=1; plural=0;\n"
+
+msgid " + unknown sizes"
+msgstr " + 大小不明"
+
+#, c-format
+msgid "%d / 4 downloading  ·  %d waiting  ·  %d completed"
+msgstr "%d / 4 正在下載  ·  %d 等待中  ·  %d 已完成"
+
+#, c-format
+msgid "%zu selected / %zu files / "
+msgstr "已選取 %zu 個 / 共 %zu 個檔案 / "
+
+msgid "&Open folder"
+msgstr "開啟資料夾(&O)"
+
+msgid "&Pause"
+msgstr "暫停(&P)"
+
+msgid "&Resume"
+msgstr "繼續(&R)"
+
+msgid "+ File"
+msgstr "+ 檔案"
+
+msgid "+ Video"
+msgstr "+ 影片"
+
+msgid "About"
+msgstr "關於"
+
+msgid "Active"
+msgstr "進行中"
+
+msgid "Add to downloads"
+msgstr "加入下載"
+
+#, c-format
+msgid "Added %zu downloads. Existing files and duplicate queue entries were kept."
+msgstr "已加入 %zu 個下載。現有檔案與重複的佇列項目已保留。"
+
+msgid "Added to downloads."
+msgstr "已加入下載。"
+
+msgid "All"
+msgstr "全部"
+
+msgid "All paused  ·  "
+msgstr "全部已暫停  ·  "
+
+msgid "Already in downloads. Resume it from the main window."
+msgstr "已在下載清單中。請從主視窗繼續下載。"
+
+msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr "開放原始碼的檔案與影片下載管理工具。\n目前仍在開發中。"
+
+msgid "Assembling"
+msgstr "正在合併"
+
+msgid "Audio only"
+msgstr "僅音訊"
+
+msgid "Automatic (fastest sample)"
+msgstr "自動（測試最快的伺服器）"
+
+msgid "Best available"
+msgstr "最佳可用畫質"
+
+msgid "Best available audio, kept in its original audio format.\nChoose MP3 for a widely compatible audio file."
+msgstr "保留最佳可用音訊的原始格式。\n若需要相容性較高的音訊檔案，請選擇 MP3。"
+
+msgid "Best available audio, saved as MP3 using the highest VBR quality setting.\nConversion cannot improve the source audio quality."
+msgstr "將最佳可用音訊以最高 VBR 品質儲存為 MP3。\n轉換無法提升來源音訊的品質。"
+
+msgid "Browse…"
+msgstr "瀏覽…"
+
+msgid "Cannot add files"
+msgstr "無法加入檔案"
+
+msgid "Cannot locate Windows PowerShell."
+msgstr "找不到 Windows PowerShell。"
+
+msgid "Check highlighted"
+msgstr "勾選反白項目"
+
+msgid "Checking for a yt-dlp update…"
+msgstr "正在檢查 yt-dlp 更新…"
+
+msgid "Checking mirror speeds (HTTPS)"
+msgstr "正在測試鏡像站速度 (HTTPS)"
+
+msgid "Choose a non-empty file with a known size to test speeds."
+msgstr "請選擇大小已知且非空白的檔案以測試速度。"
+
+msgid "Choose an absolute download folder."
+msgstr "請以絕對路徑指定下載資料夾。"
+
+msgid "Clear History"
+msgstr "清除紀錄"
+
+msgid "Clear selection"
+msgstr "清除選取"
+
+msgid "Close"
+msgstr "關閉"
+
+msgid "Complete"
+msgstr "已完成"
+
+msgid "Connecting"
+msgstr "正在連線"
+
+msgid "Connections per file"
+msgstr "每個檔案的連線數"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
+msgstr "Cookie 會讓此網站使用您在瀏覽器中的登入狀態。請僅用於您信任的網站。建議使用 Firefox：Windows 上的 Chrome 和 Edge 經常阻止其他應用程式讀取 Cookie。下載前請關閉瀏覽器。"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. The Flatpak cannot see browser profiles until you allow it read access to them, for example ~/.mozilla with Flatseal."
+msgstr "Cookie 會讓此網站使用您在瀏覽器中的登入狀態。請僅用於您信任的網站。Flatpak 必須取得讀取權限才能存取瀏覽器設定檔，例如透過 Flatseal 允許讀取 ~/.mozilla。"
+
+#, c-format
+msgid "Could not start video tools: %s"
+msgstr "無法啟動影片工具：%s"
+
+msgid "Dark"
+msgstr "深色"
+
+msgid "Download Again"
+msgstr "重新下載"
+
+msgid "Download folder"
+msgstr "下載資料夾"
+
+msgid "Downloading"
+msgstr "正在下載"
+
+msgid "Failed"
+msgstr "失敗"
+
+msgid "File"
+msgstr "檔案"
+
+msgid "File downloads"
+msgstr "檔案下載"
+
+msgid "Filter by filename…"
+msgstr "依檔名篩選…"
+
+msgid "Finalizing"
+msgstr "正在完成"
+
+msgid "Finished"
+msgstr "已結束"
+
+msgid "History"
+msgstr "紀錄"
+
+msgid "Install / repair tools"
+msgstr "安裝 / 修復工具"
+
+msgid "Install the video tools first."
+msgstr "請先安裝影片工具。"
+
+msgid "Install video tools from Add > Video first."
+msgstr "請先從「新增 > 影片」安裝影片工具。"
+
+msgid "Install video tools once to enable downloads (about 250 MiB). No admin access needed."
+msgstr "安裝一次影片工具即可啟用下載（約 250 MiB）。不需要管理員權限。"
+
+msgid "Installing verified video tools…"
+msgstr "正在安裝已驗證的影片工具…"
+
+msgid "Invalid file selection."
+msgstr "檔案選取無效。"
+
+msgid "Language"
+msgstr "語言"
+
+msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
+msgstr "允許 yt-dlp 從瀏覽器讀取此網站的 Cookie，以通過年齡驗證或其他限制。操作會使用您在瀏覽器中的登入狀態。"
+
+msgid "Light"
+msgstr "淺色"
+
+msgid "Load"
+msgstr "載入"
+
+msgid "Load files"
+msgstr "載入檔案"
+
+msgid "Loading files…"
+msgstr "正在載入檔案…"
+
+msgid "MKV (original formats)"
+msgstr "MKV（原始格式）"
+
+msgid "MKV: best available source codecs. Your resolution limit still applies.\nSeparate video and audio are merged; a combined source may keep its original container."
+msgstr "MKV：使用最佳可用來源編碼。仍會套用解析度上限。\n分開的影像與音訊會合併；已合併的來源可能保留原始容器格式。"
+
+msgid "MP4 (iPhone compatible)"
+msgstr "MP4（相容於 iPhone）"
+
+msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
+msgstr "MP4：使用 H.264 影像與 AAC 音訊，以供 iPhone 播放。不會改用不相容的編碼。\n仍會套用解析度上限；若無相容串流，將回報錯誤。"
+
+msgid "Name"
+msgstr "名稱"
+
+msgid "Open folder"
+msgstr "開啟資料夾"
+
+msgid "Operation cancelled. You can retry."
+msgstr "操作已取消。您可以重試。"
+
+msgid "Partial download retained"
+msgstr "已保留部分下載"
+
+msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
+msgstr "請在上方貼上網址。加入下載前，請選取一個、全部或指定檔案。"
+
+msgid "Paste a YouTube or other supported video URL"
+msgstr "貼上 YouTube 或其他支援的影片網址"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgstr "貼上檔案、發行版本、套件、MediaFire、Google Drive、OneDrive、WeTransfer 或 archive.org 連結，或 archive.org 項目識別碼"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgstr "貼上檔案、發行版本、套件、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org 或影片連結"
+
+msgid "Paste a link, choose a quality, then add it to downloads."
+msgstr "貼上連結、選擇畫質，然後加入下載。"
+
+msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgstr "請貼上有效的 HTTP 或 HTTPS 檔案、archive.org 或影片網址。"
+
+msgid "Paste a valid HTTP or HTTPS video URL."
+msgstr "請貼上有效的 HTTP 或 HTTPS 影片網址。"
+
+msgid "Pause all"
+msgstr "全部暫停"
+
+msgid "Pause video downloads in the main window before updating tools."
+msgstr "更新工具前，請先在主視窗暫停影片下載。"
+
+msgid "Paused"
+msgstr "已暫停"
+
+msgid "Pausing…"
+msgstr "正在暫停…"
+
+msgid "Processing…"
+msgstr "正在處理…"
+
+msgid "Progress"
+msgstr "進度"
+
+msgid "Quality"
+msgstr "畫質"
+
+msgid "Queue"
+msgstr "佇列"
+
+msgid "Queued"
+msgstr "等待中"
+
+msgid "Re&move from history\tDel"
+msgstr "從紀錄移除(&M)\tDel"
+
+msgid "Re&move from list\tDel"
+msgstr "從清單移除(&M)\tDel"
+
+msgid "Re&try"
+msgstr "重試(&T)"
+
+msgid "Remove"
+msgstr "移除"
+
+msgid "Remove All"
+msgstr "全部移除"
+
+msgid "Resume all"
+msgstr "全部繼續"
+
+msgid "Retrying after connection error"
+msgstr "連線錯誤後正在重試"
+
+msgid "Same as system"
+msgstr "與系統相同"
+
+msgid "Save as MP3 (best quality)"
+msgstr "儲存為 MP3（最佳品質）"
+
+msgid "Save to"
+msgstr "儲存位置"
+
+msgid "Search downloads"
+msgstr "搜尋下載"
+
+msgid "Select all"
+msgstr "全部選取"
+
+msgid "Select or check a file to measure its server speeds."
+msgstr "請選取或勾選檔案，以測量其伺服器速度。"
+
+msgid "Selected"
+msgstr "已選取"
+
+msgid "Selection"
+msgstr "選取項目"
+
+msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
+msgstr "使用真實的 Chrome 網路指紋傳送請求。有助於通過 Cloudflare 與其他「正在檢查您的瀏覽器」頁面。"
+
+msgid "Server"
+msgstr "伺服器"
+
+msgid "Server speeds"
+msgstr "伺服器速度"
+
+msgid "Site access"
+msgstr "網站存取"
+
+msgid "Size"
+msgstr "大小"
+
+msgid "Speed"
+msgstr "速度"
+
+msgid "Speed test failed."
+msgstr "速度測試失敗。"
+
+msgid "Speed tests compare archive.org servers. This source has a single route."
+msgstr "速度測試會比較 archive.org 的伺服器。此來源僅有一條路徑。"
+
+msgid "Standard server route"
+msgstr "標準伺服器路徑"
+
+msgid "Starting parallel download"
+msgstr "正在啟動平行下載"
+
+msgid "Starting single connection"
+msgstr "正在啟動單一連線"
+
+msgid "Startup failed"
+msgstr "啟動失敗"
+
+msgid "Status"
+msgstr "狀態"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Stopped. Use the same URL, quality and folder to resume."
+msgstr "已停止。使用相同的網址、畫質和資料夾即可繼續下載。"
+
+msgid "Stopping dialog tasks before closing…"
+msgstr "正在停止對話方塊工作以便關閉…"
+
+msgid "Stopping downloads and saving history…"
+msgstr "正在停止下載並儲存紀錄…"
+
+msgid "Stopping video helpers before closing…"
+msgstr "正在停止影片輔助程式以便關閉…"
+
+msgid "Stopping video helpers… partial downloads will be kept."
+msgstr "正在停止影片輔助程式… 將保留部分下載。"
+
+msgid "Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)"
+msgstr "在 Ko-fi 支持 Skein Downloader（在瀏覽器開啟 ko-fi.com/timcottrill）"
+
+msgid "Support me on Ko-fi"
+msgstr "在 Ko-fi 支持我"
+
+msgid "Test speeds"
+msgstr "測試速度"
+
+msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr "正在測試伺服器速度… 每個來源最多使用 256 KiB。不會儲存檔案。"
+
+msgid "The new language applies the next time Skein Downloader starts."
+msgstr "新語言將在下次啟動 Skein Downloader 時套用。"
+
+msgid "The new theme applies the next time Skein Downloader starts."
+msgstr "新佈景主題將在下次啟動 Skein Downloader 時套用。"
+
+msgid "Theme"
+msgstr "佈景主題"
+
+msgid "Transfer speed in bytes per second"
+msgstr "傳輸速度（位元組／秒）"
+
+msgid "Try as browser"
+msgstr "模擬瀏覽器"
+
+msgid "Trying another HTTPS source"
+msgstr "正在嘗試其他 HTTPS 來源"
+
+msgid "Type"
+msgstr "類型"
+
+msgid "Uncheck highlighted"
+msgstr "取消勾選反白項目"
+
+msgid "Unexpected error while managing video tools."
+msgstr "管理影片工具時發生未預期的錯誤。"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Up to 1080p"
+msgstr "最高 1080p"
+
+msgid "Up to 1440p"
+msgstr "最高 1440p"
+
+msgid "Up to 2160p (4K)"
+msgstr "最高 2160p (4K)"
+
+msgid "Up to 360p"
+msgstr "最高 360p"
+
+msgid "Up to 480p"
+msgstr "最高 480p"
+
+msgid "Up to 720p"
+msgstr "最高 720p"
+
+msgid "Update yt-dlp"
+msgstr "更新 yt-dlp"
+
+msgid "Use cookies from"
+msgstr "使用 Cookie 來源"
+
+msgid "Verifying SHA-1"
+msgstr "正在驗證 SHA-1"
+
+msgid "Verifying SHA-256"
+msgstr "正在驗證 SHA-256"
+
+msgid "Video"
+msgstr "影片"
+
+msgid "Video URL"
+msgstr "影片網址"
+
+msgid "Video downloads"
+msgstr "影片下載"
+
+msgid "Video format"
+msgstr "影片格式"
+
+msgid "Video tools are bundled with this app. Update or reinstall the package to repair them."
+msgstr "此應用程式已內建影片工具。請更新或重新安裝套件以修復工具。"
+
+msgid "Video tools are busy. Wait for them to finish, then load the new link."
+msgstr "影片工具忙碌中。請等待完成後再載入新連結。"
+
+msgid "Video tools are provided by this app package. Update or reinstall the app to repair them."
+msgstr "影片工具由此應用程式套件提供。請更新或重新安裝應用程式以修復工具。"
+
+msgid "Video tools are ready. Update yt-dlp if a site stops working."
+msgstr "影片工具已就緒。若網站無法使用，請更新 yt-dlp。"
+
+msgid "Video tools ready."
+msgstr "影片工具已就緒。"
+
+msgid "Working…"
+msgstr "正在處理…"
+
+msgid "yt-dlp update finished."
+msgstr "yt-dlp 更新完成。"

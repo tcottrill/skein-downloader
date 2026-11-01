@@ -1,0 +1,475 @@
+# Skein Downloader translations. GPL-3.0-or-later.
+msgid ""
+msgstr "Project-Id-Version: Skein Downloader\nLanguage: ko\nContent-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=1; plural=0;\n"
+
+msgid " + unknown sizes"
+msgstr " + 크기를 알 수 없는 파일"
+
+#, c-format
+msgid "%d / 4 downloading  ·  %d waiting  ·  %d completed"
+msgstr "%d / 4 다운로드 중  ·  %d 대기 중  ·  %d 완료"
+
+#, c-format
+msgid "%zu selected / %zu files / "
+msgstr "선택한 파일 %zu개 / 전체 파일 %zu개 / "
+
+msgid "&Open folder"
+msgstr "폴더 열기(&O)"
+
+msgid "&Pause"
+msgstr "일시 중지(&P)"
+
+msgid "&Resume"
+msgstr "다시 시작(&R)"
+
+msgid "+ File"
+msgstr "+ 파일"
+
+msgid "+ Video"
+msgstr "+ 동영상"
+
+msgid "About"
+msgstr "정보"
+
+msgid "Active"
+msgstr "진행 중"
+
+msgid "Add to downloads"
+msgstr "다운로드에 추가"
+
+#, c-format
+msgid "Added %zu downloads. Existing files and duplicate queue entries were kept."
+msgstr "다운로드 %zu개를 추가했습니다. 기존 파일과 중복된 대기열 항목은 유지되었습니다."
+
+msgid "Added to downloads."
+msgstr "다운로드에 추가했습니다."
+
+msgid "All"
+msgstr "전체"
+
+msgid "All paused  ·  "
+msgstr "모두 일시 중지됨  ·  "
+
+msgid "Already in downloads. Resume it from the main window."
+msgstr "이미 다운로드 목록에 있습니다. 기본 창에서 다시 시작하세요."
+
+msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr "파일과 동영상을 위한 오픈 소스 다운로드 관리자입니다.\n현재 개발 중입니다."
+
+msgid "Assembling"
+msgstr "파일 병합 중"
+
+msgid "Audio only"
+msgstr "오디오만"
+
+msgid "Automatic (fastest sample)"
+msgstr "자동 (측정 속도가 가장 빠른 서버)"
+
+msgid "Best available"
+msgstr "사용 가능한 최고 품질"
+
+msgid "Best available audio, kept in its original audio format.\nChoose MP3 for a widely compatible audio file."
+msgstr "사용 가능한 최고 품질의 오디오를 원래 형식으로 보관합니다.\n호환성이 높은 오디오 파일이 필요하면 MP3를 선택하세요."
+
+msgid "Best available audio, saved as MP3 using the highest VBR quality setting.\nConversion cannot improve the source audio quality."
+msgstr "사용 가능한 최고 품질의 오디오를 최고 VBR 품질의 MP3로 저장합니다.\n변환으로 원본 오디오의 품질을 높일 수는 없습니다."
+
+msgid "Browse…"
+msgstr "찾아보기…"
+
+msgid "Cannot add files"
+msgstr "파일을 추가할 수 없음"
+
+msgid "Cannot locate Windows PowerShell."
+msgstr "Windows PowerShell을 찾을 수 없습니다."
+
+msgid "Check highlighted"
+msgstr "강조된 항목 체크"
+
+msgid "Checking for a yt-dlp update…"
+msgstr "yt-dlp 업데이트 확인 중…"
+
+msgid "Checking mirror speeds (HTTPS)"
+msgstr "미러 서버 속도 확인 중 (HTTPS)"
+
+msgid "Choose a non-empty file with a known size to test speeds."
+msgstr "속도를 테스트하려면 크기를 알 수 있는 비어 있지 않은 파일을 선택하세요."
+
+msgid "Choose an absolute download folder."
+msgstr "다운로드 폴더를 절대 경로로 지정하세요."
+
+msgid "Clear History"
+msgstr "기록 지우기"
+
+msgid "Clear selection"
+msgstr "선택 해제"
+
+msgid "Close"
+msgstr "닫기"
+
+msgid "Complete"
+msgstr "완료"
+
+msgid "Connecting"
+msgstr "연결 중"
+
+msgid "Connections per file"
+msgstr "파일당 연결 수"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
+msgstr "쿠키를 사용하면 이 사이트에서 브라우저의 로그인 상태를 이용합니다. 신뢰할 수 있는 사이트에서만 사용하세요. Firefox를 권장합니다. Windows의 Chrome과 Edge는 다른 앱의 쿠키 읽기를 차단하는 경우가 많습니다. 다운로드하기 전에 브라우저를 닫으세요."
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. The Flatpak cannot see browser profiles until you allow it read access to them, for example ~/.mozilla with Flatseal."
+msgstr "쿠키를 사용하면 이 사이트에서 브라우저의 로그인 상태를 이용합니다. 신뢰할 수 있는 사이트에서만 사용하세요. Flatpak에서 브라우저 프로필을 읽으려면 접근 권한을 허용해야 합니다. 예를 들어 Flatseal에서 ~/.mozilla의 읽기 권한을 허용하세요."
+
+#, c-format
+msgid "Could not start video tools: %s"
+msgstr "동영상 도구를 시작할 수 없습니다: %s"
+
+msgid "Dark"
+msgstr "어둡게"
+
+msgid "Download Again"
+msgstr "다시 다운로드"
+
+msgid "Download folder"
+msgstr "다운로드 폴더"
+
+msgid "Downloading"
+msgstr "다운로드 중"
+
+msgid "Failed"
+msgstr "실패"
+
+msgid "File"
+msgstr "파일"
+
+msgid "File downloads"
+msgstr "파일 다운로드"
+
+msgid "Filter by filename…"
+msgstr "파일 이름으로 필터링…"
+
+msgid "Finalizing"
+msgstr "마무리 중"
+
+msgid "Finished"
+msgstr "완료됨"
+
+msgid "History"
+msgstr "기록"
+
+msgid "Install / repair tools"
+msgstr "도구 설치 / 복구"
+
+msgid "Install the video tools first."
+msgstr "먼저 동영상 도구를 설치하세요."
+
+msgid "Install video tools from Add > Video first."
+msgstr "먼저 추가 > 동영상에서 동영상 도구를 설치하세요."
+
+msgid "Install video tools once to enable downloads (about 250 MiB). No admin access needed."
+msgstr "동영상 도구를 한 번 설치하면 다운로드할 수 있습니다 (약 250 MiB). 관리자 권한은 필요하지 않습니다."
+
+msgid "Installing verified video tools…"
+msgstr "검증된 동영상 도구 설치 중…"
+
+msgid "Invalid file selection."
+msgstr "파일 선택이 올바르지 않습니다."
+
+msgid "Language"
+msgstr "언어"
+
+msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
+msgstr "연령 확인 등의 제한을 통과하기 위해 yt-dlp가 브라우저에서 이 사이트의 쿠키를 읽도록 허용합니다. 브라우저의 로그인 상태로 작동합니다."
+
+msgid "Light"
+msgstr "밝게"
+
+msgid "Load"
+msgstr "불러오기"
+
+msgid "Load files"
+msgstr "파일 불러오기"
+
+msgid "Loading files…"
+msgstr "파일 불러오는 중…"
+
+msgid "MKV (original formats)"
+msgstr "MKV (원본 형식)"
+
+msgid "MKV: best available source codecs. Your resolution limit still applies.\nSeparate video and audio are merged; a combined source may keep its original container."
+msgstr "MKV: 사용 가능한 최고 품질의 원본 코덱을 사용합니다. 해상도 제한은 그대로 적용됩니다.\n분리된 동영상과 오디오는 합쳐지며, 이미 합쳐진 소스는 원래 컨테이너를 유지할 수 있습니다."
+
+msgid "MP4 (iPhone compatible)"
+msgstr "MP4 (iPhone 호환)"
+
+msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
+msgstr "MP4: iPhone 재생을 위한 H.264 동영상과 AAC 오디오입니다. 호환되지 않는 코덱으로 대체하지 않습니다.\n해상도 제한은 그대로 적용되며, 호환되는 스트림이 없으면 오류가 표시됩니다."
+
+msgid "Name"
+msgstr "이름"
+
+msgid "Open folder"
+msgstr "폴더 열기"
+
+msgid "Operation cancelled. You can retry."
+msgstr "작업이 취소되었습니다. 다시 시도할 수 있습니다."
+
+msgid "Partial download retained"
+msgstr "부분 다운로드가 보관됨"
+
+msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
+msgstr "위에 URL을 붙여 넣으세요. 다운로드에 추가하기 전에 원하는 파일을 선택하세요."
+
+msgid "Paste a YouTube or other supported video URL"
+msgstr "YouTube 또는 지원되는 다른 동영상 사이트의 URL을 붙여 넣으세요"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgstr "파일, 릴리스, 패키지, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org 링크 또는 archive.org 항목 식별자를 붙여 넣으세요"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgstr "파일, 릴리스, 패키지, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org 또는 동영상 링크를 붙여 넣으세요"
+
+msgid "Paste a link, choose a quality, then add it to downloads."
+msgstr "링크를 붙여 넣고 품질을 선택한 다음 다운로드에 추가하세요."
+
+msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgstr "올바른 HTTP 또는 HTTPS 파일, archive.org 또는 동영상 URL을 붙여 넣으세요."
+
+msgid "Paste a valid HTTP or HTTPS video URL."
+msgstr "올바른 HTTP 또는 HTTPS 동영상 URL을 붙여 넣으세요."
+
+msgid "Pause all"
+msgstr "모두 일시 중지"
+
+msgid "Pause video downloads in the main window before updating tools."
+msgstr "도구를 업데이트하기 전에 기본 창에서 동영상 다운로드를 일시 중지하세요."
+
+msgid "Paused"
+msgstr "일시 중지됨"
+
+msgid "Pausing…"
+msgstr "일시 중지 중…"
+
+msgid "Processing…"
+msgstr "처리 중…"
+
+msgid "Progress"
+msgstr "진행률"
+
+msgid "Quality"
+msgstr "품질"
+
+msgid "Queue"
+msgstr "대기열"
+
+msgid "Queued"
+msgstr "대기 중"
+
+msgid "Re&move from history\tDel"
+msgstr "기록에서 제거(&M)\tDel"
+
+msgid "Re&move from list\tDel"
+msgstr "목록에서 제거(&M)\tDel"
+
+msgid "Re&try"
+msgstr "다시 시도(&T)"
+
+msgid "Remove"
+msgstr "제거"
+
+msgid "Remove All"
+msgstr "모두 제거"
+
+msgid "Resume all"
+msgstr "모두 다시 시작"
+
+msgid "Retrying after connection error"
+msgstr "연결 오류 후 다시 시도 중"
+
+msgid "Same as system"
+msgstr "시스템 설정 따름"
+
+msgid "Save as MP3 (best quality)"
+msgstr "MP3로 저장 (최고 품질)"
+
+msgid "Save to"
+msgstr "저장 위치"
+
+msgid "Search downloads"
+msgstr "다운로드 검색"
+
+msgid "Select all"
+msgstr "모두 선택"
+
+msgid "Select or check a file to measure its server speeds."
+msgstr "서버 속도를 측정할 파일을 선택하거나 체크하세요."
+
+msgid "Selected"
+msgstr "선택됨"
+
+msgid "Selection"
+msgstr "선택"
+
+msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
+msgstr "실제 Chrome의 네트워크 지문으로 요청을 보냅니다. Cloudflare 등의 브라우저 확인 페이지를 통과하는 데 도움이 됩니다."
+
+msgid "Server"
+msgstr "서버"
+
+msgid "Server speeds"
+msgstr "서버 속도"
+
+msgid "Site access"
+msgstr "사이트 접근"
+
+msgid "Size"
+msgstr "크기"
+
+msgid "Speed"
+msgstr "속도"
+
+msgid "Speed test failed."
+msgstr "속도 테스트에 실패했습니다."
+
+msgid "Speed tests compare archive.org servers. This source has a single route."
+msgstr "속도 테스트는 archive.org 서버를 비교합니다. 이 소스에는 경로가 하나뿐입니다."
+
+msgid "Standard server route"
+msgstr "기본 서버 경로"
+
+msgid "Starting parallel download"
+msgstr "병렬 다운로드 시작 중"
+
+msgid "Starting single connection"
+msgstr "단일 연결 시작 중"
+
+msgid "Startup failed"
+msgstr "시작 실패"
+
+msgid "Status"
+msgstr "상태"
+
+msgid "Stop"
+msgstr "중지"
+
+msgid "Stopped. Use the same URL, quality and folder to resume."
+msgstr "중지되었습니다. 같은 URL, 품질 및 폴더를 사용하면 이어서 받을 수 있습니다."
+
+msgid "Stopping dialog tasks before closing…"
+msgstr "종료 전에 대화 상자 작업을 중지하는 중…"
+
+msgid "Stopping downloads and saving history…"
+msgstr "다운로드를 중지하고 기록을 저장하는 중…"
+
+msgid "Stopping video helpers before closing…"
+msgstr "종료 전에 동영상 도구를 중지하는 중…"
+
+msgid "Stopping video helpers… partial downloads will be kept."
+msgstr "동영상 도구를 중지하는 중… 부분 다운로드는 보관됩니다."
+
+msgid "Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)"
+msgstr "Ko-fi에서 Skein Downloader 후원하기 (브라우저에서 ko-fi.com/timcottrill을 엽니다)"
+
+msgid "Support me on Ko-fi"
+msgstr "Ko-fi에서 후원하기"
+
+msgid "Test speeds"
+msgstr "속도 테스트"
+
+msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr "서버 속도를 테스트하는 중… 소스당 최대 256 KiB를 사용합니다. 파일은 저장하지 않습니다."
+
+msgid "The new language applies the next time Skein Downloader starts."
+msgstr "새 언어는 Skein Downloader를 다음에 시작할 때 적용됩니다."
+
+msgid "The new theme applies the next time Skein Downloader starts."
+msgstr "새 테마는 Skein Downloader를 다음에 시작할 때 적용됩니다."
+
+msgid "Theme"
+msgstr "테마"
+
+msgid "Transfer speed in bytes per second"
+msgstr "초당 바이트 단위의 전송 속도"
+
+msgid "Try as browser"
+msgstr "브라우저처럼 요청"
+
+msgid "Trying another HTTPS source"
+msgstr "다른 HTTPS 소스 시도 중"
+
+msgid "Type"
+msgstr "유형"
+
+msgid "Uncheck highlighted"
+msgstr "강조된 항목 체크 해제"
+
+msgid "Unexpected error while managing video tools."
+msgstr "동영상 도구를 관리하는 중에 예기치 않은 오류가 발생했습니다."
+
+msgid "Unknown"
+msgstr "알 수 없음"
+
+msgid "Up to 1080p"
+msgstr "최대 1080p"
+
+msgid "Up to 1440p"
+msgstr "최대 1440p"
+
+msgid "Up to 2160p (4K)"
+msgstr "최대 2160p (4K)"
+
+msgid "Up to 360p"
+msgstr "최대 360p"
+
+msgid "Up to 480p"
+msgstr "최대 480p"
+
+msgid "Up to 720p"
+msgstr "최대 720p"
+
+msgid "Update yt-dlp"
+msgstr "yt-dlp 업데이트"
+
+msgid "Use cookies from"
+msgstr "쿠키를 가져올 브라우저"
+
+msgid "Verifying SHA-1"
+msgstr "SHA-1 검증 중"
+
+msgid "Verifying SHA-256"
+msgstr "SHA-256 검증 중"
+
+msgid "Video"
+msgstr "동영상"
+
+msgid "Video URL"
+msgstr "동영상 URL"
+
+msgid "Video downloads"
+msgstr "동영상 다운로드"
+
+msgid "Video format"
+msgstr "동영상 형식"
+
+msgid "Video tools are bundled with this app. Update or reinstall the package to repair them."
+msgstr "동영상 도구는 이 앱에 포함되어 있습니다. 복구하려면 패키지를 업데이트하거나 다시 설치하세요."
+
+msgid "Video tools are busy. Wait for them to finish, then load the new link."
+msgstr "동영상 도구가 사용 중입니다. 완료될 때까지 기다린 다음 새 링크를 불러오세요."
+
+msgid "Video tools are provided by this app package. Update or reinstall the app to repair them."
+msgstr "동영상 도구는 이 앱 패키지에서 제공됩니다. 복구하려면 앱을 업데이트하거나 다시 설치하세요."
+
+msgid "Video tools are ready. Update yt-dlp if a site stops working."
+msgstr "동영상 도구가 준비되었습니다. 사이트가 작동하지 않으면 yt-dlp를 업데이트하세요."
+
+msgid "Video tools ready."
+msgstr "동영상 도구가 준비되었습니다."
+
+msgid "Working…"
+msgstr "작업 중…"
+
+msgid "yt-dlp update finished."
+msgstr "yt-dlp 업데이트가 완료되었습니다."

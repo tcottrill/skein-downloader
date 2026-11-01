@@ -8,6 +8,10 @@
 ; (yt-dlp, Deno, FFmpeg) with install-video-tools.ps1, which checks each file against the
 ; SHA-256 that GitHub publishes for it, and installs nothing if that fails. The wizard
 ; lists what is downloaded and from where before anything is fetched.
+;
+; Setup speaks the app's languages: it follows the Windows display language and asks only
+; when that is not one of them. Inno Setup's own text comes from its bundled translations
+; or languages\ (see the README there); this script's text comes from messages\<code>.isl.
 
 #define Root AddBackslash(SourcePath) + "..\.."
 #define AppExe Root + "\dist\skein-downloader.exe"
@@ -41,9 +45,26 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
+ShowLanguageDialog=auto
+
+[Languages]
+; In the app's order (src\wx\localization.h). Portuguese also serves Brazilian Portuguese.
+Name: "english"; MessagesFile: "compiler:Default.isl,messages\en.isl"
+Name: "chinesesimplified"; MessagesFile: "languages\ChineseSimplified.isl,messages\zh_CN.isl"
+Name: "chinesetraditional"; MessagesFile: "languages\ChineseTraditional.isl,messages\zh_TW.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl,messages\de.isl"
+Name: "vietnamese"; MessagesFile: "languages\Vietnamese.isl,messages\vi.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl,messages\ru.isl"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl,messages\ja.isl"
+Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl,messages\ko.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl,messages\fr.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl,messages\it.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl,messages\es.isl"
+Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl,messages\pt.isl"
+Name: "hindi"; MessagesFile: "languages\Hindi.islu,messages\hi.isl"
 
 [Tasks]
-Name: desktopicon; Description: "Create a &desktop shortcut"; Flags: unchecked
+Name: desktopicon; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 
 [InstallDelete]
 ; A fresh set of video tools replaces the old one on every install or upgrade.
@@ -65,7 +86,7 @@ Name: "{autoprograms}\Skein Downloader"; Filename: "{app}\skein-downloader.exe"
 Name: "{autodesktop}\Skein Downloader"; Filename: "{app}\skein-downloader.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\skein-downloader.exe"; Description: "Start Skein Downloader"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\skein-downloader.exe"; Description: "{cm:LaunchProgram,Skein Downloader}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 ; yt-dlp updates itself and the program can reinstall the tools, so this folder holds
@@ -73,42 +94,43 @@ Filename: "{app}\skein-downloader.exe"; Description: "Start Skein Downloader"; F
 Type: filesandordirs; Name: "{app}\video-tools"
 
 [Code]
-const
-  DownloadList =
-    'yt-dlp, the video downloader (yt-dlp.exe, about 22 MB)' + #13#10 +
-    '    from https://github.com/yt-dlp/yt-dlp/releases/latest' + #13#10 +
-    '    License: Unlicense; the executable contains other components under their own licenses' + #13#10 +
-    '' + #13#10 +
-    'Deno, the JavaScript runtime yt-dlp needs for some sites' + #13#10 +
-    '(deno-x86_64-pc-windows-msvc.zip, about 40 MB; deno.exe is kept)' + #13#10 +
-    '    from https://github.com/denoland/deno/releases/latest' + #13#10 +
-    '    License: MIT' + #13#10 +
-    '' + #13#10 +
-    'FFmpeg and FFprobe, which join and convert audio and video' + #13#10 +
-    '(ffmpeg-master-latest-win64-gpl.zip, about 190 MB; ffmpeg.exe and ffprobe.exe are kept)' + #13#10 +
-    '    from https://github.com/yt-dlp/FFmpeg-Builds/releases/latest' + #13#10 +
-    '    License: GPL version 3' + #13#10 +
-    '' + #13#10 +
-    'Their license texts, from https://raw.githubusercontent.com' + #13#10 +
-    '' + #13#10 +
-    'Total download: about 255 MB. Each file is checked against the SHA-256 checksum ' +
-    'GitHub publishes for it before it is used.';
-
 var
   ProgressPage: TOutputProgressWizardPage;
   Downloaded: Boolean;
 
+// The text below comes from messages\<code>.isl for the Setup language. Pascal Script reads
+// an empty [] as a set, so FmtMessage is used only for messages with %1 arguments.
+
+// What Setup downloads, for the first page. File names, addresses and license names stay
+// as they are in every language.
+function DownloadList: String;
+var
+  NewLine, Indent: String;
+begin
+  NewLine := #13#10;
+  Indent := '    ';
+  Result :=
+    CustomMessage('ToolYtDlp') + NewLine +
+    Indent + FmtMessage(CustomMessage('DownloadFrom'), ['https://github.com/yt-dlp/yt-dlp/releases/latest']) + NewLine +
+    Indent + FmtMessage(CustomMessage('DownloadLicense'), [CustomMessage('LicenseYtDlp')]) + NewLine + NewLine +
+    CustomMessage('ToolDeno') + NewLine +
+    Indent + FmtMessage(CustomMessage('DownloadFrom'), ['https://github.com/denoland/deno/releases/latest']) + NewLine +
+    Indent + FmtMessage(CustomMessage('DownloadLicense'), ['MIT']) + NewLine + NewLine +
+    CustomMessage('ToolFFmpeg') + NewLine +
+    Indent + FmtMessage(CustomMessage('DownloadFrom'), ['https://github.com/yt-dlp/FFmpeg-Builds/releases/latest']) + NewLine +
+    Indent + FmtMessage(CustomMessage('DownloadLicense'), [CustomMessage('LicenseGpl3')]) + NewLine + NewLine +
+    FmtMessage(CustomMessage('LicenseTexts'), ['https://raw.githubusercontent.com']) + NewLine + NewLine +
+    CustomMessage('DownloadTotal');
+end;
+
 procedure InitializeWizard;
 begin
-  CreateOutputMsgMemoPage(wpWelcome,
-    'Internet connection required',
-    'Setup downloads the video tools Skein Downloader uses.',
-    'These programs are not part of Skein Downloader. Setup downloads their latest ' +
-    'releases from GitHub when you click Install, and stops without installing anything ' +
-    'if it cannot. Setup downloads:',
-    DownloadList);
-  ProgressPage := CreateOutputProgressPage('Downloading video tools',
-    'Setup is downloading yt-dlp, Deno and FFmpeg from GitHub. This can take a few minutes.');
+  // Inno Setup 6.7 leaves too little room left of the task check boxes above 100% DPI,
+  // so their left edge is cut off; this margin shows them whole.
+  WizardForm.TasksList.Offset := ScaleX(4);
+  CreateOutputMsgMemoPage(wpWelcome, CustomMessage('InternetTitle'), CustomMessage('InternetSubtitle'),
+    CustomMessage('InternetText'), DownloadList);
+  ProgressPage := CreateOutputProgressPage(CustomMessage('ProgressTitle'), CustomMessage('ProgressSubtitle'));
 end;
 
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
@@ -117,10 +139,10 @@ begin
   Result := MemoDirInfo + NewLine + NewLine;
   if MemoTasksInfo <> '' then
     Result := Result + MemoTasksInfo + NewLine + NewLine;
-  Result := Result + 'Downloads from GitHub (about 255 MB):' + NewLine +
-    Space + 'yt-dlp.exe from github.com/yt-dlp/yt-dlp' + NewLine +
-    Space + 'deno-x86_64-pc-windows-msvc.zip from github.com/denoland/deno' + NewLine +
-    Space + 'ffmpeg-master-latest-win64-gpl.zip from github.com/yt-dlp/FFmpeg-Builds';
+  Result := Result + CustomMessage('ReadyDownloads') + NewLine +
+    Space + FmtMessage(CustomMessage('ReadyFrom'), ['yt-dlp.exe', 'github.com/yt-dlp/yt-dlp']) + NewLine +
+    Space + FmtMessage(CustomMessage('ReadyFrom'), ['deno-x86_64-pc-windows-msvc.zip', 'github.com/denoland/deno']) + NewLine +
+    Space + FmtMessage(CustomMessage('ReadyFrom'), ['ffmpeg-master-latest-win64-gpl.zip', 'github.com/yt-dlp/FFmpeg-Builds']);
 end;
 
 // The last line install-video-tools.ps1 has written so far, or ''.
@@ -153,7 +175,7 @@ begin
   Log := ExpandConstant('{tmp}\install-video-tools.log');
   DelTree(ExpandConstant('{tmp}\video-tools'), True, True, True);
   DeleteFile(Log);
-  ProgressPage.SetText('Connecting to GitHub...', '');
+  ProgressPage.SetText(CustomMessage('Connecting'), '');
   ProgressPage.SetProgress(0, 10);
   ProgressPage.Show;
   try
@@ -161,7 +183,7 @@ begin
         '/c ""' + ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe') +
         '" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + Script +
         '" > "' + Log + '" 2>&1"', '', SW_HIDE, ewNoWait, ResultCode) then begin
-      SuppressibleMsgBox('Setup could not start Windows PowerShell to download the video tools.' + #13#10#13#10 +
+      SuppressibleMsgBox(CustomMessage('PowerShellFailed') + #13#10#13#10 +
         SysErrorMessage(ResultCode), mbError, MB_OK, IDOK);
       Exit;
     end;
@@ -176,24 +198,22 @@ begin
         Shown := Line;
         if Step < 9 then
           Step := Step + 1;
-        ProgressPage.SetText(Line, 'Files are checked against their published SHA-256 checksums.');
+        // The script's own lines (which file, how large) are shown as it writes them, in English.
+        ProgressPage.SetText(Line, CustomMessage('ChecksumNote'));
       end;
       ProgressPage.SetProgress(Step, 10);
       if Pos('Video tools installed', Line) = 1 then begin
         Result := FileExists(ExpandConstant('{tmp}\video-tools\current.txt'));
         if not Result then
-          SuppressibleMsgBox('The video tools were downloaded but are incomplete. Click Install to try again.',
-            mbError, MB_OK, IDOK);
+          SuppressibleMsgBox(CustomMessage('DownloadIncomplete'), mbError, MB_OK, IDOK);
         Exit;
       end;
       if Pos('Installation failed', Line) = 1 then begin
-        SuppressibleMsgBox('Setup could not download the video tools:' + #13#10#13#10 + Line + #13#10#13#10 +
-          'Check the internet connection, then click Install to try again.', mbError, MB_OK, IDOK);
+        SuppressibleMsgBox(FmtMessage(CustomMessage('DownloadFailed'), [Line]), mbError, MB_OK, IDOK);
         Exit;
       end;
     until Ticks > 30 * 60 * 4;
-    SuppressibleMsgBox('Downloading the video tools took longer than 30 minutes and was stopped. ' +
-      'Check the internet connection, then click Install to try again.', mbError, MB_OK, IDOK);
+    SuppressibleMsgBox(CustomMessage('DownloadTimeout'), mbError, MB_OK, IDOK);
   finally
     ProgressPage.Hide;
   end;
@@ -216,6 +236,6 @@ begin
   if not Downloaded then begin
     Downloaded := DownloadVideoTools;
     if not Downloaded then
-      Result := 'The video tools (yt-dlp, Deno, FFmpeg) could not be downloaded from GitHub.';
+      Result := CustomMessage('DownloadNotPossible');
   end;
 end;

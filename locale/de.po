@@ -1,0 +1,475 @@
+# Skein Downloader translations. GPL-3.0-or-later.
+msgid ""
+msgstr "Project-Id-Version: Skein Downloader\nLanguage: de\nContent-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid " + unknown sizes"
+msgstr " + unbekannte Größen"
+
+#, c-format
+msgid "%d / 4 downloading  ·  %d waiting  ·  %d completed"
+msgstr "%d / 4 werden heruntergeladen  ·  %d warten  ·  %d abgeschlossen"
+
+#, c-format
+msgid "%zu selected / %zu files / "
+msgstr "%zu ausgewählt / %zu Dateien / "
+
+msgid "&Open folder"
+msgstr "&Ordner öffnen"
+
+msgid "&Pause"
+msgstr "&Pausieren"
+
+msgid "&Resume"
+msgstr "&Fortsetzen"
+
+msgid "+ File"
+msgstr "+ Datei"
+
+msgid "+ Video"
+msgstr "+ Video"
+
+msgid "About"
+msgstr "Über"
+
+msgid "Active"
+msgstr "Aktiv"
+
+msgid "Add to downloads"
+msgstr "Zu Downloads hinzufügen"
+
+#, c-format
+msgid "Added %zu downloads. Existing files and duplicate queue entries were kept."
+msgstr "%zu Downloads hinzugefügt. Vorhandene Dateien und doppelte Warteschlangeneinträge wurden beibehalten."
+
+msgid "Added to downloads."
+msgstr "Zu Downloads hinzugefügt."
+
+msgid "All"
+msgstr "Alle"
+
+msgid "All paused  ·  "
+msgstr "Alle pausiert  ·  "
+
+msgid "Already in downloads. Resume it from the main window."
+msgstr "Bereits in den Downloads. Im Hauptfenster fortsetzen."
+
+msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr "Ein quelloffener Downloadmanager für Dateien und Videos.\nNoch in Entwicklung."
+
+msgid "Assembling"
+msgstr "Zusammensetzen"
+
+msgid "Audio only"
+msgstr "Nur Audio"
+
+msgid "Automatic (fastest sample)"
+msgstr "Automatisch (schnellste Messung)"
+
+msgid "Best available"
+msgstr "Beste verfügbare Qualität"
+
+msgid "Best available audio, kept in its original audio format.\nChoose MP3 for a widely compatible audio file."
+msgstr "Bestes verfügbares Audio im Originalformat.\nFür eine breit kompatible Audiodatei MP3 wählen."
+
+msgid "Best available audio, saved as MP3 using the highest VBR quality setting.\nConversion cannot improve the source audio quality."
+msgstr "Bestes verfügbares Audio, als MP3 mit höchster VBR-Qualität gespeichert.\nEine Konvertierung kann die Qualität der Quelle nicht verbessern."
+
+msgid "Browse…"
+msgstr "Durchsuchen…"
+
+msgid "Cannot add files"
+msgstr "Dateien können nicht hinzugefügt werden"
+
+msgid "Cannot locate Windows PowerShell."
+msgstr "Windows PowerShell wurde nicht gefunden."
+
+msgid "Check highlighted"
+msgstr "Markierte ankreuzen"
+
+msgid "Checking for a yt-dlp update…"
+msgstr "Suche nach yt-dlp-Updates…"
+
+msgid "Checking mirror speeds (HTTPS)"
+msgstr "Spiegelserver-Geschwindigkeiten prüfen (HTTPS)"
+
+msgid "Choose a non-empty file with a known size to test speeds."
+msgstr "Zum Geschwindigkeitstest eine nicht leere Datei mit bekannter Größe wählen."
+
+msgid "Choose an absolute download folder."
+msgstr "Einen absoluten Pfad als Downloadordner wählen."
+
+msgid "Clear History"
+msgstr "Verlauf löschen"
+
+msgid "Clear selection"
+msgstr "Auswahl aufheben"
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Complete"
+msgstr "Abgeschlossen"
+
+msgid "Connecting"
+msgstr "Verbindung wird hergestellt"
+
+msgid "Connections per file"
+msgstr "Verbindungen pro Datei"
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
+msgstr "Cookies verwenden Ihre Browser-Anmeldung für diese Website. Nur bei vertrauenswürdigen Websites verwenden. Firefox funktioniert am besten: Chrome und Edge unter Windows verhindern oft, dass andere Apps ihre Cookies lesen. Vor dem Download den Browser schließen."
+
+msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. The Flatpak cannot see browser profiles until you allow it read access to them, for example ~/.mozilla with Flatseal."
+msgstr "Cookies verwenden Ihre Browser-Anmeldung für diese Website. Nur bei vertrauenswürdigen Websites verwenden. Die Flatpak-App benötigt Lesezugriff auf Browserprofile, zum Beispiel auf ~/.mozilla über Flatseal."
+
+#, c-format
+msgid "Could not start video tools: %s"
+msgstr "Videowerkzeuge konnten nicht gestartet werden: %s"
+
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "Download Again"
+msgstr "Erneut herunterladen"
+
+msgid "Download folder"
+msgstr "Downloadordner"
+
+msgid "Downloading"
+msgstr "Wird heruntergeladen"
+
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
+msgid "File"
+msgstr "Datei"
+
+msgid "File downloads"
+msgstr "Dateidownloads"
+
+msgid "Filter by filename…"
+msgstr "Nach Dateinamen filtern…"
+
+msgid "Finalizing"
+msgstr "Abschließen"
+
+msgid "Finished"
+msgstr "Fertig"
+
+msgid "History"
+msgstr "Verlauf"
+
+msgid "Install / repair tools"
+msgstr "Werkzeuge installieren / reparieren"
+
+msgid "Install the video tools first."
+msgstr "Zuerst die Videowerkzeuge installieren."
+
+msgid "Install video tools from Add > Video first."
+msgstr "Zuerst die Videowerkzeuge unter Hinzufügen > Video installieren."
+
+msgid "Install video tools once to enable downloads (about 250 MiB). No admin access needed."
+msgstr "Videowerkzeuge einmalig installieren, um Downloads zu ermöglichen (ca. 250 MiB). Keine Administratorrechte erforderlich."
+
+msgid "Installing verified video tools…"
+msgstr "Geprüfte Videowerkzeuge werden installiert…"
+
+msgid "Invalid file selection."
+msgstr "Ungültige Dateiauswahl."
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
+msgstr "Erlaubt yt-dlp, Cookies dieser Website aus Ihrem Browser für Altersprüfungen oder andere Zugangsbeschränkungen zu lesen. Verwendet Ihre Browser-Anmeldung."
+
+msgid "Light"
+msgstr "Hell"
+
+msgid "Load"
+msgstr "Laden"
+
+msgid "Load files"
+msgstr "Dateien laden"
+
+msgid "Loading files…"
+msgstr "Dateien werden geladen…"
+
+msgid "MKV (original formats)"
+msgstr "MKV (Originalformate)"
+
+msgid "MKV: best available source codecs. Your resolution limit still applies.\nSeparate video and audio are merged; a combined source may keep its original container."
+msgstr "MKV: beste verfügbare Quellcodecs. Ihre Auflösungsgrenze gilt weiterhin.\nGetrennte Video- und Audiospuren werden zusammengeführt; eine kombinierte Quelle kann ihren ursprünglichen Container behalten."
+
+msgid "MP4 (iPhone compatible)"
+msgstr "MP4 (iPhone-kompatibel)"
+
+msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
+msgstr "MP4: H.264-Video + AAC-Audio für die Wiedergabe auf dem iPhone. Kein Rückgriff auf inkompatible Codecs.\nIhre Auflösungsgrenze gilt weiterhin; fehlen kompatible Streams, wird ein Fehler gemeldet."
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Open folder"
+msgstr "Ordner öffnen"
+
+msgid "Operation cancelled. You can retry."
+msgstr "Vorgang abgebrochen. Sie können es erneut versuchen."
+
+msgid "Partial download retained"
+msgstr "Teildownload beibehalten"
+
+msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
+msgstr "Oben eine URL einfügen. Vor dem Hinzufügen einen, alle oder bestimmte Dateien auswählen."
+
+msgid "Paste a YouTube or other supported video URL"
+msgstr "Eine YouTube- oder andere unterstützte Video-URL einfügen"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgstr "Einen Datei-, Release-, Paket-, MediaFire-, Google-Drive-, OneDrive-, WeTransfer- oder archive.org-Link oder eine archive.org-Elementkennung einfügen"
+
+msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgstr "Einen Datei-, Release-, Paket-, MediaFire-, Google-Drive-, OneDrive-, WeTransfer-, archive.org- oder Videolink einfügen"
+
+msgid "Paste a link, choose a quality, then add it to downloads."
+msgstr "Einen Link einfügen, die Qualität wählen und zu Downloads hinzufügen."
+
+msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgstr "Eine gültige HTTP- oder HTTPS-URL für eine Datei, archive.org oder ein Video einfügen."
+
+msgid "Paste a valid HTTP or HTTPS video URL."
+msgstr "Eine gültige HTTP- oder HTTPS-Video-URL einfügen."
+
+msgid "Pause all"
+msgstr "Alle pausieren"
+
+msgid "Pause video downloads in the main window before updating tools."
+msgstr "Vor dem Aktualisieren der Werkzeuge die Videodownloads im Hauptfenster pausieren."
+
+msgid "Paused"
+msgstr "Pausiert"
+
+msgid "Pausing…"
+msgstr "Wird pausiert…"
+
+msgid "Processing…"
+msgstr "Verarbeitung…"
+
+msgid "Progress"
+msgstr "Fortschritt"
+
+msgid "Quality"
+msgstr "Qualität"
+
+msgid "Queue"
+msgstr "Warteschlange"
+
+msgid "Queued"
+msgstr "In Warteschlange"
+
+msgid "Re&move from history\tDel"
+msgstr "Aus Verlauf &entfernen\tDel"
+
+msgid "Re&move from list\tDel"
+msgstr "Aus Liste &entfernen\tDel"
+
+msgid "Re&try"
+msgstr "Erneut &versuchen"
+
+msgid "Remove"
+msgstr "Entfernen"
+
+msgid "Remove All"
+msgstr "Alle entfernen"
+
+msgid "Resume all"
+msgstr "Alle fortsetzen"
+
+msgid "Retrying after connection error"
+msgstr "Neuer Versuch nach Verbindungsfehler"
+
+msgid "Same as system"
+msgstr "Wie im System"
+
+msgid "Save as MP3 (best quality)"
+msgstr "Als MP3 speichern (beste Qualität)"
+
+msgid "Save to"
+msgstr "Speichern unter"
+
+msgid "Search downloads"
+msgstr "Downloads durchsuchen"
+
+msgid "Select all"
+msgstr "Alle auswählen"
+
+msgid "Select or check a file to measure its server speeds."
+msgstr "Eine Datei auswählen oder ankreuzen, um ihre Servergeschwindigkeiten zu messen."
+
+msgid "Selected"
+msgstr "Ausgewählt"
+
+msgid "Selection"
+msgstr "Auswahl"
+
+msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
+msgstr "Sendet Anfragen mit einem echten Chrome-Netzwerkfingerabdruck. Hilft bei Cloudflare und anderen Seiten zur Browserprüfung."
+
+msgid "Server"
+msgstr "Server"
+
+msgid "Server speeds"
+msgstr "Servergeschwindigkeiten"
+
+msgid "Site access"
+msgstr "Website-Zugriff"
+
+msgid "Size"
+msgstr "Größe"
+
+msgid "Speed"
+msgstr "Geschwindigkeit"
+
+msgid "Speed test failed."
+msgstr "Geschwindigkeitstest fehlgeschlagen."
+
+msgid "Speed tests compare archive.org servers. This source has a single route."
+msgstr "Geschwindigkeitstests vergleichen archive.org-Server. Diese Quelle hat nur eine Route."
+
+msgid "Standard server route"
+msgstr "Standard-Serverroute"
+
+msgid "Starting parallel download"
+msgstr "Paralleler Download wird gestartet"
+
+msgid "Starting single connection"
+msgstr "Einzelverbindung wird gestartet"
+
+msgid "Startup failed"
+msgstr "Start fehlgeschlagen"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Stop"
+msgstr "Stoppen"
+
+msgid "Stopped. Use the same URL, quality and folder to resume."
+msgstr "Gestoppt. Zum Fortsetzen dieselbe URL, Qualität und denselben Ordner verwenden."
+
+msgid "Stopping dialog tasks before closing…"
+msgstr "Dialogaufgaben werden vor dem Schließen gestoppt…"
+
+msgid "Stopping downloads and saving history…"
+msgstr "Downloads werden gestoppt und Verlauf gespeichert…"
+
+msgid "Stopping video helpers before closing…"
+msgstr "Video-Hilfsprogramme werden vor dem Schließen gestoppt…"
+
+msgid "Stopping video helpers… partial downloads will be kept."
+msgstr "Video-Hilfsprogramme werden gestoppt… Teildownloads bleiben erhalten."
+
+msgid "Support Skein Downloader on Ko-fi (opens ko-fi.com/timcottrill in your browser)"
+msgstr "Skein Downloader auf Ko-fi unterstützen (öffnet ko-fi.com/timcottrill im Browser)"
+
+msgid "Support me on Ko-fi"
+msgstr "Auf Ko-fi unterstützen"
+
+msgid "Test speeds"
+msgstr "Geschwindigkeiten testen"
+
+msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr "Servergeschwindigkeiten werden getestet… bis zu 256 KiB pro Quelle. Es wird keine Datei gespeichert."
+
+msgid "The new language applies the next time Skein Downloader starts."
+msgstr "Die neue Sprache wird beim nächsten Start von Skein Downloader angewendet."
+
+msgid "The new theme applies the next time Skein Downloader starts."
+msgstr "Das neue Design wird beim nächsten Start von Skein Downloader angewendet."
+
+msgid "Theme"
+msgstr "Design"
+
+msgid "Transfer speed in bytes per second"
+msgstr "Übertragungsgeschwindigkeit in Bytes pro Sekunde"
+
+msgid "Try as browser"
+msgstr "Als Browser versuchen"
+
+msgid "Trying another HTTPS source"
+msgstr "Andere HTTPS-Quelle wird versucht"
+
+msgid "Type"
+msgstr "Typ"
+
+msgid "Uncheck highlighted"
+msgstr "Markierte abwählen"
+
+msgid "Unexpected error while managing video tools."
+msgstr "Unerwarteter Fehler beim Verwalten der Videowerkzeuge."
+
+msgid "Unknown"
+msgstr "Unbekannt"
+
+msgid "Up to 1080p"
+msgstr "Bis zu 1080p"
+
+msgid "Up to 1440p"
+msgstr "Bis zu 1440p"
+
+msgid "Up to 2160p (4K)"
+msgstr "Bis zu 2160p (4K)"
+
+msgid "Up to 360p"
+msgstr "Bis zu 360p"
+
+msgid "Up to 480p"
+msgstr "Bis zu 480p"
+
+msgid "Up to 720p"
+msgstr "Bis zu 720p"
+
+msgid "Update yt-dlp"
+msgstr "yt-dlp aktualisieren"
+
+msgid "Use cookies from"
+msgstr "Cookies verwenden aus"
+
+msgid "Verifying SHA-1"
+msgstr "SHA-1 wird geprüft"
+
+msgid "Verifying SHA-256"
+msgstr "SHA-256 wird geprüft"
+
+msgid "Video"
+msgstr "Video"
+
+msgid "Video URL"
+msgstr "Video-URL"
+
+msgid "Video downloads"
+msgstr "Videodownloads"
+
+msgid "Video format"
+msgstr "Videoformat"
+
+msgid "Video tools are bundled with this app. Update or reinstall the package to repair them."
+msgstr "Die Videowerkzeuge sind in dieser App enthalten. Zur Reparatur das Paket aktualisieren oder neu installieren."
+
+msgid "Video tools are busy. Wait for them to finish, then load the new link."
+msgstr "Die Videowerkzeuge sind beschäftigt. Warten Sie, bis sie fertig sind, und laden Sie dann den neuen Link."
+
+msgid "Video tools are provided by this app package. Update or reinstall the app to repair them."
+msgstr "Die Videowerkzeuge werden von diesem App-Paket bereitgestellt. Zur Reparatur die App aktualisieren oder neu installieren."
+
+msgid "Video tools are ready. Update yt-dlp if a site stops working."
+msgstr "Videowerkzeuge sind bereit. Wenn eine Website nicht mehr funktioniert, yt-dlp aktualisieren."
+
+msgid "Video tools ready."
+msgstr "Videowerkzeuge bereit."
+
+msgid "Working…"
+msgstr "In Bearbeitung…"
+
+msgid "yt-dlp update finished."
+msgstr "yt-dlp-Update abgeschlossen."

@@ -25,6 +25,7 @@ project. It is not affiliated with or endorsed by the makers of Free Download Ma
 - **A manageable queue** — pause and resume, search downloads, and keep saved history.
 - **Pick the files you want** — browse Internet Archive collections, GitHub and GitLab releases, and Hugging Face repositories before adding downloads.
 - **Native light and dark themes** — follow the system theme or choose your own.
+- **Multiple interface languages** — English, Simplified and Traditional Chinese, Russian, Japanese, Korean, French, Italian, Spanish, German, Vietnamese, Portuguese and Hindi. Use the flag and current-language dropdown in the top toolbar, then restart; the default follows your system language, with Windows code-page detection and English fallback.
 - **Open source** — C++20 and wxWidgets, licensed under GPL-3.0-or-later.
 
 ## Screenshots
