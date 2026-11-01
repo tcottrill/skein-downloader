@@ -25,7 +25,7 @@ project. It is not affiliated with or endorsed by the makers of Free Download Ma
 - **A manageable queue** — pause and resume, search downloads, and keep saved history.
 - **Pick the files you want** — browse Internet Archive collections, GitHub and GitLab releases, and Hugging Face repositories before adding downloads.
 - **Native light and dark themes** — follow the system theme or choose your own.
-- **Multiple interface languages** — English, Simplified and Traditional Chinese, Russian, Japanese, Korean, French, Italian, Spanish, German, Vietnamese, Portuguese and Hindi. Use the flag and current-language dropdown in the top toolbar, then restart; the default follows your system language, with Windows code-page detection and English fallback.
+- **13 interface languages** — English, Simplified and Traditional Chinese, German, Vietnamese, Russian, Japanese, Korean, French, Italian, Spanish, Portuguese and Hindi. Skein and its Windows installer follow your system language, with English as the fallback; choose another language from the flag button in the toolbar.
 - **Open source** — C++20 and wxWidgets, licensed under GPL-3.0-or-later.
 
 ## Screenshots
@@ -85,7 +85,9 @@ video tools bundled in the Linux packages (see [Publishing a release](BUILDING.m
   GitHub, about 255 MB, with their sources and licenses), and on Install it downloads
   them, showing each file, and checks each against the SHA-256 GitHub publishes. If
   that fails, nothing is installed. Silent installs (`/VERYSILENT`) download the same
-  way. The uninstaller removes the program and the tools; settings and history stay.
+  way. Setup uses the Windows display language when it is one of Skein's 13 and asks
+  otherwise (`/LANG=french`, for example, chooses one). The uninstaller removes the
+  program and the tools; settings and history stay.
   The installer is not code-signed yet, so Windows SmartScreen may warn before it runs.
 - **Windows portable:** unzip anywhere and run `skein-downloader.exe`. Install the video
   tools from **Install / repair tools** in the video window on first use.
@@ -110,6 +112,11 @@ video tools bundled in the Linux packages (see [Publishing a release](BUILDING.m
 - **Theme:** About > Theme chooses Same as system, Light or Dark. On Windows this is
   Windows' own dark mode (title bar, menus, buttons, lists, tabs, scroll bars) and
   applies the next time the program starts; on Linux it applies at once.
+- **Language:** the flag button in the toolbar shows the language in use and lists the
+  13 languages by their own names, plus **Same as system** (the default). Same as system
+  uses your system's display language, falling back to English (on Windows, also the
+  code page for Japanese, Chinese, Korean, Russian and Vietnamese). A new choice applies
+  the next time Skein starts.
 
 `--video` opens the video options. `--data-dir <absolute path>` uses a separate profile.
 Only one instance may use a profile; a second launch brings the running window forward.
@@ -149,12 +156,21 @@ activation is subject to the compositor's focus policy. Mixed-DPI monitor change
 Windows and SteamOS/Batocera devices still need hands-on testing. The Windows installer
 is not code-signed.
 
+The translations are a first version. Some text stays in English in every language:
+output from yt-dlp and the video tool installer, technical error details, the log file
+and the license notice. In Hindi, the installer's newer standard wizard messages are
+also in English.
+
 ## Requests and problems
 
 Missing support for a site you want? [File an issue](https://github.com/tcottrill/skein-downloader/issues)
 and ask for it. People who support me on [Ko-fi](https://ko-fi.com/timcottrill) get
 priority on their requests. When reporting a problem, include `skein-downloader.log`
 (see [Quick start](#quick-start) for where it is).
+
+A translation that reads wrong is a problem too: file an issue with the language, the
+text and a better wording. To edit translations yourself, see
+[locale/README.md](locale/README.md).
 
 ## Building from source
 
