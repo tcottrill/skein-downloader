@@ -7,14 +7,29 @@ class FilePicker:public wxDialog {
  archive::Item item;std::vector<bool> checked;std::vector<size_t> rows;std::vector<std::string> routes;std::vector<archive::ServerSpeed> speeds;
  std::future<archive::Item> loading;std::future<std::vector<archive::ServerSpeed>> measuring;
  std::shared_ptr<std::atomic_bool> stop=std::make_shared<std::atomic_bool>(false);wxTimer timer;bool closing=false,rebuilding=false;
+ int sortColumn=-1;bool ascending=true;
  bool busy()const{return loading.valid()||measuring.valid();}
+ // Rows follow the clicked column header, as in Explorer: natural name order (file2 before file10), unknown sizes after known ones,
+ // checked files first, ties by name. Until a header is clicked the files keep the order the source listed them in.
+ void order(std::vector<size_t>& shown)const{
+  if(sortColumn<0)return;std::vector<wxString> names(item.files.size()),types(item.files.size());for(auto i:shown){names[i]=w(item.files[i].name);types[i]=w(item.files[i].format);}
+  auto key=[&](size_t a,size_t b)->int{auto& x=item.files[a];auto& y=item.files[b];switch(sortColumn){
+   case 1:return x.sizeKnown!=y.sizeKnown?(x.sizeKnown?-1:1):x.size<y.size?-1:x.size>y.size?1:0;
+   case 2:return wxCmpNatural(types[a],types[b]);
+   case 3:return int(checked[b])-int(checked[a]);
+   default:return wxCmpNatural(names[a],names[b]);}};
+  std::stable_sort(shown.begin(),shown.end(),[&](size_t a,size_t b){int c=key(a,b);if(!ascending)c=-c;if(!c)c=wxCmpNatural(names[a],names[b]);return c<0;});
+ }
+ // A header click sorts by that column; clicking the same header again reverses it.
+ void sortBy(int column){if(column<0||column>3)return;ascending=column==sortColumn?!ascending:true;sortColumn=column;list->ShowSortIndicator(column,ascending);refresh();}
  void summary(){size_t n=0;uint64_t bytes=0;bool unknown=false;for(size_t i=0;i<checked.size();++i)if(checked[i]){++n;bytes+=item.files[i].size;unknown|=!item.files[i].sizeKnown;}status->SetLabel(wxString::Format(_(L"%zu selected / %zu files / "),n,item.files.size())+w(archive::formatBytes(bytes))+(unknown?_(L" + unknown sizes"):wxString()));}
  void preferences(){save("folder",folder->GetValue());save("connections",wxString::Format("%d",connections->GetSelection()));if(!item.files.empty()&&archive::isArchiveItem(item)&&servers->GetSelection()>=0)save("server",w(routes[size_t(servers->GetSelection())]));if(!item.files.empty()){nlohmann::json names=nlohmann::json::array();for(size_t i=0;i<checked.size();++i)if(checked[i])names.push_back(item.files[i].name);save("fileItem",w(item.id));save("fileSelection",w(names.dump()));}}
  void refresh(){
   // Keep highlighted rows across filtering, as Qt's filter proxy does.
   std::set<size_t> highlighted;for(long r=-1;(r=list->GetNextItem(r,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1;)if(size_t(r)<rows.size())highlighted.insert(rows[size_t(r)]);
   rebuilding=true;list->Freeze();list->DeleteAllItems();rows.clear();auto query=filter->GetValue().Lower();
-  for(size_t i=0;i<item.files.size();++i){auto& f=item.files[i];if(!w(f.name).Lower().Contains(query))continue;long r=list->InsertItem(list->GetItemCount(),w(f.name));list->SetItem(r,1,f.sizeKnown?w(archive::formatBytes(f.size)):_(L"Unknown"));list->SetItem(r,2,w(f.format));list->SetItem(r,3,checked[i]?_(L"Selected"):wxString());list->SetItemBackgroundColour(r,r%2?wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE):wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));rows.push_back(i);list->CheckItem(r,checked[i]);if(highlighted.contains(i))list->SetItemState(r,wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}
+  std::vector<size_t> shown;for(size_t i=0;i<item.files.size();++i)if(w(item.files[i].name).Lower().Contains(query))shown.push_back(i);order(shown);
+  for(auto i:shown){auto& f=item.files[i];long r=list->InsertItem(list->GetItemCount(),w(f.name));list->SetItem(r,1,f.sizeKnown?w(archive::formatBytes(f.size)):_(L"Unknown"));list->SetItem(r,2,w(f.format));list->SetItem(r,3,checked[i]?_(L"Selected"):wxString());list->SetItemBackgroundColour(r,r%2?wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE):wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));rows.push_back(i);list->CheckItem(r,checked[i]);if(highlighted.contains(i))list->SetItemState(r,wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}
   list->Thaw();rebuilding=false;summary();
  }
  void select(bool value,bool highlighted){rebuilding=true;for(size_t i=0;i<rows.size();++i)if(!highlighted||(list->GetItemState(long(i),wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)) {checked[rows[i]]=value;list->CheckItem(long(i),value);list->SetItem(long(i),3,value?_(L"Selected"):wxString());}rebuilding=false;summary();}
@@ -65,6 +80,7 @@ public:
   filter->Bind(wxEVT_TEXT,[this](wxCommandEvent&){refresh();});url->Bind(wxEVT_TEXT_ENTER,[this](wxCommandEvent&){load();});
   url->Bind(wxEVT_TEXT,[this](wxCommandEvent&){preferences();});folder->Bind(wxEVT_TEXT,[this](wxCommandEvent&){preferences();});connections->Bind(wxEVT_CHOICE,[this](wxCommandEvent&){preferences();});servers->Bind(wxEVT_CHOICE,[this](wxCommandEvent&){preferences();});
   auto check=[this](wxListEvent& e){if(!rebuilding&&e.GetIndex()>=0&&size_t(e.GetIndex())<rows.size()){checked[rows[size_t(e.GetIndex())]]=list->IsItemChecked(e.GetIndex());list->SetItem(e.GetIndex(),3,list->IsItemChecked(e.GetIndex())?_(L"Selected"):wxString());summary();}};list->Bind(wxEVT_LIST_ITEM_CHECKED,check);list->Bind(wxEVT_LIST_ITEM_UNCHECKED,check);
+  list->Bind(wxEVT_LIST_COL_CLICK,[this](wxListEvent& e){sortBy(e.GetColumn());});
   list->Bind(wxEVT_LIST_ITEM_RIGHT_CLICK,[this](wxListEvent& e){if(e.GetIndex()>=0&&!(list->GetItemState(e.GetIndex(),wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)){long row=-1;while((row=list->GetNextItem(row,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)list->SetItemState(row,0,wxLIST_STATE_SELECTED);list->SetItemState(e.GetIndex(),wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}wxMenu menu;menu.Append(1,_(L"Check highlighted"));menu.Append(2,_(L"Uncheck highlighted"));auto id=GetPopupMenuSelectionFromUser(menu);if(id==1||id==2)select(id==1,true);});
   // Qt closes at once; a lookup still running is stopped and the hidden dialog is destroyed when it returns.
   Bind(wxEVT_TIMER,[this](wxTimerEvent&){tick();});Bind(wxEVT_CLOSE_WINDOW,[this](wxCloseEvent& e){preferences();*stop=true;if(busy()&&e.CanVeto()){closing=true;Hide();e.Veto();}else Destroy();});
@@ -73,6 +89,8 @@ public:
    item.id="smoke-files";item.files={{"one.zip","zip","",42,true},{"two.zip","zip","",99,true},{"notes.txt","text","",7,true}};checked.assign(3,false);refresh();
    filter->SetValue(".zip");select(true,false);if(checked!=std::vector<bool>({true,true,false}))throw std::runtime_error("Filtered selection failed");
    filter->Clear();if(list->GetItemCount()!=3||!list->IsItemChecked(0)||list->IsItemChecked(2))throw std::runtime_error("Checks lost after filtering");
+   sortBy(1);sortBy(1);if(rows!=std::vector<size_t>({1,0,2}))throw std::runtime_error("Sorting by size failed");
+   sortBy(2);if(rows!=std::vector<size_t>({2,0,1})||list->IsItemChecked(0)||!list->IsItemChecked(1)||!list->IsItemChecked(2))throw std::runtime_error("Sorting by type failed");
    folder->SetValue(w(archive::pathUtf8(dataPath/"downloads")));add();if(queue.snapshot().size()<3)throw std::runtime_error("File picker failed to queue selected files");
   }
  }
