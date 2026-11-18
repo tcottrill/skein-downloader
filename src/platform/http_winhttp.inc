@@ -27,9 +27,13 @@ struct Request {
     Handle connection, request;
     DWORD status = 0;
     static HINTERNET session() {
-        // Keep the worker's session alive across queued ranges and retries.
-        thread_local Handle value(WinHttpOpen(L"SkeinDownloader/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0));
-        return value;
+        // One session for the whole program, shared by every thread (WinHTTP sessions are thread-safe)
+        // and kept across queued ranges and retries. It is never closed: a per-thread session was closed
+        // by its thread_local destructor, which runs during thread exit under the Windows loader lock,
+        // where WinHttpCloseHandle can deadlock. That left a finished worker unjoinable, so the window
+        // could not close. Windows releases the session when the process ends.
+        static Handle* const value = new Handle(WinHttpOpen(L"SkeinDownloader/1.0", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0));
+        return *value;
     }
     struct Url {
         std::wstring host, path; INTERNET_PORT port; bool secure;
