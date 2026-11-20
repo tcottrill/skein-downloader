@@ -225,20 +225,20 @@ msgstr "Collez une URL ci-dessus. Sélectionnez un ou plusieurs fichiers avant d
 msgid "Paste a YouTube or other supported video URL"
 msgstr "Collez une URL YouTube ou d’un autre site vidéo pris en charge"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "Collez un lien de fichier, version, paquet, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org ou un identifiant archive.org"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "Collez un lien de fichier, dossier, FTP, version, paquet, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine ou un identifiant archive.org"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "Collez un lien de fichier, version, paquet, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org ou vidéo"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "Collez un lien de fichier, dossier, FTP, version, paquet, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine ou vidéo"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "Collez un lien, choisissez la qualité, puis ajoutez-le aux téléchargements."
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "Collez une URL HTTP ou HTTPS valide de fichier, d’archive.org ou de vidéo."
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "Collez une URL de vidéo HTTP ou HTTPS valide."
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "Collez une URL HTTP, HTTPS ou FTP valide de fichier, de dossier, d’archive.org ou de vidéo."
 
 msgid "Pause all"
 msgstr "Tout suspendre"
@@ -473,3 +473,4 @@ msgstr "En cours…"
 
 msgid "yt-dlp update finished."
 msgstr "Mise à jour de yt-dlp terminée."
+

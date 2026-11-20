@@ -225,20 +225,20 @@ msgstr "上に URL を貼り付けてください。ダウンロードに追加�
 msgid "Paste a YouTube or other supported video URL"
 msgstr "YouTube など対応サイトの動画 URL を貼り付け"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "ファイル、リリース、パッケージ、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org のリンク、または archive.org の項目 ID を貼り付け"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "ファイル、フォルダー、FTP、リリース、パッケージ、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org、Wayback Machine のリンク、または archive.org の項目 ID を貼り付け"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "ファイル、リリース、パッケージ、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org、動画のリンクを貼り付け"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "ファイル、フォルダー、FTP、リリース、パッケージ、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org、Wayback Machine、動画のリンクを貼り付け"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "リンクを貼り付け、品質を選んでダウンロードに追加してください。"
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "有効な HTTP または HTTPS のファイル、archive.org、動画の URL を貼り付けてください。"
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "有効な HTTP または HTTPS の動画 URL を貼り付けてください。"
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "有効な HTTP、HTTPS、FTP のファイル、フォルダー、archive.org、動画の URL を貼り付けてください。"
 
 msgid "Pause all"
 msgstr "すべて一時停止"
@@ -473,3 +473,4 @@ msgstr "処理中…"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp の更新が完了しました。"
+

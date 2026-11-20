@@ -225,19 +225,19 @@ msgstr ""
 msgid "Paste a YouTube or other supported video URL"
 msgstr ""
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
 msgstr ""
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
 msgstr ""
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr ""
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
+msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr ""
 
-msgid "Paste a valid HTTP or HTTPS video URL."
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
 msgstr ""
 
 msgid "Pause all"
@@ -473,3 +473,4 @@ msgstr ""
 
 msgid "yt-dlp update finished."
 msgstr ""
+

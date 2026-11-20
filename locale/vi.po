@@ -225,20 +225,20 @@ msgstr "Dán URL ở trên. Chọn một, tất cả hoặc các tệp cụ th�
 msgid "Paste a YouTube or other supported video URL"
 msgstr "Dán URL YouTube hoặc video được hỗ trợ khác"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "Dán liên kết tệp, bản phát hành, gói, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org hoặc mã mục archive.org"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "Dán liên kết tệp, thư mục, FTP, bản phát hành, gói, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine hoặc mã mục archive.org"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "Dán liên kết tệp, bản phát hành, gói, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org hoặc video"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "Dán liên kết tệp, thư mục, FTP, bản phát hành, gói, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine hoặc video"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "Dán liên kết, chọn chất lượng, rồi thêm vào danh sách tải."
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "Dán URL HTTP hoặc HTTPS hợp lệ của tệp, archive.org hoặc video."
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "Dán URL video HTTP hoặc HTTPS hợp lệ."
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "Dán URL HTTP, HTTPS hoặc FTP hợp lệ của tệp, thư mục, archive.org hoặc video."
 
 msgid "Pause all"
 msgstr "Tạm dừng tất cả"
@@ -473,3 +473,4 @@ msgstr "Đang xử lý…"
 
 msgid "yt-dlp update finished."
 msgstr "Đã cập nhật xong yt-dlp."
+

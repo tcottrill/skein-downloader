@@ -25,8 +25,10 @@ struct ConnectionCache{CURLSH* share=curl_share_init();ConnectionCache(){curl_sh
 struct Request {
     struct Url {
         std::string address;std::wstring host;
+        bool isFtp=false;
         explicit Url(const std::string& value):address(value){
             static CurlInit init;
+            if(ftp::isFtpUrl(value)){host=wide(ftp::parseUrl(value).host);isFtp=true;return;}
             auto u=curl_url();if(!u)throw std::runtime_error("Cannot parse URL");
             char *h=nullptr,*scheme=nullptr;
             bool ok=curl_url_set(u,CURLUPART_URL,value.c_str(),0)==CURLUE_OK&&curl_url_get(u,CURLUPART_HOST,&h,0)==CURLUE_OK&&curl_url_get(u,CURLUPART_SCHEME,&scheme,0)==CURLUE_OK;
@@ -38,6 +40,8 @@ struct Request {
     Request* request=this;DWORD status=0;std::map<std::string,std::wstring> fields;
     std::vector<char> buffer;bool ready=false,finished=false,paused=false;CURLcode result=CURLE_OK;
     std::atomic_bool* stop=nullptr;
+    std::unique_ptr<FtpTransfer> ftpTransfer; // an FTP file, answered like an HTTP response
+    std::string address;
     void dispose(){if(multi&&easy)curl_multi_remove_handle(multi,easy);if(easy)curl_easy_cleanup(easy);if(multi)curl_multi_cleanup(multi);curl_slist_free_all(headers);}
     static size_t body(char* data,size_t size,size_t count,void* p) noexcept {
         auto& r=*static_cast<Request*>(p);size*=count;
@@ -63,8 +67,17 @@ struct Request {
         int count=0;while(auto msg=curl_multi_info_read(multi,&count))if(msg->msg==CURLMSG_DONE){finished=true;result=msg->data.result;}
         if(!finished&&buffer.empty()){int n=0;curl_multi_poll(multi,nullptr,0,100,&n);}
     }
-    // A body makes this a POST (site APIs); downloads are always GET.
-    Request(const Url& url,const std::wstring& extra,bool redirects=true,std::atomic_bool* cancel=nullptr,const std::string* post=nullptr):stop(cancel){
+    // A body makes this a POST (site APIs); downloads are always GET. wait is how long the
+    // server may go without sending data (slow search services need longer).
+    Request(const Url& url,const std::wstring& extra,bool redirects=true,std::atomic_bool* cancel=nullptr,const std::string* post=nullptr,unsigned wait=10):stop(cancel),address(url.address){
+        if(url.isFtp){
+            ftpTransfer=std::make_unique<FtpTransfer>(url.address,extra,cancel);auto& a=ftpTransfer->answer;status=a.status;
+            if(!a.contentRange.empty())fields["content-range"]=headerText(a.contentRange);
+            if(a.lengthKnown)fields["content-length"]=std::to_wstring(a.length);
+            if(!a.etag.empty())fields["etag"]=headerText(a.etag);
+            fields["content-type"]=L"application/octet-stream";
+            return;
+        }
         try{
             thread_local ConnectionCache cache;
             easy=curl_easy_init();multi=curl_multi_init();if(!easy||!multi)throw std::runtime_error("Cannot initialize HTTP request");
@@ -78,7 +91,7 @@ struct Request {
             curl_easy_setopt(easy,CURLOPT_PROTOCOLS,long(CURLPROTO_HTTP|CURLPROTO_HTTPS));curl_easy_setopt(easy,CURLOPT_REDIR_PROTOCOLS,url.address.starts_with("https:")?long(CURLPROTO_HTTPS):long(CURLPROTO_HTTP|CURLPROTO_HTTPS));
 #endif
             curl_easy_setopt(easy,CURLOPT_FOLLOWLOCATION,redirects?1L:0L);curl_easy_setopt(easy,CURLOPT_MAXREDIRS,10L);
-            curl_easy_setopt(easy,CURLOPT_CONNECTTIMEOUT,10L);curl_easy_setopt(easy,CURLOPT_LOW_SPEED_LIMIT,1L);curl_easy_setopt(easy,CURLOPT_LOW_SPEED_TIME,10L);curl_easy_setopt(easy,CURLOPT_NOSIGNAL,1L);
+            curl_easy_setopt(easy,CURLOPT_CONNECTTIMEOUT,10L);curl_easy_setopt(easy,CURLOPT_LOW_SPEED_LIMIT,1L);curl_easy_setopt(easy,CURLOPT_LOW_SPEED_TIME,long(wait));curl_easy_setopt(easy,CURLOPT_NOSIGNAL,1L);
             headers=curl_slist_append(headers,"Accept-Encoding: identity");std::istringstream in(utf8(extra));std::string line;while(std::getline(in,line)){if(!line.empty()&&line.back()=='\r')line.pop_back();if(!line.empty())headers=curl_slist_append(headers,line.c_str());}
             if(post){curl_easy_setopt(easy,CURLOPT_POSTFIELDSIZE,long(post->size()));curl_easy_setopt(easy,CURLOPT_COPYPOSTFIELDS,post->c_str());}
             // Session cookies, shared by this thread's requests like WinHTTP's (WeTransfer needs them).
@@ -93,6 +106,7 @@ struct Request {
     }
     ~Request(){dispose();}
     DWORD read(char* data,DWORD size){
+        if(ftpTransfer)return ftpTransfer->read(data,size);
         while(buffer.empty()&&!finished)pump();
         if(buffer.empty()){if(result!=CURLE_OK)throw NetworkError(curl_easy_strerror(result));return 0;}
         auto n=std::min<size_t>(size,buffer.size());std::memcpy(data,buffer.data(),n);buffer.erase(buffer.begin(),buffer.begin()+n);
@@ -100,7 +114,7 @@ struct Request {
         return n;
     }
     // The URL after redirects.
-    std::string url(){char* value=nullptr;curl_easy_getinfo(easy,CURLINFO_EFFECTIVE_URL,&value);return value?value:"";}
+    std::string url(){if(ftpTransfer)return address;char* value=nullptr;curl_easy_getinfo(easy,CURLINFO_EFFECTIVE_URL,&value);return value?value:"";}
     std::string host(){auto value=url();return value.empty()?"":utf8(Url(value).host);}
 };
 std::wstring header(Request* r,const char* name){return r->fields[name];}

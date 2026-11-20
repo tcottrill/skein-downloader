@@ -24,6 +24,7 @@ project. It is not affiliated with or endorsed by the makers of Free Download Ma
 - **Multiple connections** — download a file using multiple connections, with up to four downloads running at once.
 - **A manageable queue** — pause and resume, search downloads, and keep saved history.
 - **Pick the files you want** — browse Internet Archive collections, GitHub and GitLab releases, and Hugging Face repositories before adding downloads.
+- **Whole folders from file servers** — load a web folder listing ("Index of /…" pages from Apache, nginx and similar servers), an anonymous FTP folder, or a Wayback Machine copy of a folder, with every subfolder, then pick the files to download.
 - **Native light and dark themes** — follow the system theme or choose your own.
 - **13 interface languages** — English, Simplified and Traditional Chinese, German, Vietnamese, Russian, Japanese, Korean, French, Italian, Spanish, Portuguese and Hindi. Skein and its Windows installer follow your system language, with English as the fallback; choose another language from the flag button in the toolbar.
 - **Open source** — C++20 and wxWidgets, licensed under GPL-3.0-or-later.
@@ -109,6 +110,24 @@ video tools bundled in the Linux packages (see [Publishing a release](BUILDING.m
   links go to File downloads, other video links to Video downloads. Otherwise the link
   box starts empty; the last link is not remembered. + File only fills in the link;
   click **Load files** to list the files.
+- **Folders:** paste a folder's link into **+ File**, such as `https://example.org/files/`,
+  `ftp://ftp.example.org/pub/` or a Wayback Machine link
+  (`https://web.archive.org/web/<time>/http://example.org/files/`). The main window's
+  **Load** sends FTP and Wayback Machine links there too, but other links ending in `/`
+  go to Video downloads, since many video pages end that way. Skein lists the files
+  in it and in all its subfolders, named by their path, so the filter (for example
+  `1.29/`) picks out a subfolder; downloads keep the folder layout under a folder named
+  after the one loaded. Limits: 2000 subfolders and 50,000 files per load.
+  - **Wayback Machine:** the archive's capture index lists every archived file below the
+    folder, each from its most complete capture. Crawlers often kept only the first 1 or
+    5 MiB of a large file, so the largest capture is used, not the one nearest the
+    link's date. The index can take a minute to answer; when it is offline, Skein reads
+    the archived listing pages instead. Archived files download whole on one connection:
+    the archive caches one answer per file for 30 minutes whatever byte range was asked
+    for, so range requests would cut later downloads short.
+  - **FTP:** anonymous FTP only (no user name or password). Files download on several
+    connections and resume when the server reports each file's modification time
+    (MDTM); otherwise on one connection.
 - **Theme:** About > Theme chooses Same as system, Light or Dark. On Windows this is
   Windows' own dark mode (title bar, menus, buttons, lists, tabs, scroll bars) and
   applies the next time the program starts; on Linux it applies at once.

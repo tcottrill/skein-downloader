@@ -225,20 +225,20 @@ msgstr "ऊपर URL चिपकाएँ। डाउनलोड जोड�
 msgid "Paste a YouTube or other supported video URL"
 msgstr "YouTube या अन्य समर्थित वीडियो का URL चिपकाएँ"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "फ़ाइल, रिलीज़, पैकेज, MediaFire, Google Drive, OneDrive, WeTransfer या archive.org का लिंक, अथवा archive.org आइटम पहचानकर्ता चिपकाएँ"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "फ़ाइल, फ़ोल्डर, FTP, रिलीज़, पैकेज, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org या Wayback Machine का लिंक, अथवा archive.org आइटम पहचानकर्ता चिपकाएँ"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "फ़ाइल, रिलीज़, पैकेज, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org या वीडियो का लिंक चिपकाएँ"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "फ़ाइल, फ़ोल्डर, FTP, रिलीज़, पैकेज, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine या वीडियो का लिंक चिपकाएँ"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "लिंक चिपकाएँ, गुणवत्ता चुनें, फिर डाउनलोड में जोड़ें।"
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "मान्य HTTP या HTTPS फ़ाइल, archive.org या वीडियो URL चिपकाएँ।"
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "मान्य HTTP या HTTPS वीडियो URL चिपकाएँ।"
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "मान्य HTTP, HTTPS या FTP फ़ाइल, फ़ोल्डर, archive.org या वीडियो URL चिपकाएँ।"
 
 msgid "Pause all"
 msgstr "सभी रोकें"
@@ -473,3 +473,4 @@ msgstr "काम जारी…"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp अपडेट पूरा हुआ।"
+

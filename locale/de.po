@@ -225,20 +225,20 @@ msgstr "Oben eine URL einfügen. Vor dem Hinzufügen einen, alle oder bestimmte 
 msgid "Paste a YouTube or other supported video URL"
 msgstr "Eine YouTube- oder andere unterstützte Video-URL einfügen"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "Einen Datei-, Release-, Paket-, MediaFire-, Google-Drive-, OneDrive-, WeTransfer- oder archive.org-Link oder eine archive.org-Elementkennung einfügen"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "Einen Datei-, Ordner-, FTP-, Release-, Paket-, MediaFire-, Google-Drive-, OneDrive-, WeTransfer-, archive.org- oder Wayback-Machine-Link oder eine archive.org-Elementkennung einfügen"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "Einen Datei-, Release-, Paket-, MediaFire-, Google-Drive-, OneDrive-, WeTransfer-, archive.org- oder Videolink einfügen"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "Einen Datei-, Ordner-, FTP-, Release-, Paket-, MediaFire-, Google-Drive-, OneDrive-, WeTransfer-, archive.org-, Wayback-Machine- oder Videolink einfügen"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "Einen Link einfügen, die Qualität wählen und zu Downloads hinzufügen."
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "Eine gültige HTTP- oder HTTPS-URL für eine Datei, archive.org oder ein Video einfügen."
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "Eine gültige HTTP- oder HTTPS-Video-URL einfügen."
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "Eine gültige HTTP-, HTTPS- oder FTP-URL für eine Datei, einen Ordner, archive.org oder ein Video einfügen."
 
 msgid "Pause all"
 msgstr "Alle pausieren"
@@ -473,3 +473,4 @@ msgstr "In Bearbeitung…"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp-Update abgeschlossen."
+

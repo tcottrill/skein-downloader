@@ -225,20 +225,20 @@ msgstr "위에 URL을 붙여 넣으세요. 다운로드에 추가하기 전에 �
 msgid "Paste a YouTube or other supported video URL"
 msgstr "YouTube 또는 지원되는 다른 동영상 사이트의 URL을 붙여 넣으세요"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "파일, 릴리스, 패키지, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org 링크 또는 archive.org 항목 식별자를 붙여 넣으세요"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "파일, 폴더, FTP, 릴리스, 패키지, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine 링크 또는 archive.org 항목 식별자를 붙여 넣으세요"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "파일, 릴리스, 패키지, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org 또는 동영상 링크를 붙여 넣으세요"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "파일, 폴더, FTP, 릴리스, 패키지, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine 또는 동영상 링크를 붙여 넣으세요"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "링크를 붙여 넣고 품질을 선택한 다음 다운로드에 추가하세요."
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "올바른 HTTP 또는 HTTPS 파일, archive.org 또는 동영상 URL을 붙여 넣으세요."
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "올바른 HTTP 또는 HTTPS 동영상 URL을 붙여 넣으세요."
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "올바른 HTTP, HTTPS 또는 FTP 파일, 폴더, archive.org 또는 동영상 URL을 붙여 넣으세요."
 
 msgid "Pause all"
 msgstr "모두 일시 중지"
@@ -473,3 +473,4 @@ msgstr "작업 중…"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp 업데이트가 완료되었습니다."
+

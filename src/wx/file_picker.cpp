@@ -41,7 +41,7 @@ class FilePicker:public wxDialog {
  }
  void load(){
   if(busy())return;auto link=u(url->GetValue().Strip(wxString::both));
-  if(!archive::isHttpUrl(link))try{archive::parseLink(link);}catch(const std::exception& e){LOG_WARN("File link rejected: %s",e.what());wxMessageBox(translated(e.what()),_(L"File downloads"),wxOK|wxICON_WARNING,this);return;}
+  if(!archive::isHttpUrl(link)&&!w(link).Lower().StartsWith("ftp://"))try{archive::parseLink(link);}catch(const std::exception& e){LOG_WARN("File link rejected: %s",e.what());wxMessageBox(translated(e.what()),_(L"File downloads"),wxOK|wxICON_WARNING,this);return;}
   preferences();LOG_INFO("Loading files from %s",link.c_str());status->SetLabel(_(L"Loading files…"));auto flag=stop;loading=std::async(std::launch::async,[link,flag]{return archive::loadItem(link,*flag);});
  }
  void tick(){
@@ -66,7 +66,7 @@ public:
   appIcons(this);
   // Qt's default dialog layout: 11 px margins and 6 px between items and rows.
   const int gap=FromDIP(6);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxALL,FromDIP(11));
-  auto title=new wxStaticText(this,wxID_ANY,_(L"File downloads"));auto font=title->GetFont();font.SetPointSize(21);title->SetFont(font);box->Add(title,0,wxBOTTOM,gap);auto row=new wxBoxSizer(wxHORIZONTAL);url=field(this,link,_(L"Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"));row->Add(url,1,wxALIGN_CENTER_VERTICAL);button(this,row,_(L"Load files"),[this]{load();});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
+  auto title=new wxStaticText(this,wxID_ANY,_(L"File downloads"));auto font=title->GetFont();font.SetPointSize(21);title->SetFont(font);box->Add(title,0,wxBOTTOM,gap);auto row=new wxBoxSizer(wxHORIZONTAL);url=field(this,link,_(L"Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"));row->Add(url,1,wxALIGN_CENTER_VERTICAL);button(this,row,_(L"Load files"),[this]{load();});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
   row=new wxBoxSizer(wxHORIZONTAL);filter=field(this,{},_(L"Filter by filename…"));row->Add(filter,1,wxALIGN_CENTER_VERTICAL);button(this,row,_(L"Select all"),[this]{select(true,false);});button(this,row,_(L"Clear selection"),[this]{select(false,false);});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
   list=new wxListCtrl(this,wxID_ANY,wxDefaultPosition,wxDefaultSize,wxLC_REPORT);list->EnableCheckBoxes();list->InsertColumn(0,_(L"Name"));list->InsertColumn(1,_(L"Size"));list->InsertColumn(2,_(L"Type"));list->InsertColumn(3,_(L"Selection"));list->SetColumnWidth(0,FromDIP(500));for(int c=1;c<4;++c)list->SetColumnWidth(c,FromDIP(100));box->Add(list,1,wxEXPAND|wxBOTTOM,gap);
   row=new wxBoxSizer(wxHORIZONTAL);button(this,row,_(L"Check highlighted"),[this]{select(true,true);});button(this,row,_(L"Uncheck highlighted"),[this]{select(false,true);});box->Add(row,0,wxBOTTOM,gap);

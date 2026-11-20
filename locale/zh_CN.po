@@ -225,20 +225,20 @@ msgstr "在上方粘贴网址。添加下载前，请选择一个、全部或指
 msgid "Paste a YouTube or other supported video URL"
 msgstr "粘贴 YouTube 或其他支持的视频网址"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "粘贴文件、发行版、软件包、MediaFire、Google Drive、OneDrive、WeTransfer 或 archive.org 链接，或 archive.org 项目标识符"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "粘贴文件、文件夹、FTP、发行版、软件包、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org 或 Wayback Machine 链接，或 archive.org 项目标识符"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "粘贴文件、发行版、软件包、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org 或视频链接"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "粘贴文件、文件夹、FTP、发行版、软件包、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org、Wayback Machine 或视频链接"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "粘贴链接，选择质量，然后添加到下载。"
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "请粘贴有效的 HTTP 或 HTTPS 文件、archive.org 或视频网址。"
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "请粘贴有效的 HTTP 或 HTTPS 视频网址。"
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "请粘贴有效的 HTTP、HTTPS 或 FTP 文件、文件夹、archive.org 或视频网址。"
 
 msgid "Pause all"
 msgstr "全部暂停"
@@ -473,3 +473,4 @@ msgstr "正在处理…"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp 更新完成。"
+

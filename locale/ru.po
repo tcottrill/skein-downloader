@@ -225,20 +225,20 @@ msgstr "Вставьте ссылку выше. Перед добавление�
 msgid "Paste a YouTube or other supported video URL"
 msgstr "Вставьте ссылку на YouTube или другой поддерживаемый сайт"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "Вставьте ссылку на файл, релиз, пакет, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org или идентификатор archive.org"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "Вставьте ссылку на файл, папку, FTP, релиз, пакет, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine или идентификатор archive.org"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "Вставьте ссылку на файл, релиз, пакет, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org или видео"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "Вставьте ссылку на файл, папку, FTP, релиз, пакет, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine или видео"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "Вставьте ссылку, выберите качество и добавьте в загрузки."
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "Вставьте допустимую HTTP- или HTTPS-ссылку на файл, archive.org или видео."
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "Вставьте допустимую HTTP- или HTTPS-ссылку на видео."
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "Вставьте допустимую HTTP-, HTTPS- или FTP-ссылку на файл, папку, archive.org или видео."
 
 msgid "Pause all"
 msgstr "Приостановить все"
@@ -473,3 +473,4 @@ msgstr "Выполняется…"
 
 msgid "yt-dlp update finished."
 msgstr "Обновление yt-dlp завершено."
+

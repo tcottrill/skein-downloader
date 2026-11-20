@@ -24,8 +24,11 @@ std::wstring header(HINTERNET h, const wchar_t* name) {
 }
 constexpr const wchar_t* HEADER_LINK = L"Link";
 struct Request {
-    Handle connection, request;
+    std::unique_ptr<Handle> connection, http; // WinHTTP; empty for an FTP file
+    std::unique_ptr<FtpTransfer> ftpTransfer; // an FTP file, answered like an HTTP response
+    Request* request = this;                  // header(r->request, ...) reads either kind, as with libcurl
     DWORD status = 0;
+    std::string address;
     static HINTERNET session() {
         // One session for the whole program, shared by every thread (WinHTTP sessions are thread-safe)
         // and kept across queued ranges and retries. It is never closed: a per-thread session was closed
@@ -36,9 +39,10 @@ struct Request {
         return *value;
     }
     struct Url {
-        std::wstring host, path; INTERNET_PORT port; bool secure;
-        explicit Url(const std::string& address) {
-            auto value = wide(address); URL_COMPONENTS c{sizeof c};
+        std::wstring host, path; INTERNET_PORT port; bool secure = false, isFtp = false; std::string address;
+        explicit Url(const std::string& text) : address(text) {
+            if (ftp::isFtpUrl(text)) { auto u = ftp::parseUrl(text); host = wide(u.host); port = (INTERNET_PORT)u.port; isFtp = true; return; }
+            auto value = wide(text); URL_COMPONENTS c{sizeof c};
             c.dwHostNameLength = c.dwUrlPathLength = c.dwExtraInfoLength = (DWORD)-1;
             if (!WinHttpCrackUrl(value.c_str(), 0, 0, &c) || (c.nScheme != INTERNET_SCHEME_HTTP && c.nScheme != INTERNET_SCHEME_HTTPS))
                 throw std::runtime_error("Invalid download URL");
@@ -47,23 +51,26 @@ struct Request {
             port = c.nPort; secure = c.nScheme == INTERNET_SCHEME_HTTPS;
         }
     };
-    // A body makes this a POST (site APIs); downloads are always GET.
-    Request(const Url& url, const std::wstring& headers, bool redirects = true, const std::string* body = nullptr) :
-        connection(WinHttpConnect(session(), url.host.c_str(), url.port, 0)),
-        request(WinHttpOpenRequest(connection, body ? L"POST" : L"GET", url.path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, url.secure ? WINHTTP_FLAG_SECURE : 0)) {
-        WinHttpSetTimeouts(request, 10000, 10000, 10000, 10000);
+    // A body makes this a POST (site APIs); downloads are always GET. wait is how long the
+    // server may take to answer or to send more data (slow search services need longer).
+    Request(const Url& url, const std::wstring& headers, bool redirects = true, const std::string* body = nullptr, unsigned wait = 10, std::atomic_bool* stop = nullptr) : address(url.address) {
+        if (url.isFtp) { ftpTransfer = std::make_unique<FtpTransfer>(url.address, headers, stop); status = ftpTransfer->answer.status; return; }
+        connection = std::make_unique<Handle>(WinHttpConnect(session(), url.host.c_str(), url.port, 0));
+        http = std::make_unique<Handle>(WinHttpOpenRequest(*connection, body ? L"POST" : L"GET", url.path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, url.secure ? WINHTTP_FLAG_SECURE : 0));
+        auto& handle = *http;
+        WinHttpSetTimeouts(handle, 10000, 10000, 10000, int(wait * 1000));
         DWORD policy = redirects ? WINHTTP_OPTION_REDIRECT_POLICY_DISALLOW_HTTPS_TO_HTTP : WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
-        WinHttpSetOption(request, WINHTTP_OPTION_REDIRECT_POLICY, &policy, sizeof policy);
+        WinHttpSetOption(handle, WINHTTP_OPTION_REDIRECT_POLICY, &policy, sizeof policy);
         auto allHeaders = L"Accept-Encoding: identity\r\n" + headers;
         auto data = body ? (LPVOID)body->data() : WINHTTP_NO_REQUEST_DATA; DWORD length = body ? (DWORD)body->size() : 0;
-        if (!WinHttpSendRequest(request, allHeaders.c_str(), (DWORD)-1, data, length, length, 0) || !WinHttpReceiveResponse(request, nullptr))
+        if (!WinHttpSendRequest(handle, allHeaders.c_str(), (DWORD)-1, data, length, length, 0) || !WinHttpReceiveResponse(handle, nullptr))
             throw NetworkError("Connection failed (Windows error " + std::to_string(GetLastError()) + ")");
         DWORD n = sizeof status;
-        if (!WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &status, &n, nullptr))
+        if (!WinHttpQueryHeaders(handle, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &status, &n, nullptr))
             throw NetworkError("Cannot read HTTP status");
         if (status != 200 && status != 206) {
             unsigned seconds = 1;
-            auto retryAfter = header(request, WINHTTP_QUERY_RETRY_AFTER);
+            auto retryAfter = header(handle, WINHTTP_QUERY_RETRY_AFTER);
             if (!retryAfter.empty()) {
                 try { seconds = (unsigned)std::stoul(retryAfter); } catch (...) {
                     SYSTEMTIME st{}; FILETIME ft{}, now{};
@@ -79,18 +86,33 @@ struct Request {
         }
     }
     DWORD read(char* data, DWORD size) {
+        if (ftpTransfer) return ftpTransfer->read(data, size);
         DWORD got = 0;
-        if (!WinHttpReadData(request, data, size, &got)) throw NetworkError("Download interrupted (Windows error " + std::to_string(GetLastError()) + ")");
+        if (!WinHttpReadData(*http, data, size, &got)) throw NetworkError("Download interrupted (Windows error " + std::to_string(GetLastError()) + ")");
         return got;
     }
     // The URL after redirects.
     std::string url() {
-        DWORD length=0; WinHttpQueryOption(request,WINHTTP_OPTION_URL,nullptr,&length);
+        if (ftpTransfer) return address;
+        DWORD length=0; WinHttpQueryOption(*http,WINHTTP_OPTION_URL,nullptr,&length);
         if(!length)return {};
         std::wstring value(length/sizeof(wchar_t),0);
-        if(!WinHttpQueryOption(request,WINHTTP_OPTION_URL,value.data(),&length))return {};
+        if(!WinHttpQueryOption(*http,WINHTTP_OPTION_URL,value.data(),&length))return {};
         value.resize(wcslen(value.c_str()));
         return utf8(value);
     }
     std::string host() { auto value=url(); return value.empty()?"":utf8(Url(value).host); }
 };
+// Response headers of either kind of request; an FTP file has the few the download engine reads.
+std::wstring header(Request* r, DWORD type) {
+    if (!r->ftpTransfer) return header((HINTERNET)*r->http, type);
+    const auto& a = r->ftpTransfer->answer;
+    switch (type) {
+    case WINHTTP_QUERY_CONTENT_RANGE: return wide(a.contentRange);
+    case WINHTTP_QUERY_CONTENT_LENGTH: return a.lengthKnown ? std::to_wstring(a.length) : std::wstring();
+    case WINHTTP_QUERY_ETAG: return wide(a.etag);
+    case WINHTTP_QUERY_CONTENT_TYPE: return L"application/octet-stream";
+    default: return {};
+    }
+}
+std::wstring header(Request* r, const wchar_t* name) { return r->ftpTransfer ? std::wstring() : header((HINTERNET)*r->http, name); }

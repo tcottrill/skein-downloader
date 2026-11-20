@@ -225,20 +225,20 @@ msgstr "請在上方貼上網址。加入下載前，請選取一個、全部或
 msgid "Paste a YouTube or other supported video URL"
 msgstr "貼上 YouTube 或其他支援的影片網址"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "貼上檔案、發行版本、套件、MediaFire、Google Drive、OneDrive、WeTransfer 或 archive.org 連結，或 archive.org 項目識別碼"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "貼上檔案、資料夾、FTP、發行版本、套件、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org 或 Wayback Machine 連結，或 archive.org 項目識別碼"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "貼上檔案、發行版本、套件、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org 或影片連結"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "貼上檔案、資料夾、FTP、發行版本、套件、MediaFire、Google Drive、OneDrive、WeTransfer、archive.org、Wayback Machine 或影片連結"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "貼上連結、選擇畫質，然後加入下載。"
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "請貼上有效的 HTTP 或 HTTPS 檔案、archive.org 或影片網址。"
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "請貼上有效的 HTTP 或 HTTPS 影片網址。"
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "請貼上有效的 HTTP、HTTPS 或 FTP 檔案、資料夾、archive.org 或影片網址。"
 
 msgid "Pause all"
 msgstr "全部暫停"
@@ -473,3 +473,4 @@ msgstr "正在處理…"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp 更新完成。"
+

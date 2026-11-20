@@ -225,20 +225,20 @@ msgstr "Pega una URL arriba. Selecciona uno, todos o varios archivos antes de a�
 msgid "Paste a YouTube or other supported video URL"
 msgstr "Pega una URL de YouTube o de otro sitio de vídeos compatible"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer or archive.org link, or an archive.org item identifier"
-msgstr "Pega un enlace a un archivo, versión, paquete, MediaFire, Google Drive, OneDrive, WeTransfer o archive.org, o un identificador de elemento de archive.org"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"
+msgstr "Pega un enlace a un archivo, carpeta, FTP, versión, paquete, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org o Wayback Machine, o un identificador de elemento de archive.org"
 
-msgid "Paste a file, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or video link"
-msgstr "Pega un enlace a un archivo, versión, paquete, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org o vídeo"
+msgid "Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"
+msgstr "Pega un enlace a un archivo, carpeta, FTP, versión, paquete, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine o vídeo"
 
 msgid "Paste a link, choose a quality, then add it to downloads."
 msgstr "Pega un enlace, elige la calidad y añádelo a las descargas."
 
-msgid "Paste a valid HTTP or HTTPS file, archive.org or video URL."
-msgstr "Pega una URL HTTP o HTTPS válida de un archivo, de archive.org o de un vídeo."
-
 msgid "Paste a valid HTTP or HTTPS video URL."
 msgstr "Pega una URL de vídeo HTTP o HTTPS válida."
+
+msgid "Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."
+msgstr "Pega una URL HTTP, HTTPS o FTP válida de un archivo, una carpeta, archive.org o un vídeo."
 
 msgid "Pause all"
 msgstr "Pausar todas"
@@ -473,3 +473,4 @@ msgstr "Trabajando…"
 
 msgid "yt-dlp update finished."
 msgstr "La actualización de yt-dlp ha terminado."
+

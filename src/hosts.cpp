@@ -1,6 +1,7 @@
 // Sites with public file APIs: Codeberg/Gitea and GitLab releases, Zenodo, PyPI, npm,
 // crates.io, and Dropbox share links. Each turns a page link into an Item of files.
 #include "sites.h"
+#include "platform/ftp.h"
 #include "json.hpp"
 #include <algorithm>
 #include <regex>
@@ -326,6 +327,6 @@ Item loadHostItem(const std::string& input, std::atomic_bool& stop) {
 }
 
 bool isFileSiteLink(const std::string& input) {
-    return isHubLink(input) || isGitHubLink(input) || isHostLink(input) || isLockerLink(input) || (isHttpUrl(input) && isArchiveLink(input));
+    return isHubLink(input) || isGitHubLink(input) || isHostLink(input) || isLockerLink(input) || isWaybackLink(input) || ftp::isFtpUrl(input) || (isHttpUrl(input) && isArchiveLink(input));
 }
 }

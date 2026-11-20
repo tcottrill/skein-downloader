@@ -11,6 +11,7 @@
 #include <ctime>
 #endif
 #include "platform/files.h"
+#include "platform/ftp.h"
 #include "util/sys_log.h"
 #include <algorithm>
 #include <array>
@@ -38,19 +39,42 @@ void cancelled(const std::atomic_bool& stop) { if (stop) throw std::runtime_erro
 void delay(unsigned seconds, const std::atomic_bool& stop) {
     for (uint64_t i = 0; i < (uint64_t)seconds * 10; ++i) { cancelled(stop); std::this_thread::sleep_for(std::chrono::milliseconds(100)); }
 }
+// An FTP file read through the HTTP-shaped Request: the "Range" and "If-Range" headers pick
+// the restart offset, and FTP errors become the network errors the engine retries or reports.
+NetworkError ftpFailure(const ftp::Error& e) {
+    if (e.reply == 550) return NetworkError("FTP 550: file not found, or it is a folder.", false);
+    return NetworkError(e.what(), e.temporary(), e.reply == 421 ? 10 : 1);
+}
+struct FtpTransfer {
+    std::unique_ptr<ftp::File> file; ftp::Answer answer; uint64_t left = 0; bool opened = false;
+    FtpTransfer(const std::string& url, const std::wstring& headers, std::atomic_bool* stop) {
+        static std::atomic_bool never = false;
+        try { file = std::make_unique<ftp::File>(url, stop ? *stop : never); answer = ftp::answer(file->sizeKnown(), file->size(), file->modified(), utf8(headers)); left = answer.length; }
+        catch (const ftp::Error& e) { throw ftpFailure(e); }
+    }
+    // The transfer starts on the first read, so a probe for the size opens no data connection.
+    unsigned long read(char* data, unsigned long size) {
+        try {
+            if (!opened) { file->open(answer.offset); opened = true; }
+            if (answer.lengthKnown) { if (!left) return 0; size = (unsigned long)std::min<uint64_t>(size, left); }
+            auto n = file->read(data, size); left -= std::min<uint64_t>(n, left);
+            return (unsigned long)n;
+        } catch (const ftp::Error& e) { throw ftpFailure(e); }
+    }
+};
 #ifdef _WIN32
 #include "platform/http_winhttp.inc"
 #else
 #include "platform/http_curl.inc"
 #endif
-std::unique_ptr<Request> get(const std::string& url, const std::wstring& headers, std::atomic_bool& stop, bool redirects = true) {
+std::unique_ptr<Request> get(const std::string& url, const std::wstring& headers, std::atomic_bool& stop, bool redirects = true, unsigned wait = 10) {
     for (unsigned attempt = 0;; ++attempt) {
         cancelled(stop);
         try {
 #ifdef _WIN32
-            return std::make_unique<Request>(Request::Url(url), headers, redirects);
+            return std::make_unique<Request>(Request::Url(url), headers, redirects, nullptr, wait, &stop);
 #else
-            return std::make_unique<Request>(Request::Url(url), headers, redirects, &stop);
+            return std::make_unique<Request>(Request::Url(url), headers, redirects, &stop, nullptr, wait);
 #endif
         }
         catch (const NetworkError& e) {
@@ -91,7 +115,7 @@ std::string headerUtf8(const std::wstring& value) {
     return utf8(value);
 }
 Item loadDirectLink(const std::string& url, std::atomic_bool& stop) {
-    if (!isHttpUrl(url)) throw std::runtime_error("Paste an HTTP or HTTPS link to a file.");
+    if (!isHttpUrl(url) && !ftp::isFtpUrl(url)) throw std::runtime_error("Paste an HTTP, HTTPS or FTP link to a file.");
     auto r = get(url, L"Range: bytes=0-0\r\n", stop);
     File file;
     if (r->status == 206) {
@@ -135,8 +159,8 @@ Response respond(Request& r, const std::string& requested, std::atomic_bool& sto
     return out;
 }
 }
-Response fetch(const std::string& url, std::atomic_bool& stop, const std::string& headers) {
-    auto r = get(url, wide(headers), stop);
+Response fetch(const std::string& url, std::atomic_bool& stop, const std::string& headers, unsigned wait) {
+    auto r = get(url, wide(headers), stop, true, wait);
     return respond(*r, url, stop);
 }
 Response post(const std::string& url, const std::string& body, std::atomic_bool& stop, const std::string& headers) {
@@ -221,9 +245,19 @@ Item loadItem(const std::string& input, std::atomic_bool& stop) {
     if (isGitHubLink(input)) return loadGitHubRelease(input, stop);
     if (isHostLink(input)) return loadHostItem(input, stop);
     if (isLockerLink(input)) return loadLockerItem(input, stop);
+    // FTP links, including ftp://user@host ones, which loadFolderItem explains it cannot sign in to.
+    auto start = input.find_first_not_of(" \t\r\n"); auto scheme = start == std::string::npos ? std::string() : input.substr(start, 6);
+    std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char c) { return (char)tolower(c); });
+    if (isWaybackLink(input) || scheme == "ftp://") return loadFolderItem(input, stop);
     if (!isArchiveLink(input) && isHttpUrl(input)) {
         auto a = input.find_first_not_of(" \t\r\n"), b = input.find_last_not_of(" \t\r\n");
-        return loadDirectLink(input.substr(a, b - a + 1), stop);
+        auto url = input.substr(a, b - a + 1);
+        try { return loadDirectLink(url, stop); }
+        catch (const std::exception& e) {
+            // A web page can be a folder listing ("Index of /files/"), whose files are listed instead.
+            if (!std::string(e.what()).starts_with("This link opens a web page")) throw;
+            return loadFolderItem(url, stop);
+        }
     }
     auto link = parseLink(input);
     auto r = get("https://archive.org/metadata/" + encode(link.id), L"", stop);
@@ -267,7 +301,12 @@ std::vector<ServerSpeed> measureServers(const File& file, const std::vector<std:
     return results;
 }
 void download(const std::string& url, const File& file, const Path& destination, unsigned connections, std::atomic_bool& stop, const Report& report, const std::vector<std::string>& mirrors, const std::string& forcedSource, const SpeedReport& speeds, const std::string& identity) {
-    const std::string selectedSource=forcedSource.empty()?url:forcedSource;
+    std::string selectedSource=forcedSource.empty()?url:forcedSource;
+    // The Wayback Machine's cache keeps one answer per address for half an hour, whatever byte range
+    // was asked for, and gives it to every later request: one range request there cuts later downloads
+    // of the file short. Its files are read whole on one connection, and a cut-down answer already
+    // cached (from anyone's range request) is avoided through the archive's other raw form (if_).
+    const bool wayback = isWaybackLink(selectedSource);
     // File lockers hand out a new download address on each visit; their page link names the file in the resume state.
     const std::string& key=identity.empty()?url:identity;
     const bool redirects=forcedSource.empty() || forcedSource==url;
@@ -278,8 +317,14 @@ void download(const std::string& url, const File& file, const Path& destination,
     uint64_t size = file.size; bool known = file.sizeKnown, ranged = false;
     std::wstring etag;
     if (!known || size) {
-        auto probe = get(selectedSource, L"Range: bytes=0-0\r\n", stop, redirects);
-        ranged = probe->status == 206;
+        auto probe = get(selectedSource, wayback ? L"" : L"Range: bytes=0-0\r\n", stop, redirects);
+        if (wayback && probe->status == 206) {
+            auto alternate = waybackAlternateUrl(selectedSource);
+            LOG_WARN("The Wayback Machine sent part of %s to a whole-file request (a cached range answer); trying %s", logUrl(selectedSource).c_str(), alternate.empty() ? "nothing else" : logUrl(alternate).c_str());
+            if (!alternate.empty()) { selectedSource = alternate; probe = get(selectedSource, L"", stop, redirects); }
+            if (probe->status == 206) throw NetworkError("The Wayback Machine is sending only part of this file for now (its cache holds a partial copy for up to 30 minutes). Retry later.", false);
+        }
+        ranged = !wayback && probe->status == 206;
         if (ranged) {
             std::wsmatch m; auto value = header(probe->request, WINHTTP_QUERY_CONTENT_RANGE);
             if (!std::regex_match(value, m, std::wregex(L"bytes 0-0/([0-9]+)"))) throw std::runtime_error("Invalid server range response");
