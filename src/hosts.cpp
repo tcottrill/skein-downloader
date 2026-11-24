@@ -21,7 +21,6 @@ File remoteFile(const std::string& name, const std::string& url, const json& siz
     auto dot = file.name.rfind('.'); if (dot != std::string::npos && dot + 1 < file.name.size()) file.format = file.name.substr(dot + 1);
     return file;
 }
-bool hexDigest(const std::string& value, size_t length) { return value.size() == length && std::all_of(value.begin(), value.end(), [](unsigned char c) { return isxdigit(c); }); }
 std::string joinDecoded(const std::vector<std::string>& parts, size_t from, size_t to) {
     std::string out; for (size_t i = from; i < to; ++i) out += (out.empty() ? "" : "/") + decode(parts[i]); return out;
 }
@@ -226,7 +225,7 @@ Item parsePyPIRelease(const std::string& body) {
         auto url = text(entry, "url");
         if (text(entry, "filename").empty() || !url.starts_with("https://files.pythonhosted.org/")) continue;
         auto file = remoteFile(text(entry, "filename"), url, entry.value("size", json()));
-        if (entry.contains("digests") && hexDigest(text(entry["digests"], "sha256"), 64)) file.sha256 = text(entry["digests"], "sha256");
+        if (entry.contains("digests") && isHex(text(entry["digests"], "sha256"), 64)) file.sha256 = text(entry["digests"], "sha256");
         item.files.push_back(std::move(file));
     }
     if (item.files.empty()) throw std::runtime_error("This PyPI release has no files.");
@@ -241,7 +240,7 @@ Item parseNpmVersion(const std::string& body) {
     Item item; item.title = name + " " + version; item.id = "npm/" + name + "/" + safeFilename(version);
     auto file = remoteFile(tarball.substr(tarball.rfind('/') + 1), tarball, json());
     // npm's shasum is the tarball's SHA-1.
-    if (hexDigest(text(j["dist"], "shasum"), 40)) file.sha1 = text(j["dist"], "shasum");
+    if (isHex(text(j["dist"], "shasum"), 40)) file.sha1 = text(j["dist"], "shasum");
     item.selectedFile = file.name; item.files.push_back(std::move(file));
     return item;
 }
@@ -258,7 +257,7 @@ Item parseCrateVersion(const std::string& body, const PackageLink& link) {
     if (num.empty()) throw std::runtime_error(j.contains("errors") ? "crates.io: crate or version not found." : "Unexpected crates.io data.");
     Item item; item.title = link.name + " " + num; item.id = "crates/" + link.name + "/" + safeFilename(num);
     auto file = remoteFile(link.name + "-" + num + ".crate", "https://static.crates.io/crates/" + encode(link.name) + "/" + encode(link.name + "-" + num) + ".crate", version.value("crate_size", json()));
-    if (hexDigest(text(version, "checksum"), 64)) file.sha256 = text(version, "checksum");
+    if (isHex(text(version, "checksum"), 64)) file.sha256 = text(version, "checksum");
     item.selectedFile = file.name; item.files.push_back(std::move(file));
     return item;
 }

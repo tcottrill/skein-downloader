@@ -12,6 +12,10 @@ int main() {
     const auto history = folder / "history.json";
     int result = 0;
     try {
+        // States are saved by name; an unknown name (a newer version's state) reads as Paused.
+        for (auto state : {downloads::State::Queued, downloads::State::Active, downloads::State::Paused, downloads::State::Failed, downloads::State::Complete})
+            if (downloads::stateFromName(downloads::stateName(state)) != state) throw std::runtime_error("A state name does not read back");
+        if (downloads::stateFromName("Bogus") != downloads::State::Paused) throw std::runtime_error("An unknown state name is not Paused");
         std::mutex mutex;
         std::condition_variable changed;
         std::vector<uint64_t> started;
