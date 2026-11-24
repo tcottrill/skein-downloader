@@ -20,6 +20,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PIECE = 64 * 1024
 PAUSE = 0.002
+# Ranged answers are slower, so a 10 MiB download on 4 connections lasts several of the engine's 100 ms
+# progress intervals: the tests that pause or copy the staging folder at a byte count need a report mid-transfer.
+RANGED_PAUSE = 0.01
 PATTERN = bytes((i * 31 + 7) & 0xFF for i in range(256))
 
 VERSIONS = {
@@ -156,7 +159,7 @@ class Handler(BaseHTTPRequestHandler):
                     STATS.bytes += piece
                 sent += piece
                 if sent < length:
-                    time.sleep(PAUSE)
+                    time.sleep(RANGED_PAUSE if status == 206 else PAUSE)
         finally:
             if counted:
                 with STATS.lock:
