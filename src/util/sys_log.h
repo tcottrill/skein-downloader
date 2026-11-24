@@ -85,46 +85,46 @@
 
 namespace Log {
 
-    enum class Level {
-        Debug = 0,
-        Info = 1,
-        Warn = 2,  
-        Error = 3,
-        Off = 4
-    };
+enum class Level {
+    Debug = 0,
+    Info = 1,
+    Warn = 2,
+    Error = 3,
+    Off = 4
+};
 
-    // Initializes the logging system and starts the background thread.
-    // Returns false if the log file could not be opened.
-    bool open(const std::string& filename);
+// Initializes the logging system and starts the background thread.
+// Returns false if the log file could not be opened.
+bool open(const std::string& filename);
 
-    // Flushes and shuts down logging system.
-    void close();
+// Flushes and shuts down logging system.
+void close();
 
-    // Writes a formatted log message at the specified level with source info.
-    //
-    // The format attribute makes GCC and Clang type-check every LOG_* call the
-    // way they check printf, so a format/argument mismatch is a build warning
-    // on the Linux side instead of garbage in systemlog.txt. MSVC has no
-    // equivalent, which is why the Linux build is the one that catches these.
-    // format is parameter 5, the varargs start at 6.
+// Writes a formatted log message at the specified level with source info.
+//
+// The format attribute makes GCC and Clang type-check every LOG_* call the
+// way they check printf, so a format/argument mismatch is a build warning
+// on the Linux side instead of garbage in systemlog.txt. MSVC has no
+// equivalent, which is why the Linux build is the one that catches these.
+// format is parameter 5, the varargs start at 6.
 #if defined(__GNUC__) || defined(__clang__)
-    void write(Level level, const char* file, const char* function, int line, const char* format, ...)
+void write(Level level, const char* file, const char* function, int line, const char* format, ...)
         __attribute__((format(printf, 5, 6)));
 #else
-    void write(Level level, const char* file, const char* function, int line, const char* format, ...);
+void write(Level level, const char* file, const char* function, int line, const char* format, ...);
 #endif
 
-    // Change the minimum level of messages to log.
-    void setLevel(Level level);
+// Change the minimum level of messages to log.
+void setLevel(Level level);
 
-    // Enable or disable also writing messages to the console.
-    void setConsoleOutputEnabled(bool enabled);
+// Enable or disable also writing messages to the console.
+void setConsoleOutputEnabled(bool enabled);
 }
 
 // Logging macros - safe, fast, and non-blocking.
 #define LogOpen(f) Log::open(f)
 #define LogClose() Log::close()
 #define LOG_DEBUG(fmt, ...) Log::write(Log::Level::Debug, __FILE__, __func__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_INFO(fmt, ...)  Log::write(Log::Level::Info,  __FILE__, __func__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) Log::write(Log::Level::Info, __FILE__, __func__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_ERROR(fmt, ...) Log::write(Log::Level::Error, __FILE__, __func__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_WARN(fmt, ...)  Log::write(Log::Level::Warn,  __FILE__, __func__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...) Log::write(Log::Level::Warn, __FILE__, __func__, __LINE__, fmt, ##__VA_ARGS__)

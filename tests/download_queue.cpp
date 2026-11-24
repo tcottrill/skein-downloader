@@ -8,7 +8,7 @@ using namespace std::chrono_literals;
 
 int main() {
     const auto folder = std::filesystem::temp_directory_path() /
-        ("skein-queue-test-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+                        ("skein-queue-test-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     const auto history = folder / "history.json";
     int result = 0;
     try {
@@ -40,7 +40,9 @@ int main() {
             queue.start();
             {
                 std::unique_lock lock(mutex);
-                if (!changed.wait_for(lock, 10s, [&] { return started.size() == 4; })) {
+                if (!changed.wait_for(lock, 10s, [&] {
+                        return started.size() == 4;
+                    })) {
                     throw std::runtime_error("Four workers did not start");
                 }
             }
@@ -66,7 +68,9 @@ int main() {
             std::unique_lock lock(mutex);
             releaseFirst = true;
             changed.notify_all();
-            if (!changed.wait_for(lock, 10s, [&] { return started.size() == 8; }) ||
+            if (!changed.wait_for(lock, 10s, [&] {
+                    return started.size() == 8;
+                }) ||
                 std::vector<uint64_t>(started.begin() + 4, started.end()) != std::vector<uint64_t>{7, 8, 5, 6}) {
                 throw std::runtime_error("The worker did not dispatch the promoted jobs first");
             }

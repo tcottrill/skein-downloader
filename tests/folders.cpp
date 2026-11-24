@@ -4,9 +4,12 @@
 #include <iostream>
 #include <stdexcept>
 
-static void check(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
+static void check(bool condition, const char* message) {
+    if (!condition) throw std::runtime_error(message);
+}
 static const archive::FolderEntry* find(const std::vector<archive::FolderEntry>& entries, const std::string& name) {
-    for (auto& e : entries) if (e.name == name) return &e;
+    for (auto& e : entries)
+        if (e.name == name) return &e;
     return nullptr;
 }
 int main() {
@@ -65,16 +68,16 @@ int main() {
 
         // The capture index: the most complete capture of each file, any host spelling, nothing outside the folder.
         const std::string cdx =
-            "http://www.64kib.com/pokeymax_files/ 20201126002139 1047 200\n"
-            "http://www.64kib.com/pokeymax_files/guide.pdf 20201126015326 1040831 200\n"
-            "https://www.64kib.com/pokeymax_files/guide.pdf 20210618233030 1040828 200\n"
-            "http://www.64kib.com/pokeymax_files/guide.pdf 20231119085319 42622923 200\n"
-            "http://64kib.com/pokeymax_files/guide.pdf 20251213162052 5236339 200\n"
-            "http://64kib.com:80/pokeymax_files/1.29/build%20one/out.rbf 20250101000000 100 200\n"
-            "http://64kib.com/pokeymax_files/1.29/ 20250101000000 100 200\n"
-            "http://64kib.com/pokeymax_files/?C=N;O=D 20250101000000 100 200\n"
-            "http://64kib.com/pokeymax_files/gone.zip 20250101000000 100 404\n"
-            "http://64kib.com/other/file.zip 20250101000000 100 200\n";
+                "http://www.64kib.com/pokeymax_files/ 20201126002139 1047 200\n"
+                "http://www.64kib.com/pokeymax_files/guide.pdf 20201126015326 1040831 200\n"
+                "https://www.64kib.com/pokeymax_files/guide.pdf 20210618233030 1040828 200\n"
+                "http://www.64kib.com/pokeymax_files/guide.pdf 20231119085319 42622923 200\n"
+                "http://64kib.com/pokeymax_files/guide.pdf 20251213162052 5236339 200\n"
+                "http://64kib.com:80/pokeymax_files/1.29/build%20one/out.rbf 20250101000000 100 200\n"
+                "http://64kib.com/pokeymax_files/1.29/ 20250101000000 100 200\n"
+                "http://64kib.com/pokeymax_files/?C=N;O=D 20250101000000 100 200\n"
+                "http://64kib.com/pokeymax_files/gone.zip 20250101000000 100 404\n"
+                "http://64kib.com/other/file.zip 20250101000000 100 200\n";
         auto found = parseWaybackCaptures(cdx, "http://64kib.com/pokeymax_files/");
         check(found.size() == 2, "Two files captured below the folder");
         check(found[0].name == "1.29/build one/out.rbf" && found[0].original == "http://64kib.com:80/pokeymax_files/1.29/build%20one/out.rbf", "Nested file keeps its path");
@@ -89,14 +92,14 @@ int main() {
         check(!ftp::isFtpUrl("ftp://user:secret@ftp.example.org/") && !ftp::isFtpUrl("http://example.org/"), "Only anonymous FTP links");
         check(isFileSiteLink("ftp://ftp.gnu.org/gnu/hello/"), "FTP links open the file picker");
         auto listed = ftp::parseList(
-            "total 12\r\n"
-            "drwxr-xr-x    2 ftp      ftp          4096 Jan 01  2020 sub folder\r\n"
-            "-rw-r--r--    1 ftp      ftp       1048576 Mar 15 10:42 image.iso\r\n"
-            "lrwxrwxrwx    1 ftp      ftp            12 Mar 15 10:42 latest.tar.gz -> hello-2.12.tar.gz\r\n"
-            "-rw-r--r--    1 owner           77 Dec 31  1999 no-group.txt\r\n"
-            "drwxr-xr-x    2 ftp      ftp          4096 Jan 01  2020 .\r\n"
-            "01-02-20  03:04PM       <DIR>          Dos Folder\r\n"
-            "01-02-20  03:04PM                  123 dos file.txt\r\n");
+                "total 12\r\n"
+                "drwxr-xr-x    2 ftp      ftp          4096 Jan 01  2020 sub folder\r\n"
+                "-rw-r--r--    1 ftp      ftp       1048576 Mar 15 10:42 image.iso\r\n"
+                "lrwxrwxrwx    1 ftp      ftp            12 Mar 15 10:42 latest.tar.gz -> hello-2.12.tar.gz\r\n"
+                "-rw-r--r--    1 owner           77 Dec 31  1999 no-group.txt\r\n"
+                "drwxr-xr-x    2 ftp      ftp          4096 Jan 01  2020 .\r\n"
+                "01-02-20  03:04PM       <DIR>          Dos Folder\r\n"
+                "01-02-20  03:04PM                  123 dos file.txt\r\n");
         check(listed.size() == 6, "FTP LIST entries");
         check(listed[0].name == "sub folder" && listed[0].folder, "Unix folder with a space");
         check(listed[1].name == "image.iso" && listed[1].sizeKnown && listed[1].size == 1048576, "Unix file size");
@@ -110,7 +113,12 @@ int main() {
         check(ftp::answer(true, 1000, "20240102030405", "Range: bytes=900-\r\n").contentRange == "bytes 900-999/1000", "Open-ended range");
         check(ftp::answer(true, 1000, "20250101000000", "Range: bytes=100-199\r\nIf-Range: \"ftp-1000-20240102030405\"\r\n").status == 200, "Changed file sends the whole file");
         check(ftp::answer(true, 1000, "", "Range: bytes=0-0\r\n").etag.empty(), "No modification time, no validator");
-        bool pastEnd = false; try { ftp::answer(true, 1000, "", "Range: bytes=1000-1000\r\n"); } catch (const ftp::Error& e) { pastEnd = e.reply == 416; }
+        bool pastEnd = false;
+        try {
+            ftp::answer(true, 1000, "", "Range: bytes=1000-1000\r\n");
+        } catch (const ftp::Error& e) {
+            pastEnd = e.reply == 416;
+        }
         check(pastEnd, "Range past the end");
         std::cout << "folder tests passed\n";
         return 0;

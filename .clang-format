@@ -1,0 +1,24 @@
+# Source layout for src/ and tests/ (clang-format 17 or newer; Visual Studio ships one).
+# One statement per line, 4-space indents; existing line breaks inside long statements are kept
+# (ColumnLimit 0) so expressions are wrapped where they read best, not at a fixed column.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ContinuationIndentWidth: 8
+AccessModifierOffset: -4
+ColumnLimit: 0
+PointerAlignment: Left
+# Windows headers must keep their order (windows.h before winhttp.h and bcrypt.h).
+SortIncludes: Never
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+BreakBeforeBraces: Attach
+IndentCaseLabels: false
+NamespaceIndentation: None
+FixNamespaceComments: false
+ReflowComments: false
+MaxEmptyLinesToKeep: 1

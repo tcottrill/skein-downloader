@@ -95,7 +95,7 @@
  * ============================================================================= */
 
 #include "sys_log.h"
-#include <cstdarg>  // <-- Required for va_start, va_list, va_end
+#include <cstdarg> // <-- Required for va_start, va_list, va_end
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -116,226 +116,226 @@
 #endif
 
 static const char* baseName(const char* path) {
-	// __FILE__ uses '\' under MSVC and '/' under GCC/Clang; take whichever
-	// separator comes last so Linux logs show the file name, not the full path.
-	const char* back = strrchr(path, '\\');
-	const char* forward = strrchr(path, '/');
-	const char* slash = forward > back ? forward : back;
-	return slash ? slash + 1 : path;
+    // __FILE__ uses '\' under MSVC and '/' under GCC/Clang; take whichever
+    // separator comes last so Linux logs show the file name, not the full path.
+    const char* back = strrchr(path, '\\');
+    const char* forward = strrchr(path, '/');
+    const char* slash = forward > back ? forward : back;
+    return slash ? slash + 1 : path;
 }
 
 namespace {
-	FILE* stream = nullptr;
-	std::mutex configMutex;
-	std::atomic<Log::Level> currentLogLevel = Log::Level::Debug;
-	// Mirrors each message to stdout (plain text). On by default: Linux runs show the log
-	// in the terminal; a Windows GUI process has no console until one is allocated.
-	std::atomic<bool> consoleOutput = true;
+FILE* stream = nullptr;
+std::mutex configMutex;
+std::atomic<Log::Level> currentLogLevel = Log::Level::Debug;
+// Mirrors each message to stdout (plain text). On by default: Linux runs show the log
+// in the terminal; a Windows GUI process has no console until one is allocated.
+std::atomic<bool> consoleOutput = true;
 
-	std::mutex queueMutex;
-	std::condition_variable queueCV;
-	std::queue<std::string> messageQueue;
-	std::thread logThread;
-	// Changed only with queueMutex held, so a message is either queued for a running
-	// worker or counted against the limit below, never left in a queue nobody drains.
-	bool running = false;
-	// Messages kept while no writer runs (before open, after close, or when the file
-	// could not be opened). Beyond this they are dropped instead of growing without end.
-	constexpr size_t kMaxPendingWithoutWriter = 1000;
+std::mutex queueMutex;
+std::condition_variable queueCV;
+std::queue<std::string> messageQueue;
+std::thread logThread;
+// Changed only with queueMutex held, so a message is either queued for a running
+// worker or counted against the limit below, never left in a queue nobody drains.
+bool running = false;
+// Messages kept while no writer runs (before open, after close, or when the file
+// could not be opened). Beyond this they are dropped instead of growing without end.
+constexpr size_t kMaxPendingWithoutWriter = 1000;
 
-	std::once_flag consoleInitFlag;
+std::once_flag consoleInitFlag;
 
-	const char* levelToString(Log::Level level) {
-		switch (level) {
-		case Log::Level::Debug: return "DEBUG";
-		case Log::Level::Info:  return "INFO ";
-		case Log::Level::Warn:  return "WARN ";
-		case Log::Level::Error: return "ERROR";
-		default:                return "UNKNOWN";
-		}
-	}
+const char* levelToString(Log::Level level) {
+    switch (level) {
+    case Log::Level::Debug: return "DEBUG";
+    case Log::Level::Info: return "INFO ";
+    case Log::Level::Warn: return "WARN ";
+    case Log::Level::Error: return "ERROR";
+    default: return "UNKNOWN";
+    }
+}
 
-	std::string currentTimeString() {
-		std::time_t now = std::time(nullptr);
-		struct tm timeInfo;
-		// Both are the thread-safe variant, but the argument order is
-		// REVERSED between them: MSVC's localtime_s(tm*, time_t*) vs POSIX's
-		// localtime_r(time_t*, tm*). Swapping them compiles cleanly and
-		// produces garbage, so this is worth spelling out.
+std::string currentTimeString() {
+    std::time_t now = std::time(nullptr);
+    struct tm timeInfo;
+    // Both are the thread-safe variant, but the argument order is
+    // REVERSED between them: MSVC's localtime_s(tm*, time_t*) vs POSIX's
+    // localtime_r(time_t*, tm*). Swapping them compiles cleanly and
+    // produces garbage, so this is worth spelling out.
 #ifdef _WIN32
-		localtime_s(&timeInfo, &now);
+    localtime_s(&timeInfo, &now);
 #else
-		localtime_r(&now, &timeInfo);
+    localtime_r(&now, &timeInfo);
 #endif
-		char buffer[32];
-		std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeInfo);
-		return buffer;
-	}
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeInfo);
+    return buffer;
+}
 
-	void logWorker() {
-		// messageQueue is only ever examined with queueMutex held; the file and
-		// console writes below run with it released.
-		std::unique_lock<std::mutex> lock(queueMutex);
-		for (;;) {
-			queueCV.wait(lock, [] {
-				return !messageQueue.empty() || !running;
-				});
+void logWorker() {
+    // messageQueue is only ever examined with queueMutex held; the file and
+    // console writes below run with it released.
+    std::unique_lock<std::mutex> lock(queueMutex);
+    for (;;) {
+        queueCV.wait(lock, [] {
+            return !messageQueue.empty() || !running;
+        });
 
-			while (!messageQueue.empty()) {
-				std::string msg = std::move(messageQueue.front());
-				messageQueue.pop();
-				lock.unlock();
+        while (!messageQueue.empty()) {
+            std::string msg = std::move(messageQueue.front());
+            messageQueue.pop();
+            lock.unlock();
 
-				// Write to file
-				if (stream) {
-					std::fputs(msg.c_str(), stream);
-					std::fflush(stream);
-				}
+            // Write to file
+            if (stream) {
+                std::fputs(msg.c_str(), stream);
+                std::fflush(stream);
+            }
 
-				// Optional console output
-				if (consoleOutput) {
-					std::cout << msg;
-				}
+            // Optional console output
+            if (consoleOutput) {
+                std::cout << msg;
+            }
 
-				lock.lock();
-			}
-			// Queue drained with the lock held, so nothing queued before
-			// close() set running to false can be left behind.
-			if (!running)
-				return;
-		}
-	}
+            lock.lock();
+        }
+        // Queue drained with the lock held, so nothing queued before
+        // close() set running to false can be left behind.
+        if (!running)
+            return;
+    }
+}
 
-	void enqueueMessage(std::string&& msg) {
-		{
-			std::lock_guard<std::mutex> lock(queueMutex);
-			if (!running && messageQueue.size() >= kMaxPendingWithoutWriter)
-				return;
-			messageQueue.push(std::move(msg));
-		}
-		queueCV.notify_one();
-	}
+void enqueueMessage(std::string&& msg) {
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        if (!running && messageQueue.size() >= kMaxPendingWithoutWriter)
+            return;
+        messageQueue.push(std::move(msg));
+    }
+    queueCV.notify_one();
+}
 
-	// Stops and joins the writer, then writes what is still queued. configMutex is held.
-	void stopWriter() {
-		{
-			std::lock_guard<std::mutex> lock(queueMutex);
-			running = false;
-		}
-		queueCV.notify_all();
-		if (logThread.joinable())
-			logThread.join();
+// Stops and joins the writer, then writes what is still queued. configMutex is held.
+void stopWriter() {
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        running = false;
+    }
+    queueCV.notify_all();
+    if (logThread.joinable())
+        logThread.join();
 
-		std::lock_guard<std::mutex> lock(queueMutex);
-		while (!messageQueue.empty()) {
-			const std::string& msg = messageQueue.front();
-			if (stream)
-				std::fputs(msg.c_str(), stream);
-			if (consoleOutput)
-				std::cout << msg;
-			messageQueue.pop();
-		}
-		if (stream)
-			std::fflush(stream);
-	}
+    std::lock_guard<std::mutex> lock(queueMutex);
+    while (!messageQueue.empty()) {
+        const std::string& msg = messageQueue.front();
+        if (stream)
+            std::fputs(msg.c_str(), stream);
+        if (consoleOutput)
+            std::cout << msg;
+        messageQueue.pop();
+    }
+    if (stream)
+        std::fflush(stream);
+}
 }
 
 namespace Log {
-	bool open(const std::string& filename) {
-		std::lock_guard<std::mutex> lock(configMutex);
+bool open(const std::string& filename) {
+    std::lock_guard<std::mutex> lock(configMutex);
 
-		// Opening again replaces the file: the old writer must finish first
-		// (assigning over a joinable std::thread would terminate the program).
-		stopWriter();
-		if (stream) {
-			std::fclose(stream);
-			stream = nullptr;
-		}
+    // Opening again replaces the file: the old writer must finish first
+    // (assigning over a joinable std::thread would terminate the program).
+    stopWriter();
+    if (stream) {
+        std::fclose(stream);
+        stream = nullptr;
+    }
 
-		// fopen_s is kept on Windows rather than switching both platforms to
-		// plain fopen: MSVC emits C4996 ("consider using fopen_s") for fopen,
-		// and this phase must not change the build's warning count.
+    // fopen_s is kept on Windows rather than switching both platforms to
+    // plain fopen: MSVC emits C4996 ("consider using fopen_s") for fopen,
+    // and this phase must not change the build's warning count.
 #ifdef _WIN32
-		errno_t err = fopen_s(&stream, filename.c_str(), "w");
-		if (err != 0 || !stream)
-			return false;
+    errno_t err = fopen_s(&stream, filename.c_str(), "w");
+    if (err != 0 || !stream)
+        return false;
 #else
-		stream = std::fopen(filename.c_str(), "w");
-		if (!stream)
-			return false;
+    stream = std::fopen(filename.c_str(), "w");
+    if (!stream)
+        return false;
 #endif
 
-		{
-			std::lock_guard<std::mutex> queueLock(queueMutex);
-			running = true;
-		}
-		logThread = std::thread(logWorker);
-		return true;
-	}
+    {
+        std::lock_guard<std::mutex> queueLock(queueMutex);
+        running = true;
+    }
+    logThread = std::thread(logWorker);
+    return true;
+}
 
-	void close() {
-		std::lock_guard<std::mutex> lock(configMutex);
-		if (!logThread.joinable()) return;
-		stopWriter();
-		if (stream) {
-			std::fclose(stream);
-			stream = nullptr;
-		}
-	}
+void close() {
+    std::lock_guard<std::mutex> lock(configMutex);
+    if (!logThread.joinable()) return;
+    stopWriter();
+    if (stream) {
+        std::fclose(stream);
+        stream = nullptr;
+    }
+}
 
-	void setLevel(Level level) {
-		currentLogLevel = level;
-	}
+void setLevel(Level level) {
+    currentLogLevel = level;
+}
 
-	void setConsoleOutputEnabled(bool enabled) {
-		std::lock_guard<std::mutex> lock(configMutex);
-		consoleOutput = enabled;
+void setConsoleOutputEnabled(bool enabled) {
+    std::lock_guard<std::mutex> lock(configMutex);
+    consoleOutput = enabled;
 
-		if (enabled) {
-			std::call_once(consoleInitFlag, []() {
+    if (enabled) {
+        std::call_once(consoleInitFlag, []() {
 #ifdef _WIN32
-				// Windows-only: a GUI-subsystem process has no console until
-				// it allocates one. Linux processes already have stdout, so
-				// there is nothing to do there.
-				AllocConsole();
-				freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-				freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
+            // Windows-only: a GUI-subsystem process has no console until
+            // it allocates one. Linux processes already have stdout, so
+            // there is nothing to do there.
+            AllocConsole();
+            freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+            freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
 
-				// Optional: set text mode
-				_setmode(_fileno(stdout), _O_TEXT);
-				_setmode(_fileno(stderr), _O_TEXT);
+            // Optional: set text mode
+            _setmode(_fileno(stdout), _O_TEXT);
+            _setmode(_fileno(stderr), _O_TEXT);
 
 #endif
-				std::cout.clear();
-				std::cerr.clear();
-				});
-		}
-	}
+            std::cout.clear();
+            std::cerr.clear();
+        });
+    }
+}
 
-	void write(Level level, const char* file, const char* function, int line, const char* format, ...) {
-		if (level < currentLogLevel)
-			return;
+void write(Level level, const char* file, const char* function, int line, const char* format, ...) {
+    if (level < currentLogLevel)
+        return;
 
-		constexpr size_t kMaxMessageSize = 2048;
-		char formatted[kMaxMessageSize];
+    constexpr size_t kMaxMessageSize = 2048;
+    char formatted[kMaxMessageSize];
 
-		va_list args;
-		va_start(args, format);
-		// Plain vsnprintf, not MSVC's vsnprintf_s: it is standard C++11,
-		// truncates and null-terminates exactly like _TRUNCATE asked for, and
-		// MSVC does not deprecate it (unlike fopen above).
-		vsnprintf(formatted, kMaxMessageSize, format, args);
-		va_end(args);
+    va_list args;
+    va_start(args, format);
+    // Plain vsnprintf, not MSVC's vsnprintf_s: it is standard C++11,
+    // truncates and null-terminates exactly like _TRUNCATE asked for, and
+    // MSVC does not deprecate it (unlike fopen above).
+    vsnprintf(formatted, kMaxMessageSize, format, args);
+    va_end(args);
 
-		std::ostringstream oss;
+    std::ostringstream oss;
 #ifdef LOG_WITH_TIMESTAMP
-		oss << "[" << currentTimeString() << "] ";
+    oss << "[" << currentTimeString() << "] ";
 #endif
-		oss << levelToString(level) << " ("
-			<< baseName(file) << ":" << line << " " << function << ") - "
-			<< formatted << "\n";
+    oss << levelToString(level) << " ("
+        << baseName(file) << ":" << line << " " << function << ") - "
+        << formatted << "\n";
 
-		// The writer thread copies it to the console too when that is enabled.
-		enqueueMessage(std::move(oss).str());
-	}
+    // The writer thread copies it to the console too when that is enabled.
+    enqueueMessage(std::move(oss).str());
+}
 }
