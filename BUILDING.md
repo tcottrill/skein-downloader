@@ -70,7 +70,7 @@ cmake --preset vs2022
 ### Linux
 
 Linux (C++20 compiler, CMake, Ninja, pkg-config, GTK3, curl and OpenSSL development files).
-On Ubuntu: `build-essential cmake ninja-build pkg-config libgtk-3-dev libcurl4-openssl-dev libssl-dev libsecret-1-dev`. Without `libsecret-1-dev` the build still works, but saved sign-ins are kept only until the program closes.
+On Ubuntu: `build-essential cmake ninja-build pkg-config libgtk-3-dev libcurl4-openssl-dev libssl-dev libsecret-1-dev`. Without `libsecret-1-dev` the build still works, but saved sign-ins are kept only until the program closes (`-DSKEIN_SECRETSTORE=OFF` forces that build even with the package installed).
 
 ```
 bash tools/build-linux.sh
