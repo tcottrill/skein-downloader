@@ -17,11 +17,13 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <condition_variable>
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <regex>
 #include <stdexcept>
+#include <stop_token>
 #include <thread>
 namespace archive {
 namespace {
@@ -477,34 +479,44 @@ void download(const std::string& url, const File& file, const Path& destination,
     auto lockPath = parts / L"lock";
     regular(lockPath);
     platform::FileLock fileLock(lockPath);
+    // The numbered part files of the older layouts, converted or deleted below.
     auto partPath = [&](size_t i) {
         return parts / (std::to_wstring(i) + L".part");
     };
-    regular(parts / L"state.json");
+    const auto statePath = parts / L"state.json";
+    const auto stateTemp = parts / L"state.json.tmp";
+    const auto dataPath = parts / L"data.tmp";
+    regular(statePath);
+    regular(stateTemp);
+    regular(dataPath);
     regular(parts / L"assembled.tmp");
     nlohmann::json previous;
     try {
-        std::ifstream in(parts / L"state.json");
+        std::ifstream in(statePath);
         in >> previous;
     } catch (...) {}
-    // Partial data identified only by an ETag is never checked against a hash, so it is reused only
-    // when the last run stopped normally and saved its parts to disk first ("clean", see saveParts).
-    // After a crash or power loss a part file can be longer than the data that reached the disk.
     const bool hashVerified = sha1Hash || sha256Hash;
+    // "single-v1": data.tmp plus the bytes done in each range ("done"), saved at checkpoints. The older layouts
+    // kept one file per part: "queued-v1" for the parts of queuedRanges, and no layout key for split(size, parts).
+    std::string previousLayout;
+    if (previous.is_object() && previous.contains("layout") && previous["layout"].is_string()) previousLayout = previous["layout"].get<std::string>();
+    // The older layouts reused part files identified only by a validator when the last run stopped normally
+    // and saved its parts to disk first ("clean"): after a crash a part file can be longer than the data that reached the disk.
     const bool previousClean = previous.is_object() && previous.value("clean", false);
-    if (previous.is_object()) previous.erase("clean");
+    nlohmann::json previousDone;
+    if (previous.is_object()) {
+        previous.erase("clean");
+        if (previous.contains("done")) previousDone = previous["done"];
+        previous.erase("done");
+    }
     size_t oldCount = 0;
     if (previous.is_object() && previous.contains("parts") && previous["parts"].is_number_unsigned()) {
         auto count = previous["parts"].get<uint64_t>();
         if (count <= 16384) oldCount = (size_t)count;
     }
-    // Honor the old partition map when upgrading an in-progress download.
-    bool legacy = previous.is_object() && !previous.contains("layout") && oldCount > 0 && oldCount <= 8 && previous.value("url", std::string()) == key && previous.value("size", uint64_t(0)) == size && previous.value("sha1", std::string()) == file.sha1 && previous.value("ranged", false) == ranged;
-    if (legacy) ranges = split(size, (unsigned)oldCount);
     const size_t cleanupCount = std::max({size_t(8), oldCount, ranges.size()});
     for (size_t i = 0; i < cleanupCount; ++i) regular(partPath(i));
-    nlohmann::json state = {{"url", key}, {"size", size}, {"known", known}, {"sha1", file.sha1}, {"etag", utf8(etag)}, {"parts", ranges.size()}, {"ranged", ranged}};
-    if (!legacy) state["layout"] = "queued-v1";
+    nlohmann::json state = {{"url", key}, {"size", size}, {"known", known}, {"sha1", file.sha1}, {"etag", utf8(etag)}, {"parts", ranges.size()}, {"ranged", ranged}, {"layout", "single-v1"}};
     // Recorded only when present so manifests written before SHA-256 support still match.
     if (!file.sha256.empty()) state["sha256"] = file.sha256;
     // Last-Modified, when it is the validator (no strong ETag); recorded only when present for the same reason.
@@ -522,64 +534,130 @@ void download(const std::string& url, const File& file, const Path& destination,
         else
             previous.erase("modified");
     }
-    if (!resumable || previous != state || (!hashVerified && !previousClean)) {
-        if (previous.is_object())
-            LOG_INFO("Discarding partial data for %s: %s", pathUtf8(destination).c_str(),
-                     !resumable ? "the server cannot resume this file" : previous != state ? "the file or its source changed"
-                                                                                           : "the last run did not stop normally, so its data may not have reached the disk");
-        for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
+    // What the last run left is reused only when it is the same file version: data.tmp with its saved counts
+    // (single-v1), or the part files of an older layout under the rules of the version that wrote them.
+    // Nothing; data.tmp and its counts (Data); the part files of an older layout, converted (Parts).
+    enum class Reuse { Nothing,
+                       Data,
+                       Parts };
+    Reuse reuse = Reuse::Nothing;
+    const char* discardReason = "the server cannot resume this file";
+    // The bytes done in each range at the start (at least one entry: a transfer of unknown size counts in entry 0).
+    std::vector<uint64_t> startDone(std::max<size_t>(ranges.size(), 1), 0);
+    std::vector<Range> oldRanges;
+    if (resumable && previous.is_object()) {
+        if (previousLayout == "single-v1") {
+            std::error_code ec;
+            const auto dataSize = std::filesystem::file_size(dataPath, ec);
+            auto validCounts = previousDone.is_array() && previousDone.size() == ranges.size();
+            for (size_t i = 0; validCounts && i < ranges.size(); ++i) {
+                validCounts = previousDone[i].is_number_unsigned() && previousDone[i].get<uint64_t>() <= ranges[i].last - ranges[i].first + 1;
+                if (validCounts) startDone[i] = previousDone[i].get<uint64_t>();
+            }
+            if (previous != state)
+                discardReason = "the file or its source changed";
+            else if (!validCounts)
+                discardReason = "its saved progress is not valid";
+            else if (ec || dataSize < size)
+                discardReason = "its data file is missing or shorter than the file";
+            else
+                reuse = Reuse::Data;
+        } else {
+            auto expected = state;
+            if (previousLayout == "queued-v1") {
+                expected["layout"] = "queued-v1";
+                oldRanges = queuedRanges(size);
+            } else if (previousLayout.empty() && oldCount > 0 && oldCount <= 8) {
+                expected.erase("layout");
+                expected["parts"] = oldCount;
+                oldRanges = split(size, (unsigned)oldCount);
+            }
+            if (oldRanges.empty() || previous != expected)
+                discardReason = "the file or its source changed";
+            else if (!hashVerified && !previousClean)
+                discardReason = "the last run did not stop normally, so its data may not have reached the disk";
+            else
+                reuse = Reuse::Parts;
+        }
     }
-    bool needsCleanStop = resumable && !hashVerified;
-    auto writeState = [&](bool clean) {
+    if (reuse != Reuse::Data) std::fill(startDone.begin(), startDone.end(), 0);
+    if (reuse == Reuse::Nothing && previous.is_object()) LOG_INFO("Discarding partial data for %s: %s", pathUtf8(destination).c_str(), discardReason);
+    // One file for the whole download, written at each range's offset by all connections. It is kept only with its counts.
+    std::unique_ptr<platform::DataFile> data;
+    if (reuse != Reuse::Data) std::filesystem::remove(dataPath);
+    if (reuse == Reuse::Parts) {
+        // Each old part is copied to its offset, flushed and deleted before the next, so the conversion needs no extra disk.
+        data = std::make_unique<platform::DataFile>(dataPath, true, size);
+        std::vector<uint64_t> lengths(oldRanges.size(), 0);
+        for (size_t i = 0; i < oldRanges.size(); ++i) {
+            const auto path = partPath(i);
+            if (!std::filesystem::exists(path)) continue;
+            const auto length = std::filesystem::file_size(path);
+            // A part saved normally never runs past its range; a longer one is not what the state says, so it is not valid.
+            if (length > oldRanges[i].last - oldRanges[i].first + 1) {
+                std::filesystem::remove(path);
+                continue;
+            }
+            {
+                std::ifstream in(path, std::ios::binary);
+                char buffer[65536];
+                for (uint64_t copied = 0; copied < length;) {
+                    in.read(buffer, (std::streamsize)std::min<uint64_t>(sizeof buffer, length - copied));
+                    const auto n = (size_t)in.gcount();
+                    if (!n) throw std::runtime_error("Cannot read partial file");
+                    data->write(oldRanges[i].first + copied, buffer, n);
+                    copied += n;
+                }
+            }
+            data->sync();
+            std::filesystem::remove(path);
+            lengths[i] = length;
+        }
+        startDone = convertedDone(oldRanges, lengths, ranges);
+        startDone.resize(std::max<size_t>(ranges.size(), 1), 0);
+        LOG_INFO("Converted the partial data of %s from %zu part file(s) to one data file", pathUtf8(destination).c_str(), oldRanges.size());
+    }
+    for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
+    std::filesystem::remove(parts / L"assembled.tmp");
+    std::filesystem::remove(stateTemp);
+    std::mutex reportLock;
+    std::atomic_uint64_t done = 0;
+    // The bytes done in each range; a connection adds to its range's count after each write.
+    std::vector<std::atomic_uint64_t> counts(startDone.size());
+    for (size_t i = 0; i < startDone.size(); ++i) {
+        counts[i] = startDone[i];
+        done += startDone[i];
+    }
+    // Serializes checkpoints, and guards data, counts, ranges and state while the checkpoint timer runs.
+    std::mutex checkpointLock;
+    // Saves the progress for a later run: the counts are copied first, then the data is flushed, then the state is
+    // replaced atomically, so the saved counts are never ahead of the data on disk. Nothing to do once data is closed.
+    auto checkpoint = [&] {
+        std::lock_guard guard(checkpointLock);
+        if (!data) return;
         auto saved = state;
-        if (clean) saved["clean"] = true;
+        saved["done"] = nlohmann::json::array();
+        for (size_t i = 0; i < ranges.size(); ++i) saved["done"].push_back(counts[i].load());
+        data->sync();
         {
-            std::ofstream out(parts / L"state.json", std::ios::trunc);
+            std::ofstream out(stateTemp, std::ios::binary | std::ios::trunc);
             out << saved.dump();
             out.flush();
             if (!out) throw std::runtime_error("Cannot save resume state");
         }
-        // On disk before any new part data: a "clean" state left from the last run must not outlive this one.
-        if (needsCleanStop) platform::sync(parts / L"state.json");
+        platform::replace(stateTemp, statePath);
     };
-    writeState(false);
-    // Called when the transfer stops early (pause, error): saves the parts to disk, then records that
-    // they may be reused. Hashed downloads skip this; their data is verified after assembly anyway.
-    auto saveParts = [&] {
-        if (!needsCleanStop) return;
-        try {
-            for (size_t i = 0; i < ranges.size(); ++i)
-                if (std::filesystem::exists(partPath(i))) platform::sync(partPath(i));
-            writeState(true);
-        } catch (const std::exception& e) {
-            LOG_WARN("Could not save the partial data of %s to disk (%s); it will be downloaded again", pathUtf8(destination).c_str(), e.what());
-        }
-    };
-    std::mutex reportLock;
-    std::atomic_uint64_t done = 0;
-    std::vector<uint64_t> offsets;
-    // What the part files already hold (only when partial data may be reused), and whether the rest fits on the disk.
-    // Also run again when the download restarts on one connection.
-    auto loadOffsets = [&] {
-        done = 0;
-        offsets.assign(ranges.size(), 0);
-        for (size_t i = 0; i < ranges.size(); ++i) {
-            auto path = partPath(i);
-            if (resumable && std::filesystem::exists(path)) {
-                auto length = ranges[i].last - ranges[i].first + 1;
-                offsets[i] = std::filesystem::file_size(path);
-                if (offsets[i] > length) {
-                    std::filesystem::remove(path);
-                    offsets[i] = 0;
-                }
-                done += offsets[i];
-            }
-        }
+    // Discards the staged data (restart, or a retry of a transfer without ranges): a new, empty data.tmp.
+    auto discardData = [&] {
+        std::lock_guard guard(checkpointLock);
+        data.reset();
+        std::filesystem::remove(dataPath);
+        data = std::make_unique<platform::DataFile>(dataPath, known, known ? size : 0);
     };
     auto checkFreeSpace = [&] {
         if (!known) return;
-        // Assembly copies the whole file next to the parts, so both must fit at once.
-        const uint64_t needed = (size - std::min<uint64_t>(done.load(), size)) + size;
+        // The data file is written in place, so only the bytes not yet done need room.
+        const uint64_t needed = size - std::min<uint64_t>(done.load(), size);
         std::error_code spaceError;
         const auto space = std::filesystem::space(destination.parent_path(), spaceError);
         if (!spaceError) {
@@ -590,8 +668,12 @@ void download(const std::string& url, const File& file, const Path& destination,
             }
         }
     };
-    loadOffsets();
+    // A converted folder is saved in this layout at once: its part files are gone.
+    if (reuse == Reuse::Parts) checkpoint();
     checkFreeSpace();
+    if (!data) data = std::make_unique<platform::DataFile>(dataPath, known, known ? size : 0);
+    // The state in this layout, before any new data is written.
+    checkpoint();
     // Set when a connection finds that the parts cannot be combined, so that the others stop mid-part.
     std::atomic_bool restartAsked = false;
     std::atomic_uint active = 0;
@@ -607,8 +689,9 @@ void download(const std::string& url, const File& file, const Path& destination,
     };
     auto receive = [&](size_t i, bool useRange, size_t& sourceIndex) {
         uint64_t length = known ? (useRange ? ranges[i].last - ranges[i].first + 1 : size) : UINT64_MAX;
-        auto path = partPath(i);
-        uint64_t offset = i < offsets.size() ? offsets[i] : 0;
+        // Where this range starts in the data file; a transfer without ranges writes the whole file from 0.
+        const uint64_t first = useRange ? ranges[i].first : 0;
+        uint64_t offset = counts[i].load();
         for (unsigned attempt = 0;; ++attempt) {
             cancelled(stop);
             if (known && offset == length) break;
@@ -618,9 +701,12 @@ void download(const std::string& url, const File& file, const Path& destination,
                 if (useRange) {
                     headers = L"Range: bytes=" + std::to_wstring(ranges[i].first + offset) + L"-" + std::to_wstring(ranges[i].last) + L"\r\n";
                     if (!source.tag.empty()) headers += L"If-Range: " + source.tag + L"\r\n";
-                } else {
+                } else if (offset) {
+                    // The whole file again: a new, empty data file, so a shorter answer of unknown size leaves no old tail.
                     done -= offset;
                     offset = 0;
+                    counts[i] = 0;
+                    discardData();
                 }
                 auto r = get(source.url, headers, stop, redirects);
                 if (useRange) {
@@ -646,8 +732,6 @@ void download(const std::string& url, const File& file, const Path& destination,
                         : count(c) { ++count; }
                     ~Active() { --count; }
                 } activeRequest(active);
-                std::ofstream out(path, std::ios::binary | (offset ? std::ios::app : std::ios::trunc));
-                if (!out) throw std::runtime_error("Cannot create partial file");
                 char buffer[65536];
                 for (;;) {
                     cancelled(stop);
@@ -655,14 +739,13 @@ void download(const std::string& url, const File& file, const Path& destination,
                     DWORD n = r->read(buffer, sizeof buffer);
                     if (!n) break;
                     if (known && n > length - offset) throw std::runtime_error("Server sent more bytes than requested");
-                    out.write(buffer, n);
-                    if (!out) throw std::runtime_error("Disk write failed. Check available space.");
+                    data->write(first + offset, buffer, n);
+                    // Counted only once written, so a checkpoint never records bytes that are not in the file.
                     offset += n;
+                    counts[i] = offset;
                     done += n;
                     notify("Downloading", effectiveHost, true);
                 }
-                out.flush();
-                if (!out) throw std::runtime_error("Cannot flush downloaded data");
                 if (known && offset != length) throw NetworkError("Server closed the connection before the file was complete");
                 break;
             } catch (const NetworkError& e) {
@@ -686,8 +769,30 @@ void download(const std::string& url, const File& file, const Path& destination,
                  ranged ? "parallel" : "single connection", ranges.size(), ranged ? connections : 1u, (unsigned long long)done.load(), hosts.c_str());
     }
     notify(ranged ? "Starting parallel download" : "Starting single connection");
-    const auto assembled = parts / L"assembled.tmp";
-    try { // until the file is published; see saveParts
+    // Checkpoints every interval while the transfer runs. Joined (stopTimer) before the function returns or throws
+    // and before data.tmp is closed, published or deleted.
+    std::jthread checkpointTimer;
+    auto stopTimer = [&] {
+        checkpointTimer.request_stop();
+        if (checkpointTimer.joinable()) checkpointTimer.join();
+    };
+    try { // until the file is published; a stop for any reason ends with a checkpoint
+        checkpointTimer = std::jthread([&](std::stop_token token) {
+            std::mutex waitLock;
+            std::condition_variable_any wake;
+            std::unique_lock lock(waitLock);
+            for (;;) {
+                wake.wait_for(lock, token, checkpointInterval(), [] {
+                    return false;
+                });
+                if (token.stop_requested()) return;
+                try {
+                    checkpoint();
+                } catch (const std::exception& e) {
+                    LOG_WARN("Could not save the progress of %s (%s); retrying at the next checkpoint", pathUtf8(destination).c_str(), e.what());
+                }
+            }
+        });
         auto transfer = [&] {
             if (ranged && size) {
                 std::mutex errorLock;
@@ -725,64 +830,61 @@ void download(const std::string& url, const File& file, const Path& destination,
             } catch (const RestartWhole& e) {
                 if (restarted) throw;
                 LOG_WARN("Restarting %s on one connection without resume: %s", pathUtf8(destination).c_str(), e.what());
-                for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
-                ranged = false;
-                resumable = false;
-                needsCleanStop = false;
-                ranges = split(size, 1);
-                state["ranged"] = false;
-                state["parts"] = ranges.size();
+                {
+                    // The connections have ended; the timer may be checkpointing, so the layout changes under its lock.
+                    std::lock_guard guard(checkpointLock);
+                    ranged = false;
+                    resumable = false;
+                    ranges = split(size, 1);
+                    counts = std::vector<std::atomic_uint64_t>(std::max<size_t>(ranges.size(), 1));
+                    done = 0;
+                    state["ranged"] = false;
+                    state["parts"] = ranges.size();
+                }
+                discardData();
                 restartAsked = false;
-                writeState(false);
-                loadOffsets();
+                checkpoint();
                 checkFreeSpace();
                 notify("Starting single connection");
             }
         }
+        stopTimer();
+        // The last checkpoint: the data reaches the disk before it is checked and published.
+        checkpoint();
         cancelled(stop);
-        notify("Assembling");
         {
-            std::ofstream out(assembled, std::ios::binary | std::ios::trunc);
-            if (!out) throw std::runtime_error("Cannot assemble download");
-            size_t count = ranged ? ranges.size() : ((!known || size) ? 1 : 0);
-            for (size_t i = 0; i < count; ++i) {
-                std::ifstream in(partPath(i), std::ios::binary);
-                if (!in) throw std::runtime_error("Partial file is missing");
-                char buffer[65536];
-                while (in) {
-                    cancelled(stop);
-                    in.read(buffer, sizeof buffer);
-                    out.write(buffer, in.gcount());
-                    if (!out) throw std::runtime_error("Disk full while assembling download");
-                }
-                if (!in.eof()) throw std::runtime_error("Cannot read partial file");
-            }
-            out.flush();
-            if (!out) throw std::runtime_error("Cannot flush completed file");
+            std::lock_guard guard(checkpointLock);
+            data.reset();
         }
-        if (known && std::filesystem::file_size(assembled) != size) throw std::runtime_error("Completed file has the wrong size");
+        if (known && (done.load() != size || std::filesystem::file_size(dataPath) != size)) throw std::runtime_error("Completed file has the wrong size");
         // SHA-256 is preferred when a source provides it (Hugging Face); SHA-1 comes from archive.org.
         if (!file.sha256.empty() || !file.sha1.empty()) {
             const bool useSha256 = !file.sha256.empty();
             notify(useSha256 ? "Verifying SHA-256" : "Verifying SHA-1");
             auto expected = useSha256 ? file.sha256 : file.sha1;
             expected = lower(expected);
-            const auto actual = useSha256 ? sha256File(assembled, stop) : sha1File(assembled, stop);
+            const auto actual = useSha256 ? sha256File(dataPath, stop) : sha1File(dataPath, stop);
             if (actual != expected) {
                 LOG_ERROR("%s mismatch for %s: expected %s, got %s", useSha256 ? "SHA-256" : "SHA-1", pathUtf8(destination).c_str(), expected.c_str(), actual.c_str());
-                for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
-                std::filesystem::remove(assembled);
+                // With data.tmp gone the saved counts are not reused (a missing data file discards them).
+                std::filesystem::remove(dataPath);
                 throw std::runtime_error("Checksum mismatch. Partial data was discarded; retry the download.");
             }
         }
         cancelled(stop);
     } catch (...) {
-        saveParts();
+        stopTimer();
+        // The final checkpoint when the transfer stops early (pause, error, restart failure): what reached the
+        // disk is recorded for the next run. Nothing to do once data.tmp is closed (it was checkpointed then).
+        try {
+            checkpoint();
+        } catch (const std::exception& e) {
+            LOG_WARN("Could not save the partial data of %s to disk (%s); the last checkpoint is kept", pathUtf8(destination).c_str(), e.what());
+        }
         throw;
-    } // from the transfer, assembly or verification
-    platform::publish(assembled, destination);
-    for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
-    std::filesystem::remove(parts / L"state.json");
+    } // from the transfer or verification
+    platform::publish(dataPath, destination);
+    std::filesystem::remove(statePath);
     fileLock.removeAndUnlock();
     std::filesystem::remove(ownerPath);
     std::error_code ignored;

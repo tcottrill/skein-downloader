@@ -1,12 +1,17 @@
 // End-to-end download engine tests against the local server in tests/engine_server.py,
 // started by tests/run_engine_tests.py, which passes the server's base URL.
 #include "sites.h"
+#include "staging.h"
 #include "json.hpp"
 #include <atomic>
+#include <chrono>
+#include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <thread>
 
 namespace {
 constexpr uint64_t MiB = 1024 * 1024;
@@ -166,6 +171,185 @@ void changedFile(const std::string& base) {
     }
 }
 
+archive::Path stagingFor(const archive::Path& target) {
+    auto staging = target;
+    staging += L".archive-parts";
+    return staging;
+}
+
+// Runs archive::download; the watch callback sees each progress report and returns true to stop the
+// download. Returns true when the download ended with "Paused" after watch asked it to stop.
+bool runWatched(const std::string& url, const archive::Path& target, unsigned connections, const std::function<bool(const archive::Progress&)>& watch) {
+    std::atomic_bool stop = false;
+    archive::File file;
+    file.name = "file.bin";
+    const auto report = [&](const archive::Progress& progress) {
+        if (watch(progress)) stop = true;
+    };
+    try {
+        archive::download(url, file, target, connections, stop, report);
+    } catch (const std::runtime_error& e) {
+        if (!stop || std::string(e.what()) != "Paused") throw;
+        return true;
+    }
+    return false;
+}
+
+// True when the staging folder holds a file of the old layouts (numbered .part files, assembled.tmp).
+bool hasOldLayoutFiles(const archive::Path& staging) {
+    std::error_code ec;
+    for (std::filesystem::directory_iterator it(staging, ec), end; !ec && it != end; it.increment(ec)) {
+        const auto name = it->path().filename().wstring();
+        if (name.ends_with(L".part") || name == L"assembled.tmp") return true;
+    }
+    return false;
+}
+
+bool hasFile(const archive::Path& staging, const wchar_t* name) {
+    std::error_code ec;
+    return std::filesystem::exists(staging / name, ec);
+}
+
+void writeFile(const archive::Path& path, const std::string& data) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    out.write(data.data(), static_cast<std::streamsize>(data.size()));
+    out.flush();
+    expect(static_cast<bool>(out), "The file " + archive::pathUtf8(path) + " can be written.");
+}
+
+// The bytes a staging folder's state.json records as done (0 when it cannot be read).
+uint64_t savedDone(const archive::Path& state) {
+    try {
+        std::ifstream in(state, std::ios::binary);
+        auto json = nlohmann::json::parse(in);
+        uint64_t total = 0;
+        for (const auto& count : json.at("done")) total += count.get<uint64_t>();
+        return total;
+    } catch (const std::exception&) {
+        return 0;
+    }
+}
+
+void singleDataFile(const std::string& base) {
+    for (const char* mode : {"etag", "modified"}) {
+        TempFolder folder(std::string("single-") + mode);
+        reset(base);
+        const auto target = folder.path / "file.bin";
+        const auto staging = stagingFor(target);
+        bool oldFiles = false, dataFile = false;
+        runWatched(urlFor(base, mode, 10 * MiB), target, 4, [&](const archive::Progress&) {
+            if (hasOldLayoutFiles(staging)) oldFiles = true;
+            if (hasFile(staging, L"data.tmp")) dataFile = true;
+            return false;
+        });
+        expect(!oldFiles, std::string("While downloading (mode ") + mode + ") the staging folder never holds a .part file or assembled.tmp.");
+        expect(dataFile, std::string("While downloading (mode ") + mode + ") the staging folder holds data.tmp.");
+        expect(readFile(target) == expectedBytes(10 * MiB), std::string("A file staged in one data file (mode ") + mode + ") has the right content.");
+    }
+}
+
+// A copy of the staging folder taken mid-download, as a crash would leave it, resumes from its last checkpoint.
+void snapshotResume(const std::string& base) {
+    archive::setCheckpointInterval(std::chrono::milliseconds(100));
+    for (const char* mode : {"etag", "modified"}) {
+        TempFolder folder(std::string("snapshot-") + mode);
+        reset(base);
+        const auto target = folder.path / "file.bin";
+        const auto staging = stagingFor(target);
+        const auto side = folder.path / "side";
+        const auto url = urlFor(base, mode, 10 * MiB);
+        std::filesystem::create_directories(side);
+        bool copied = false;
+        const bool paused = runWatched(url, target, 4, [&](const archive::Progress& progress) {
+            if (copied || progress.done < 4 * MiB) return copied;
+            // The connections wait for this callback; give the checkpoint timer up to 2 s to record some data.
+            for (int i = 0; i < 200 && savedDone(staging / L"state.json") == 0; ++i) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            // The state first: the data copied after it holds at least what it records.
+            writeFile(side / L"state.json", readFile(staging / L"state.json"));
+            for (const auto& entry : std::filesystem::directory_iterator(staging)) {
+                const auto name = entry.path().filename();
+                if (name == L"lock" || name == L"state.json") continue;
+                writeFile(side / name, readFile(entry.path()));
+            }
+            copied = true;
+            return true;
+        });
+        expect(paused && copied, std::string("The download (mode ") + mode + ") paused after its staging folder was copied.");
+        const auto saved = savedDone(side / L"state.json");
+        expect(saved > 0, std::string("The copied state (mode ") + mode + ") records some data as done.");
+        for (const auto& entry : std::filesystem::directory_iterator(staging))
+            if (entry.path().filename() != L"lock") std::filesystem::remove(entry.path());
+        for (const auto& entry : std::filesystem::directory_iterator(side)) std::filesystem::copy_file(entry.path(), staging / entry.path().filename());
+        const auto before = stats(base)["bytes"].get<uint64_t>();
+        run(url, target, 4);
+        expect(readFile(target) == expectedBytes(10 * MiB), std::string("A download resumed from a snapshot (mode ") + mode + ") has the right content.");
+        const auto bytes = stats(base)["bytes"].get<uint64_t>();
+        expect(bytes < 17 * MiB, std::string("A download resumed from a snapshot (mode ") + mode + ") reused the checkpointed data.");
+        expect(bytes - before <= 10 * MiB - saved + 64 * 1024, std::string("A download resumed from a snapshot (mode ") + mode + ") fetched only what its checkpoint did not record.");
+    }
+    archive::setCheckpointInterval(std::chrono::seconds(5));
+}
+
+// A staging folder left by the version that wrote one file per part ("queued-v1"): parts 0 and 1
+// complete, part 2 half written. With "clean" (a normal stop) it is converted; without it, discarded.
+void oldLayout(const std::string& base, bool clean) {
+    TempFolder folder(clean ? "old-clean" : "old-unclean");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    const auto staging = stagingFor(target);
+    const auto url = urlFor(base, "etag", 10 * MiB);
+    std::filesystem::create_directories(staging);
+    writeFile(staging / L"owner.txt", "SkeinDownloader staging v1");
+    nlohmann::json state = {{"url", url}, {"size", 10 * MiB}, {"known", true}, {"sha1", ""}, {"etag", "\"skein-test-1\""}, {"parts", 10}, {"ranged", true}, {"layout", "queued-v1"}, {"source", url}};
+    if (clean) state["clean"] = true;
+    writeFile(staging / L"state.json", state.dump());
+    const auto data = expectedBytes(10 * MiB);
+    writeFile(staging / L"0.part", data.substr(0, MiB));
+    writeFile(staging / L"1.part", data.substr(MiB, MiB));
+    writeFile(staging / L"2.part", data.substr(2 * MiB, MiB / 2));
+    bool oldFiles = false;
+    runWatched(url, target, 4, [&](const archive::Progress&) {
+        if (hasOldLayoutFiles(staging)) oldFiles = true;
+        return false;
+    });
+    const std::string kind = clean ? "A converted old staging folder" : "An old staging folder without a clean stop";
+    expect(readFile(target) == expectedBytes(10 * MiB), kind + " gives the right content.");
+    expect(!oldFiles, kind + " leaves no .part file while downloading.");
+    const auto bytes = stats(base)["bytes"].get<uint64_t>();
+    if (clean)
+        expect(bytes < 8 * MiB + MiB / 2, kind + " reuses its parts.");
+    else
+        expect(bytes >= 10 * MiB, kind + " is downloaded again.");
+}
+
+// The same old folder with "clean", but part 2 is longer than its range: it is not what the state says, so it is
+// not reused, while parts 0 and 1 are.
+void oldLayoutLongPart(const std::string& base) {
+    TempFolder folder("old-long-part");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    const auto staging = stagingFor(target);
+    const auto url = urlFor(base, "etag", 10 * MiB);
+    std::filesystem::create_directories(staging);
+    writeFile(staging / L"owner.txt", "SkeinDownloader staging v1");
+    const nlohmann::json state = {{"url", url}, {"size", 10 * MiB}, {"known", true}, {"sha1", ""}, {"etag", "\"skein-test-1\""}, {"parts", 10}, {"ranged", true}, {"layout", "queued-v1"}, {"source", url}, {"clean", true}};
+    writeFile(staging / L"state.json", state.dump());
+    const auto data = expectedBytes(10 * MiB);
+    writeFile(staging / L"0.part", data.substr(0, MiB));
+    writeFile(staging / L"1.part", data.substr(MiB, MiB));
+    writeFile(staging / L"2.part", data.substr(2 * MiB, MiB + 10));
+    bool oldFiles = false;
+    runWatched(url, target, 4, [&](const archive::Progress&) {
+        if (hasOldLayoutFiles(staging)) oldFiles = true;
+        return false;
+    });
+    expect(readFile(target) == expectedBytes(10 * MiB), "An old staging folder with a part longer than its range gives the right content.");
+    expect(!oldFiles, "An old staging folder with a part longer than its range leaves no .part file while downloading.");
+    const auto bytes = stats(base)["bytes"].get<uint64_t>();
+    expect(bytes >= 8 * MiB, "A part longer than its range is not reused.");
+    expect(bytes < 10 * MiB, "The parts of an old staging folder that fit their ranges are reused.");
+}
+
 void existingDestination(const std::string& base) {
     TempFolder folder("existing");
     const auto target = folder.path / "file.bin";
@@ -201,6 +385,11 @@ int main(int argc, char** argv) {
         weakEtagOnly(base);
         rangeProbeOnly(base);
         changedFile(base);
+        singleDataFile(base);
+        snapshotResume(base);
+        oldLayout(base, true);
+        oldLayout(base, false);
+        oldLayoutLongPart(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;

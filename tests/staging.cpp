@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 static void check(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
@@ -100,6 +101,19 @@ static void dataFileTests() {
     std::error_code ignored;
     fs::remove_all(dir, ignored);
 }
+static void convertedDoneTests() {
+    using archive::convertedDone;
+    using archive::Range;
+    using Counts = std::vector<uint64_t>;
+    const std::vector<Range> same{{0, 9}, {10, 19}, {20, 29}};
+    check(convertedDone(same, {10, 4, 0}, same) == Counts{10, 4, 0}, "With the same partition old and new, the counts are the old lengths.");
+    const std::vector<Range> quarters{{0, 24}, {25, 49}, {50, 74}, {75, 99}};
+    check(convertedDone({{0, 99}}, {50}, quarters) == Counts{25, 25, 0, 0}, "Half of one old part fills the first two of four new ranges.");
+    check(convertedDone({{0, 49}, {50, 99}}, {50, 10}, {{0, 39}, {40, 79}, {80, 99}}) == Counts{40, 20, 0}, "Adjacent old parts count as one run of valid bytes.");
+    check(convertedDone({{0, 49}, {50, 99}}, {80, 0}, {{0, 39}, {40, 79}, {80, 99}}) == Counts{40, 10, 0}, "An old length larger than its range counts as the range length.");
+    check(convertedDone({}, {}, quarters) == Counts{0, 0, 0, 0}, "Without old parts every count is zero.");
+    check(convertedDone({{0, 49}, {50, 99}}, {0, 50}, {{0, 49}, {50, 99}}) == Counts{0, 50}, "A valid run that starts inside a new range is not counted for it.");
+}
 int main() {
     try {
         using namespace archive;
@@ -119,6 +133,7 @@ int main() {
         check(validatorChanged(L"d1", L"", L"d2"), "A different Last-Modified is a change.");
         check(!validatorChanged(L"d1", L"\"x\"", L""), "A stored date is not compared with an ETag.");
         check(!validatorChanged(L"", L"\"x\"", L"d"), "Nothing stored proves nothing.");
+        convertedDoneTests();
         dataFileTests();
         std::cout << "staging tests passed\n";
         return 0;
