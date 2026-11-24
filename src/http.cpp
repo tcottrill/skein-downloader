@@ -860,6 +860,8 @@ void download(const std::string& url, const File& file, const Path& destination,
         cancelled(stop);
         {
             std::lock_guard guard(checkpointLock);
+            // Every byte is written: the finished file must not stay sparse after it is published.
+            if (data && known && done.load() == size) data->complete();
             data.reset();
         }
         if (known && (done.load() != size || std::filesystem::file_size(dataPath) != size)) throw std::runtime_error("Completed file has the wrong size");

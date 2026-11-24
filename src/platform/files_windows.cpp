@@ -89,6 +89,12 @@ void DataFile::write(uint64_t offset, const char* data, size_t size) {
         size -= written;
     }
 }
+void DataFile::complete() {
+    FILE_SET_SPARSE_BUFFER buffer{};
+    buffer.SetSparse = FALSE;
+    DWORD returned = 0;
+    DeviceIoControl(impl->h, FSCTL_SET_SPARSE, &buffer, sizeof(buffer), nullptr, 0, &returned, nullptr); // best effort
+}
 void DataFile::sync() {
     if (!FlushFileBuffers(impl->h)) throw std::runtime_error("Cannot save the download file to disk (Windows error " + std::to_string(GetLastError()) + ")");
 }

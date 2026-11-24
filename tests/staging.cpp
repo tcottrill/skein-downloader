@@ -13,6 +13,12 @@
 #include <string>
 #include <thread>
 #include <vector>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 static void check(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
@@ -65,6 +71,26 @@ static void dataFileTests() {
             platform::DataFile data(file, true, 4 * MiB);
         }
         check(fs::file_size(file) == 4 * MiB, "Reopening with a smaller size truncates.");
+#ifdef _WIN32
+        { // A finished file is an ordinary one: complete() clears the sparse mark.
+            const fs::path whole = dir / "c.part";
+            const std::string content(4 * MiB, '\x5A');
+            bool sparse = false;
+            {
+                platform::DataFile data(whole, true, 4 * MiB);
+                // Skip the attribute checks when the temp drive cannot mark files sparse.
+                sparse = (GetFileAttributesW(whole.c_str()) & FILE_ATTRIBUTE_SPARSE_FILE) != 0;
+                data.write(0, content.data(), content.size());
+                data.complete();
+            }
+            if (sparse) {
+                const auto attributes = GetFileAttributesW(whole.c_str());
+                check(attributes != INVALID_FILE_ATTRIBUTES, "The completed file can be queried.");
+                check((attributes & FILE_ATTRIBUTE_SPARSE_FILE) == 0, "complete() clears the sparse mark of the file.");
+            }
+            check(readAll(whole) == content, "The content is intact after complete().");
+        }
+#endif
         const fs::path open = dir / "b.part";
         {
             platform::DataFile data(open, false, 0);

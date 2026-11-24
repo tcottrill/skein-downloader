@@ -39,5 +39,8 @@ public:
     void write(uint64_t offset, const char* data, size_t size);
     // Data to disk (FlushFileBuffers / fsync).
     void sync();
+    // Call when every byte has been written: clears the sparse mark the constructor set (Windows), so the
+    // finished file is an ordinary one. Does nothing on Linux. Failure is ignored.
+    void complete();
 };
 }

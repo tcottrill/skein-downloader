@@ -14,6 +14,13 @@
 #include <sstream>
 #include <stdexcept>
 #include <thread>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include "platform/files.h"
+#include <windows.h>
+#endif
 
 namespace {
 constexpr uint64_t MiB = 1024 * 1024;
@@ -80,12 +87,35 @@ struct TempFolder {
     }
 };
 
+#ifdef _WIN32
+bool isSparse(const archive::Path& path) {
+    const auto attributes = GetFileAttributesW(path.c_str());
+    return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_SPARSE_FILE);
+}
+
+// True when the temp drive can mark a file sparse (decided once with a probe DataFile).
+bool driveSupportsSparse() {
+    static const bool supported = [] {
+        TempFolder folder("sparse-probe");
+        const auto probe = folder.path / "probe.bin";
+        {
+            platform::DataFile data(probe, true, 4 * MiB);
+        }
+        return isSparse(probe);
+    }();
+    return supported;
+}
+#endif
+
 void ranges(const std::string& base) {
     TempFolder folder("ranges");
     reset(base);
     const auto target = folder.path / "file.bin";
     run(base + "/etag/" + std::to_string(10 * MiB) + "/file.bin", target, 4);
     expect(readFile(target) == expectedBytes(10 * MiB), "A 10 MiB file with a strong ETag downloads with the right content.");
+#ifdef _WIN32
+    expect(!isSparse(target), "A finished download is not marked sparse.");
+#endif
     expect(stats(base)["ranged"].get<int>() >= 10, "A 10 MiB file with a strong ETag is fetched in at least 10 ranged requests.");
 }
 
@@ -113,10 +143,13 @@ void pauseAndResume(const std::string& base) {
     const auto url = base + "/etag/" + std::to_string(10 * MiB) + "/file.bin";
     run(url, target, 4, 3 * MiB);
     expect(!std::filesystem::exists(target), "A paused download leaves no destination file.");
-    run(url, target, 4);
-    expect(readFile(target) == expectedBytes(10 * MiB), "A resumed download has the right content.");
     auto staging = target;
     staging += L".archive-parts";
+#ifdef _WIN32
+    if (driveSupportsSparse()) expect(isSparse(staging / L"data.tmp"), "An unfinished download's data.tmp is still marked sparse.");
+#endif
+    run(url, target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A resumed download has the right content.");
     expect(!std::filesystem::exists(staging), "The staging folder is gone after the download finishes.");
     expect(stats(base)["bytes"].get<uint64_t>() < 15 * MiB, "The resumed download reused the data already received.");
 }

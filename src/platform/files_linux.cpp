@@ -136,6 +136,7 @@ void DataFile::write(uint64_t offset, const char* data, size_t size) {
         size -= static_cast<size_t>(written);
     }
 }
+void DataFile::complete() {}
 void DataFile::sync() {
     int result;
     do {
