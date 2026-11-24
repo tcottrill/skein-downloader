@@ -475,6 +475,9 @@ msgstr "वीडियो उपकरण तैयार हैं। को�
 msgid "Video tools ready."
 msgstr "वीडियो उपकरण तैयार हैं।"
 
+msgid "Waiting for a free connection"
+msgstr "खाली कनेक्शन की प्रतीक्षा है"
+
 msgid "Working…"
 msgstr "काम जारी…"
 

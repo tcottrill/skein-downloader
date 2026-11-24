@@ -1,5 +1,6 @@
 // End-to-end download engine tests against the local server in tests/engine_server.py,
 // started by tests/run_engine_tests.py, which passes the server's base URL.
+#include "host_limit.h"
 #include "sites.h"
 #include "staging.h"
 #include "json.hpp"
@@ -7,6 +8,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <exception>
 #include <functional>
 #include <iostream>
 #include <sstream>
@@ -350,6 +352,39 @@ void oldLayoutLongPart(const std::string& base) {
     expect(bytes < 10 * MiB, "The parts of an old staging folder that fit their ranges are reused.");
 }
 
+// Two downloads from one server, each on 4 connections, share the host's limit of 2 connections.
+void hostLimit(const std::string& base) {
+    // The limit is process-wide: restore it even when this case fails.
+    struct Restore {
+        ~Restore() { archive::setHostLimit(16); }
+    } restore;
+    archive::setHostLimit(2);
+    TempFolder folder("host-limit");
+    reset(base);
+    const auto first = folder.path / "first.bin";
+    const auto second = folder.path / "second.bin";
+    const auto url = urlFor(base, "etag", 6 * MiB);
+    std::exception_ptr failure;
+    std::thread other([&] {
+        try {
+            run(url, second, 4);
+        } catch (...) {
+            failure = std::current_exception();
+        }
+    });
+    try {
+        run(url, first, 4);
+    } catch (...) {
+        other.join();
+        throw;
+    }
+    other.join();
+    if (failure) std::rethrow_exception(failure);
+    expect(readFile(first) == expectedBytes(6 * MiB), "The first of two downloads sharing a host limit has the right content.");
+    expect(readFile(second) == expectedBytes(6 * MiB), "The second of two downloads sharing a host limit has the right content.");
+    expect(stats(base)["maxConcurrent"].get<int>() <= 2, "Two downloads from one server with a limit of 2 never have more than 2 ranged responses at once.");
+}
+
 void existingDestination(const std::string& base) {
     TempFolder folder("existing");
     const auto target = folder.path / "file.bin";
@@ -390,6 +425,7 @@ int main(int argc, char** argv) {
         oldLayout(base, true);
         oldLayout(base, false);
         oldLayoutLongPart(base);
+        hostLimit(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;

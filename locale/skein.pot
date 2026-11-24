@@ -475,6 +475,9 @@ msgstr ""
 msgid "Video tools ready."
 msgstr ""
 
+msgid "Waiting for a free connection"
+msgstr ""
+
 msgid "Working…"
 msgstr ""
 

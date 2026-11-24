@@ -475,6 +475,9 @@ msgstr "Видеоинструменты готовы. Если сайт пер�
 msgid "Video tools ready."
 msgstr "Видеоинструменты готовы."
 
+msgid "Waiting for a free connection"
+msgstr "Ожидание свободного соединения"
+
 msgid "Working…"
 msgstr "Выполняется…"
 

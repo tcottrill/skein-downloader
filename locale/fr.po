@@ -475,6 +475,9 @@ msgstr "Les outils vidéo sont prêts. Mettez à jour yt-dlp si un site ne fonct
 msgid "Video tools ready."
 msgstr "Outils vidéo prêts."
 
+msgid "Waiting for a free connection"
+msgstr "En attente d'une connexion libre"
+
 msgid "Working…"
 msgstr "En cours…"
 

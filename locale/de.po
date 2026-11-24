@@ -475,6 +475,9 @@ msgstr "Videowerkzeuge sind bereit. Wenn eine Website nicht mehr funktioniert, y
 msgid "Video tools ready."
 msgstr "Videowerkzeuge bereit."
 
+msgid "Waiting for a free connection"
+msgstr "Warten auf eine freie Verbindung"
+
 msgid "Working…"
 msgstr "In Bearbeitung…"
 

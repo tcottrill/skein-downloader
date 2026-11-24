@@ -475,6 +475,9 @@ msgstr "Công cụ video đã sẵn sàng. Cập nhật yt-dlp nếu một trang
 msgid "Video tools ready."
 msgstr "Công cụ video đã sẵn sàng."
 
+msgid "Waiting for a free connection"
+msgstr "Đang chờ kết nối trống"
+
 msgid "Working…"
 msgstr "Đang xử lý…"
 

@@ -1,4 +1,5 @@
 #include "core.h"
+#include "host_limit.h"
 #include "sites.h"
 #include "staging.h"
 #include "json.hpp"
@@ -708,6 +709,11 @@ void download(const std::string& url, const File& file, const Path& destination,
                     counts[i] = 0;
                     discardData();
                 }
+                // One of the server's connection slots, from before the request until its response has been read
+                // or has failed; it is given back before a retry waits, so a waiting retry holds none.
+                HostSlot slot(lower(utf8(Request::Url(source.url).host)), stop, [&] {
+                    notify("Waiting for a free connection", source.host);
+                });
                 auto r = get(source.url, headers, stop, redirects);
                 if (useRange) {
                     if (r->status == 200) {

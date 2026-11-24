@@ -1,11 +1,14 @@
 // Staging helpers (src/staging.cpp), without the network.
+#include "host_limit.h"
 #include "staging.h"
 #include "platform/files.h"
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -114,6 +117,163 @@ static void convertedDoneTests() {
     check(convertedDone({}, {}, quarters) == Counts{0, 0, 0, 0}, "Without old parts every count is zero.");
     check(convertedDone({{0, 49}, {50, 99}}, {0, 50}, {{0, 49}, {50, 99}}) == Counts{0, 50}, "A valid run that starts inside a new range is not counted for it.");
 }
+// Polls for up to `limit`; true when the condition became true.
+template <class F>
+static bool within(std::chrono::milliseconds limit, F condition) {
+    const auto end = std::chrono::steady_clock::now() + limit;
+    while (!condition()) {
+        if (std::chrono::steady_clock::now() > end) return false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    return true;
+}
+// A thread that takes a HostSlot, records that it has it, and keeps it until released.
+struct SlotHolder {
+    std::atomic_bool got{false}, release{false}, stop{false}, failed{false};
+    std::atomic_int waited{0};
+    std::thread thread;
+    SlotHolder(const std::string& host) {
+        thread = std::thread([this, host] {
+            try {
+                archive::HostSlot slot(host, stop, [this] {
+                    ++waited;
+                });
+                got = true;
+                while (!release) std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            } catch (const std::exception&) {
+                failed = true;
+            }
+        });
+    }
+    ~SlotHolder() {
+        release = true;
+        stop = true;
+        if (thread.joinable()) thread.join();
+    }
+};
+static void hostLimitTests() {
+    using namespace std::chrono_literals;
+    // The limit is process-wide: put it back whatever happens.
+    struct Restore {
+        ~Restore() { archive::setHostLimit(16); }
+    } restore;
+    {
+        archive::setHostLimit(2);
+        std::atomic_int now{0}, most{0}, finished{0};
+        std::atomic_bool never{false};
+        std::vector<std::thread> threads;
+        for (int i = 0; i < 5; ++i) threads.emplace_back([&] {
+            archive::HostSlot slot("a.test", never);
+            const int n = ++now;
+            int seen = most;
+            while (n > seen && !most.compare_exchange_weak(seen, n)) {}
+            std::this_thread::sleep_for(50ms);
+            --now;
+            ++finished;
+        });
+        for (auto& t : threads) t.join();
+        check(most <= 2, "With a limit of 2, no more than 2 slots of a host are held at once.");
+        check(most == 2, "With a limit of 2 and 5 waiting threads, 2 slots are in use at once.");
+        check(finished == 5, "All 5 threads get their slot in the end.");
+    }
+    {
+        archive::setHostLimit(1);
+        std::atomic_bool stop{false};
+        archive::HostSlot held("A.test", stop);
+        SlotHolder sameHost("a.test");
+        SlotHolder otherHost("b.test");
+        check(within(1000ms, [&] {
+                  return otherHost.got.load();
+              }),
+              "A slot for another host is not blocked by a full host.");
+        check(!within(150ms, [&] {
+            return sameHost.got.load();
+        }),
+              "Host names are compared without regard to case: A.test blocks a.test.");
+        check(sameHost.waited == 1, "A waiting constructor reports that it waits once.");
+    }
+    {
+        archive::setHostLimit(1);
+        std::atomic_bool stop{false};
+        std::atomic_int calls{0};
+        archive::HostSlot held("c.test", stop);
+        std::atomic_bool threw{false};
+        std::thread waiter([&] {
+            try {
+                archive::HostSlot slot("c.test", stop, [&] {
+                    ++calls;
+                });
+            } catch (const std::runtime_error& e) {
+                threw = std::string(e.what()) == "Paused";
+            }
+        });
+        std::this_thread::sleep_for(250ms);
+        const auto asked = std::chrono::steady_clock::now();
+        stop = true;
+        waiter.join();
+        check(threw, "A constructor waiting for a slot throws Paused when stop becomes true.");
+        check(std::chrono::steady_clock::now() - asked < 300ms, "A waiting constructor leaves within 300 ms of the stop.");
+        check(calls == 1, "The waiting callback is called exactly once.");
+    }
+    {
+        archive::setHostLimit(2);
+        SlotHolder first("d.test"), second("d.test");
+        check(within(1000ms, [&] {
+                  return first.got.load() && second.got.load();
+              }),
+              "Two slots of a limit of 2 are taken at once.");
+        archive::setHostLimit(1);
+        SlotHolder third("d.test");
+        check(!within(150ms, [&] {
+            return third.got.load();
+        }),
+              "A third constructor waits while 2 slots are held.");
+        first.release = true;
+        first.thread.join();
+        check(!within(150ms, [&] {
+            return third.got.load();
+        }),
+              "After lowering the limit to 1, a third constructor still waits while 1 slot is held.");
+        second.release = true;
+        second.thread.join();
+        check(within(1000ms, [&] {
+                  return third.got.load();
+              }),
+              "After both slots are released, the third constructor gets its slot.");
+    }
+    {
+        archive::setHostLimit(1);
+        SlotHolder first("e.test");
+        check(within(1000ms, [&] {
+                  return first.got.load();
+              }),
+              "The first constructor gets the only slot.");
+        // Started only now, so it is the one that waits.
+        SlotHolder second("e.test");
+        check(!within(150ms, [&] {
+            return second.got.load();
+        }),
+              "The second constructor waits while the only slot is held.");
+        archive::setHostLimit(2);
+        check(within(300ms, [&] {
+                  return second.got.load();
+              }),
+              "Raising the limit gives the waiter its slot within 300 ms.");
+    }
+    archive::setHostLimit(0);
+    archive::setHostLimit(100);
+    {
+        // 0 and 100 are clamped to 1 and 16: after 100, sixteen slots are free at once.
+        std::atomic_bool stop{false};
+        std::vector<std::unique_ptr<archive::HostSlot>> slots;
+        for (int i = 0; i < 16; ++i) slots.push_back(std::make_unique<archive::HostSlot>("f.test", stop));
+        SlotHolder extra("f.test");
+        check(!within(150ms, [&] {
+            return extra.got.load();
+        }),
+              "A limit above 16 is clamped to 16.");
+    }
+}
 int main() {
     try {
         using namespace archive;
@@ -135,6 +295,7 @@ int main() {
         check(!validatorChanged(L"", L"\"x\"", L"d"), "Nothing stored proves nothing.");
         convertedDoneTests();
         dataFileTests();
+        hostLimitTests();
         std::cout << "staging tests passed\n";
         return 0;
     } catch (const std::exception& e) {

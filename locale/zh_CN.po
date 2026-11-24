@@ -475,6 +475,9 @@ msgstr "视频工具已就绪。如果某网站无法下载，请更新 yt-dlp�
 msgid "Video tools ready."
 msgstr "视频工具已就绪。"
 
+msgid "Waiting for a free connection"
+msgstr "正在等待空闲连接"
+
 msgid "Working…"
 msgstr "正在处理…"
 

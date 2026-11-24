@@ -475,6 +475,9 @@ msgstr "동영상 도구가 준비되었습니다. 사이트가 작동하지 않
 msgid "Video tools ready."
 msgstr "동영상 도구가 준비되었습니다."
 
+msgid "Waiting for a free connection"
+msgstr "사용 가능한 연결을 기다리는 중"
+
 msgid "Working…"
 msgstr "작업 중…"
 

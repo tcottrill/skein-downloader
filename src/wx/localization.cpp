@@ -97,7 +97,7 @@ wxString translated(const std::string& message) {
         wxTRANSLATE("Finished"), wxTRANSLATE("Pausing…"), wxTRANSLATE("Finalizing"), wxTRANSLATE("Downloading"),
         wxTRANSLATE("Checking mirror speeds (HTTPS)"), wxTRANSLATE("Trying another HTTPS source"),
         wxTRANSLATE("Retrying after connection error"), wxTRANSLATE("Starting parallel download"),
-        wxTRANSLATE("Starting single connection"), wxTRANSLATE("Assembling"), wxTRANSLATE("Verifying SHA-256"), wxTRANSLATE("Verifying SHA-1"),
+        wxTRANSLATE("Starting single connection"), wxTRANSLATE("Waiting for a free connection"), wxTRANSLATE("Assembling"), wxTRANSLATE("Verifying SHA-256"), wxTRANSLATE("Verifying SHA-1"),
         wxTRANSLATE("Best available"), wxTRANSLATE("Up to 2160p (4K)"), wxTRANSLATE("Up to 1440p"), wxTRANSLATE("Up to 1080p"),
         wxTRANSLATE("Up to 720p"), wxTRANSLATE("Up to 480p"), wxTRANSLATE("Up to 360p"), wxTRANSLATE("Audio only"),
         wxTRANSLATE("Choose an absolute download folder."), wxTRANSLATE("Invalid file selection."),
