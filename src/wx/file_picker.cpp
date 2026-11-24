@@ -20,6 +20,7 @@ class FilePicker : public wxDialog {
     bool closing = false, rebuilding = false;
     int sortColumn = -1;
     bool ascending = true;
+    friend void runBenchmark(MainWindow&, downloads::Queue&, size_t); // benchmark only
     bool busy() const { return loading.valid() || measuring.valid(); }
     // Rows follow the clicked column header, as in Explorer: natural name order (file2 before file10), unknown sizes after known ones,
     // checked files first, ties by name. Until a header is clicked the files keep the order the source listed them in.
@@ -439,5 +440,129 @@ public:
 };
 void showFiles(wxWindow* p, downloads::Queue& q, const wxString& link, bool load) {
     (new FilePicker(p, q, link, load))->Show();
+}
+// Benchmark only (--bench-files, see app.cpp): times the file picker, the queue and the main window with a
+// synthetic item of n files. Pending GUI events are pumped with wxYield() before and after each step, so the
+// step's paint cost is part of its time. Each result line is written and flushed as soon as its step is done.
+void runBenchmark(MainWindow& main, downloads::Queue& queue, size_t n) {
+    using Clock = std::chrono::steady_clock;
+    std::ofstream out(dataPath / "bench.txt", std::ios::trunc);
+    auto report = [&out](const std::string& name, const std::string& value) {
+        out << name << '\t' << value << std::endl;
+        LOG_INFO("bench %s\t%s", name.c_str(), value.c_str());
+    };
+    auto millis = [](Clock::time_point from) {
+        char text[32];
+        snprintf(text, sizeof text, "%.3f", std::chrono::duration<double, std::milli>(Clock::now() - from).count());
+        return std::string(text);
+    };
+    auto step = [&](const std::string& name, const std::function<void()>& action) {
+        wxYield();
+        auto start = Clock::now();
+        action();
+        wxYield();
+        report(name, millis(start));
+    };
+    report("files", std::to_string(n));
+    queue.pauseAll();
+    main.benchTimer(false); // the window's own tick must not take the first refresh
+    archive::Item item;
+    item.id = "bench-item";
+    item.title = "Benchmark item";
+    item.mirrorBases = {"https://ia800001.us.archive.org/1/items/bench-item/", "https://ia800002.us.archive.org/2/items/bench-item/", "https://ia800003.us.archive.org/3/items/bench-item/"};
+    for (size_t i = 1; i <= n; ++i) {
+        archive::File f;
+        char text[64];
+        size_t k = i % 300; // 300 prefixes s00a..s99c; a 3-letter filter such as "s42" matches 3 of them, 1% of the files
+        snprintf(text, sizeof text, "s%02zu%c_rom_%06zu.zip", k / 3, char('a' + k % 3), i);
+        f.name = text;
+        f.format = "ZIP";
+        f.size = 1000 + (uint64_t(i) * 7919u) % 90000000u;
+        f.sizeKnown = true;
+        uint64_t a = uint64_t(i) * 0x9E3779B97F4A7C15ull + 1, b = (a ^ (a >> 29)) * 0xBF58476D1CE4E5B9ull;
+        snprintf(text, sizeof text, "%016llx%016llx%08x", (unsigned long long)a, (unsigned long long)b, unsigned((a ^ b) >> 32));
+        f.sha1 = text;
+        item.files.push_back(std::move(f));
+    }
+    auto picker = new FilePicker(&main, queue, wxString(), false);
+    picker->Show();
+    picker->folder->SetValue(w(archive::pathUtf8(dataPath / "downloads")));
+    picker->item = std::move(item);
+    picker->checked.assign(n, false);
+    picker->refreshServers();
+    wxYield();
+    step("picker_fill", [&] {
+        picker->refresh();
+    });
+    step("picker_filter", [&] {
+        picker->filter->SetValue("s42"); // the text event runs refresh()
+    });
+    report("filter_rows", std::to_string(picker->rows.size()));
+    step("picker_filter_clear", [&] {
+        picker->filter->Clear();
+    });
+    step("picker_sort", [&] {
+        picker->sortBy(1);
+    });
+    step("picker_select_all", [&] {
+        picker->select(true, false);
+    });
+    step("picker_preferences", [&] {
+        picker->preferences();
+    });
+    std::vector<downloads::Job> jobs;
+    step("picker_add_jobs", [&] {
+        jobs = fileJobs(picker->item, picker->checked, archive::pathFromUtf8(u(picker->folder->GetValue())), 2, picker->routes[size_t(picker->servers->GetSelection())]);
+    });
+    report("jobs_built", std::to_string(jobs.size()));
+    step("picker_add_batch", [&] {
+        queue.addBatch(std::move(jobs));
+    });
+    // No yield between the add and the first refresh: that refresh must see the new rows for the first time.
+    {
+        auto start = Clock::now();
+        main.benchRefresh();
+        wxYield();
+        report("main_refresh_rebuild", millis(start));
+    }
+    {
+        // The saver thread was woken by the add; this is how long it still takes until the file is written.
+        auto start = Clock::now();
+        queue.flush();
+        report("queue_flush_after_add", millis(start));
+    }
+    {
+        wxYield();
+        auto start = Clock::now();
+        for (int i = 0; i < 5; ++i) {
+            main.benchRefresh();
+            wxYield();
+        }
+        char text[32];
+        snprintf(text, sizeof text, "%.3f", std::chrono::duration<double, std::milli>(Clock::now() - start).count() / 5);
+        report("main_refresh_idle", text);
+    }
+    {
+        auto start = Clock::now();
+        size_t count = 0;
+        for (int i = 0; i < 5; ++i) count += queue.snapshot().size();
+        char text[32];
+        snprintf(text, sizeof text, "%.3f", std::chrono::duration<double, std::milli>(Clock::now() - start).count() / 5);
+        report("queue_snapshot", text);
+        report("snapshot_jobs", std::to_string(count / 5));
+    }
+    {
+        // pause() on a job that is already paused changes nothing but marks the history changed.
+        auto id = queue.snapshot().front().id;
+        auto start = Clock::now();
+        queue.pause(id);
+        queue.flush();
+        report("queue_history_build_and_save", millis(start));
+        std::error_code ec;
+        report("history_bytes", std::to_string(std::filesystem::file_size(dataPath / "history.json", ec)));
+    }
+    picker->Close();
+    main.benchTimer(true);
+    wxYield();
 }
 }

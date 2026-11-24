@@ -30,6 +30,7 @@ inline std::string u(const wxString& s) {
 extern archive::Path dataPath;
 extern std::unique_ptr<wxFileConfig> config;
 extern bool smoke;
+extern size_t benchFiles; // --bench-files: number of synthetic files, 0 when not benchmarking
 inline wxString pref(const wxString& key, const wxString& fallback = {}) {
     wxString v;
     config->Read(key, &v, fallback);
@@ -132,5 +133,15 @@ public:
     void activate(bool video = false);
     void smokeCheck();
     void logLayout();
+    // Benchmark-only hooks (--bench-files, see runBenchmark in file_picker.cpp).
+    void benchRefresh() { refresh(); }
+    void benchTimer(bool on) {
+        if (on)
+            timer.Start(250);
+        else
+            timer.Stop();
+    }
 };
+// Benchmark only: the timed steps of --bench-files <n>, with a synthetic item of n files.
+void runBenchmark(MainWindow&, downloads::Queue&, size_t n);
 }

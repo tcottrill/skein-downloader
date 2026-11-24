@@ -87,6 +87,7 @@ namespace lite {
 archive::Path dataPath;
 std::unique_ptr<wxFileConfig> config;
 bool smoke = false;
+size_t benchFiles = 0;
 void appIcons(wxTopLevelWindow* window) {
 #ifdef __WXMSW__
     // wx gives the title bar and the taskbar the size that matches the window's monitor DPI,
@@ -187,7 +188,7 @@ public:
         // The Wayland app_id / X11 class must match the .desktop file for the KDE taskbar icon.
         g_set_prgname("io.github.tcottrill.SkeinDownloader");
 #endif
-        bool video = false, logging = false;
+        bool video = false, logging = false, benchRequested = false;
         wxString overridePath;
         // Failures before the profile is usable, or when its log cannot be written, go to the temporary folder.
         auto fallbackLog = [&logging] {
@@ -197,7 +198,12 @@ public:
             wxString a = argv[i];
             if (a == "--smoke-test")
                 lite::smoke = true;
-            else if (a == "/video" || a == "--video")
+            else if (a == "--bench-files" && i + 1 < argc) {
+                // Hidden benchmark (see runBenchmark); an unusable count is refused below.
+                long n = 0;
+                benchRequested = true;
+                if (argv[++i].ToLong(&n) && n > 0) lite::benchFiles = size_t(n);
+            } else if (a == "/video" || a == "--video")
                 video = true;
             else if (a == "--data-dir" && i + 1 < argc)
                 overridePath = argv[++i];
@@ -205,6 +211,11 @@ public:
                 screenshot = argv[++i];
         }
         try {
+            // The benchmark adds thousands of jobs: it never runs on a real profile.
+            if (benchRequested && (!lite::benchFiles || overridePath.empty() || !wxFileName(overridePath).IsAbsolute())) {
+                std::cerr << "--bench-files <count> needs --data-dir with an absolute throwaway folder." << std::endl;
+                throw std::runtime_error("--bench-files <count> needs --data-dir with an absolute throwaway folder.");
+            }
             wxString dir = overridePath;
             if (dir.empty()) {
 #ifdef _WIN32
@@ -304,6 +315,14 @@ public:
             if (video) main->openVideo();
             main->CallAfter([main] {
                 main->logLayout();
+            });
+            if (lite::benchFiles) main->CallAfter([this, main] {
+                try {
+                    lite::runBenchmark(*main, *queue, lite::benchFiles);
+                } catch (const std::exception& e) {
+                    LOG_ERROR("Benchmark failed: %s", e.what());
+                }
+                main->Close();
             });
             if (lite::smoke) {
                 // Give the windows time to lay out and paint before the screenshot.
