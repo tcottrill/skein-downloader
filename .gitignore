@@ -4,3 +4,5 @@
 __pycache__/
 # The designer's zip duplicates the folders next to it.
 /icons/*.zip
+# Source snapshots (zip archives of the tree) made for sharing; release zips go to dist/.
+/*.zip

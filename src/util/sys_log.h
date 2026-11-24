@@ -4,15 +4,15 @@
  *
  * Overview
  * --------
- * Public interface for the engine logger. Provides:
- *   - Severity enum (Debug/Info/Error/Off)
+ * Public interface for the program's logger. Provides:
+ *   - Severity enum (Debug/Info/Warn/Error/Off)
  *   - Initialization/teardown (LogOpen/LogClose)
  *   - Level control and optional console mirroring
- *   - Source-aware printf-style macros: LOG_DEBUG / LOG_INFO / LOG_ERROR
+ *   - Source-aware printf-style macros: LOG_DEBUG / LOG_INFO / LOG_WARN / LOG_ERROR
  *
  * Key Types & Macros
  * ------------------
- *   enum class Log::Level { Debug, Info, Error, Off };
+ *   enum class Log::Level { Debug, Info, Warn, Error, Off };
  *     Minimum severity filter for emitted messages.
  *
  *   bool Log::open(const std::string& filename);
@@ -29,13 +29,14 @@
  *     Adjusts the minimum level to emit.
  *
  *   void Log::setConsoleOutputEnabled(bool enabled);
- *     Mirrors output to a Windows console (allocates one if needed).
+ *     Mirrors output to stdout (on Windows, allocates a console if needed).
  *
  *   // Convenience macros (source-tagged)
  *   LogOpen(f)   -> Log::open(f)
  *   LogClose()   -> Log::close()
  *   LOG_DEBUG()  -> Debug-level message
  *   LOG_INFO()   -> Info-level message
+ *   LOG_WARN()   -> Warn-level message
  *   LOG_ERROR()  -> Error-level message
  *
  * Timestamps
@@ -51,28 +52,28 @@
  * Usage (minimal)
  * ---------------
  *   #include "sys_log.h"
- *   LogOpen("game.log");
+ *   LogOpen("app.log");
  *   LOG_INFO("Build %s ready", GIT_SHA1);
  *   LogClose();
  *
  * ---------------------------------------------------------------------------
  * License (GPLv3):
- *   This file is part of GameEngine Alpha.
+ *   This file is part of Skein Downloader.
  *
- *   <Project Name> is free software: you can redistribute it and/or modify
+ *   Skein Downloader is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   <Project Name> is distributed in the hope that it will be useful,
+ *   Skein Downloader is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with GameEngine Alpha.  If not, see <https://www.gnu.org/licenses/>.
+ *   along with Skein Downloader.  If not, see <https://www.gnu.org/licenses/>.
  *
- *   Copyright (C) 2012-2025  Tim Cottrill
+ *   Copyright (C) 2012-2026  Tim Cottrill
  *   SPDX-License-Identifier: GPL-3.0-or-later
  * ============================================================================= */
 

@@ -56,10 +56,10 @@
  *
  * Usage (typical)
  * ---------------
- *   LogOpen("game.log");
+ *   LogOpen("app.log");
  *   Log::setLevel(Log::Level::Debug);
  *   Log::setConsoleOutputEnabled(true);   // optional
- *   LOG_INFO("Hello from %s", "GameEngine Alpha");
+ *   LOG_INFO("Hello from %s", "Skein Downloader");
  *   LOG_ERROR("Could not open resource: %s", path.c_str());
  *   LogClose();
  *
@@ -75,22 +75,22 @@
  *
  * ---------------------------------------------------------------------------
  * License (GPLv3):
- *   This file is part of GameEngine Alpha.
+ *   This file is part of Skein Downloader.
  *
- *   <Project Name> is free software: you can redistribute it and/or modify
+ *   Skein Downloader is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation, either version 3 of the License, or
  *   (at your option) any later version.
  *
- *   <Project Name> is distributed in the hope that it will be useful,
+ *   Skein Downloader is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with GameEngine Alpha.  If not, see <https://www.gnu.org/licenses/>.
+ *   along with Skein Downloader.  If not, see <https://www.gnu.org/licenses/>.
  *
- *   Copyright (C) 2012-2025  Tim Cottrill
+ *   Copyright (C) 2012-2026  Tim Cottrill
  *   SPDX-License-Identifier: GPL-3.0-or-later
  * ============================================================================= */
 

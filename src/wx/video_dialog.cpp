@@ -6,10 +6,10 @@ class VideoDialog:public wxDialog {
  downloads::Queue& queue;wxTextCtrl *url,*folder,*log;wxChoice *quality,*browser;wxRadioButton *mp4,*mkv;wxCheckBox *mp3,*impersonate,*cookies;wxStaticText *status,*tip,*toolsLabel,*accessTip;wxButton *addButton,*install,*update,*cancel,*browse,*open;wxGauge* progress;wxTimer timer;
  struct Work {std::atomic_bool stop=false;std::mutex mutex;std::vector<std::string> lines;std::string completion;};
  std::shared_ptr<Work> work=std::make_shared<Work>();std::future<void> task;bool closing=false;
- // The browser list shows "Firefox" but settings and yt-dlp use "firefox", as in Qt.
+ // The browser list shows "Firefox" but settings and yt-dlp use "firefox".
  std::string browserName(){return u(browser->GetStringSelection().Lower());}
  void prefs(){save("videoFolder",folder->GetValue());save("videoQuality",wxString::Format("%d",quality->GetSelection()));save("videoFormat",mp4->GetValue()?"0":"1");save("videoMp3",mp3->GetValue()?"1":"0");save("videoImpersonate",impersonate->GetValue()?"1":"0");save("videoBrowser",w(browserName()));}
- // Qt's word-wrapped labels span the dialog between its 24 px side margins.
+ // Word-wrapped labels span the dialog between its 24 px side margins.
  void wrap(wxStaticText* label,const wxString& text){label->SetLabel(text);label->Wrap(std::max(1,GetClientSize().x-FromDIP(48)));}
  void controls(){bool busy=task.valid(),audio=quality->GetSelection()==7;auto tools=video::toolsFolder(video::executableFolder());bool toolsReady=video::toolsReady(tools);url->Enable(!busy);folder->Enable(!busy);quality->Enable(!busy);mp4->Enable(!busy&&!audio);mkv->Enable(!busy&&!audio);mp3->Enable(!busy&&audio);impersonate->Enable(!busy);cookies->Enable(!busy);browser->Enable(!busy&&cookies->GetValue());addButton->Enable(!busy&&toolsReady);cancel->Enable(busy&&!work->stop);browse->Enable(!busy);open->Enable(!folder->GetValue().empty());
 #ifdef _WIN32
@@ -60,7 +60,7 @@ class VideoDialog:public wxDialog {
 public:
  VideoDialog(wxWindow* parent,downloads::Queue& q,const wxString& link):wxDialog(parent,wxID_ANY,_(L"Video downloads"),wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER),queue(q),timer(this){
   appIcons(this);
-  // Qt: margins 24/20, 12 px between items, form spacing 14 x 12, 6 px inside rows.
+  // Margins 24/20, 12 px between items, form spacing 14 x 12, 6 px inside rows.
   const int gap=FromDIP(12),inner=FromDIP(6);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxLEFT|wxRIGHT,FromDIP(24));outer->Insert(0,0,FromDIP(20));outer->AddSpacer(FromDIP(20));
   auto heading=new wxStaticText(this,wxID_ANY,_(L"Video downloads"));auto font=heading->GetFont();font.SetPointSize(font.GetPointSize()+8);font.SetWeight(wxFONTWEIGHT_BOLD);heading->SetFont(font);box->Add(heading,0,wxBOTTOM,gap);toolsLabel=new wxStaticText(this,wxID_ANY,"");box->Add(toolsLabel,0,wxEXPAND|wxBOTTOM,gap);auto form=new wxFlexGridSizer(2,FromDIP(12),FromDIP(14));form->AddGrowableCol(1);auto label=[&](const wxString& s){form->Add(new wxStaticText(this,wxID_ANY,s),0,wxALIGN_CENTER_VERTICAL);};
   label(_(L"Video URL"));url=field(this,link,_(L"Paste a YouTube or other supported video URL"));form->Add(url,1,wxEXPAND);
@@ -82,9 +82,9 @@ public:
   Bind(wxEVT_CHAR_HOOK,[this](wxKeyEvent& e){if(e.GetKeyCode()==WXK_ESCAPE)Close();else e.Skip();});
   Bind(wxEVT_SIZE,[this](wxSizeEvent& e){e.Skip();CallAfter([this]{controls();});});
   Bind(wxEVT_TIMER,[this](wxTimerEvent&){tick();});Bind(wxEVT_CLOSE_WINDOW,[this](wxCloseEvent& e){prefs();if(task.valid()&&e.CanVeto()){closing=true;work->stop=true;cancel->Disable();status->SetLabel(_(L"Stopping video helpers before closing…"));e.Veto();}else if(e.CanVeto()){e.Veto();Hide();}else{work->stop=true;Destroy();}});timer.Start(100);controls();
-  // Like a Qt layout, never let the dialog shrink below its contents.
+  // Never let the dialog shrink below its contents.
   auto least=GetSizer()->GetMinSize();SetMinClientSize(wxSize(std::max(FromDIP(760),least.x),std::max(FromDIP(560),least.y)));
-  if(smoke){quality->SetSelection(7);controls();if(!mp3->IsEnabled()||mp4->IsEnabled())throw std::runtime_error("Audio options mismatch");quality->SetSelection(0);controls();if(mp3->IsEnabled()||!mp4->IsEnabled()||cookies->GetValue())throw std::runtime_error("Video options mismatch");if(browser->GetStringSelection()!="Firefox"||browserName()!="firefox")throw std::runtime_error("Browser names differ from Qt");}
+  if(smoke){quality->SetSelection(7);controls();if(!mp3->IsEnabled()||mp4->IsEnabled())throw std::runtime_error("Audio options mismatch");quality->SetSelection(0);controls();if(mp3->IsEnabled()||!mp4->IsEnabled()||cookies->GetValue())throw std::runtime_error("Video options mismatch");if(browser->GetStringSelection()!="Firefox"||browserName()!="firefox")throw std::runtime_error("Browser names are wrong");}
  }
  ~VideoDialog()override{work->stop=true;timer.Stop();if(task.valid())task.wait();}
  void setLink(const wxString& link){if(task.valid()){status->SetLabel(_(L"Video tools are busy. Wait for them to finish, then load the new link."));return;}if(!link.empty()||!IsShown())url->SetValue(link);}

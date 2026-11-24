@@ -108,7 +108,7 @@ protected:
  void DoLogTextAtLevel(wxLogLevel level,const wxString& text) override {auto s=lite::u(text);if(level<=wxLOG_Error)LOG_ERROR("wx: %s",s.c_str());else if(level==wxLOG_Warning)LOG_WARN("wx: %s",s.c_str());else LOG_INFO("wx: %s",s.c_str());}
 };
 wxString environment(const char* name){wxString value;return wxGetEnv(name,&value)?value:wxString("(unset)");}
-// --screenshot: saves what the window draws, like Qt's QWidget::grab().
+// --screenshot: saves what the window draws (for smoke tests and documentation images).
 void capture(wxTopLevelWindow* window,const wxString& path){
 #ifdef __WXGTK__
  // Rendering the widget tree works on Wayland too, where the screen cannot be read back.
@@ -192,7 +192,7 @@ public:
    if(video)main->openVideo();
    main->CallAfter([main]{main->logLayout();});
    if(lite::smoke){
-    // Give the windows time to lay out and paint before the screenshot, as Qt's smoke run does.
+    // Give the windows time to lay out and paint before the screenshot.
     smokeTimer.Bind(wxEVT_TIMER,[this,main,video](wxTimerEvent&){
      if(!screenshot.empty()){wxTopLevelWindow* target=main;if(video)for(auto child:main->GetChildren())if(auto dialog=wxDynamicCast(child,wxDialog);dialog&&dialog->IsShown())target=dialog;capture(target,screenshot);}
      main->smokeCheck();});

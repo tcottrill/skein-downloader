@@ -72,7 +72,7 @@ protected:
  }
 };
 }
-// Qt's ProgressDelegate: a native progress bar with its text centred on the bar.
+// A native progress bar with its text centred on the bar, drawn over a list cell.
 class ProgressBar:public wxWindow {
  int percent=-1;wxString text;
 public:
@@ -119,7 +119,7 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
 #endif
  auto frameBox=new wxBoxSizer(wxVERTICAL);frameBox->Add(tools,0,wxEXPAND|wxLEFT,FromDIP(2));frameBox->Add(new wxStaticLine(this),0,wxEXPAND);frameBox->Add(p,1,wxEXPAND);SetSizer(frameBox);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxLEFT|wxRIGHT,FromDIP(18));box->AddSpacer(FromDIP(16));
  auto row=new wxBoxSizer(wxHORIZONTAL);url=field(p,{},_(L"Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org, Wayback Machine or video link"));row->Add(url,1,wxRIGHT,FromDIP(6));auto load=new wxButton(p,wxID_ANY,_(L"Load"));load->Bind(wxEVT_BUTTON,[this](wxCommandEvent&){route();});row->Add(load,0,wxALIGN_CENTER_VERTICAL);box->Add(row,0,wxEXPAND|wxBOTTOM,FromDIP(12));
- // Qt uses a QTabBar here; a notebook with empty pages is wx's native tab strip.
+ // A notebook with empty pages is wx's native tab strip.
  row=new wxBoxSizer(wxHORIZONTAL);tabs=new wxNotebook(p,wxID_ANY);for(auto s:{_(L"All"),_(L"Active"),_(L"Queue"),_(L"History")}){auto page=new wxPanel(tabs);page->SetMinSize(wxSize(-1,0));tabs->AddPage(page,s);}fitTabs();row->Add(tabs,0,wxALIGN_BOTTOM);
  tabs->Bind(wxEVT_NOTEBOOK_PAGE_CHANGED,[this](wxBookCtrlEvent& e){if(e.GetEventObject()!=tabs)return;mode=std::max(0,e.GetSelection());refresh();});
  row->AddStretchSpacer();search=field(p,{},_(L"Search downloads"));search->SetMinSize(FromDIP(wxSize(180,-1)));search->SetMaxSize(FromDIP(wxSize(240,-1)));row->Add(search,1);box->Add(row,0,wxEXPAND|wxBOTTOM,FromDIP(12));
@@ -127,10 +127,10 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  list=new wxListCtrl(p,wxID_ANY,wxDefaultPosition,wxDefaultSize,wxLC_REPORT|wxCLIP_CHILDREN);int c=0;for(auto s:{_(L"Name"),_(L"Type"),_(L"Size"),_(L"Progress"),_(L"Status"),_(L"Speed")})list->InsertColumn(c++,s);
  rowHeight();
  int widths[]={300,75,100,210,105,120};for(int i=0;i<6;++i)list->SetColumnWidth(i,FromDIP(widths[i]));box->Add(list,1,wxEXPAND);
- // A QLabel centres its text vertically in the 40 px minimum height.
+ // The detail text is centred vertically in a 40 px minimum height.
  detail=new wxStaticText(p,wxID_ANY,"",wxDefaultPosition,wxDefaultSize,wxST_NO_AUTORESIZE);auto detailBox=new wxBoxSizer(wxVERTICAL);detailBox->SetMinSize(wxSize(-1,FromDIP(40)));detailBox->AddStretchSpacer();detailBox->Add(detail,0,wxEXPAND);detailBox->AddStretchSpacer();box->Add(detailBox,0,wxEXPAND|wxTOP,FromDIP(12));
  footer=new wxStaticText(p,wxID_ANY,"",wxDefaultPosition,wxDefaultSize,wxST_NO_AUTORESIZE);box->Add(footer,0,wxEXPAND|wxTOP,FromDIP(12));box->AddSpacer(FromDIP(16));p->SetSizer(outer);
- // Qt's resize/setMinimumSize set the content size (toolbar included, frame excluded); the window manager places a new window.
+ // Sizes are of the content (toolbar included, frame excluded); the window manager places a new window.
  SetMinClientSize(FromDIP(wxSize(640,420)));
  long width=1100,height=700;pref("windowWidth","1100").ToLong(&width);pref("windowHeight","700").ToLong(&height);SetClientSize(FromDIP(wxSize(std::clamp(int(width),640,4000),std::clamp(int(height),420,3000))));
  // Keep the window inside the work area (the Steam Deck's is about 1280x756 in desktop mode).
@@ -141,7 +141,7 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
 #endif
  url->Bind(wxEVT_TEXT_ENTER,[this](wxCommandEvent&){route();});search->Bind(wxEVT_TEXT,[this](wxCommandEvent&){refresh();});
  auto selection=[this](wxListEvent& e){if(e.GetEventType()==wxEVT_LIST_ITEM_SELECTED&&!wxGetKeyState(WXK_SHIFT))selectionAnchor=e.GetIndex();e.Skip();CallAfter([this]{if(!stopping)refresh();});};list->Bind(wxEVT_LIST_ITEM_SELECTED,selection);list->Bind(wxEVT_LIST_ITEM_DESELECTED,selection);
- // Per-cell tooltips as in Qt. The generic (GTK) list receives mouse events in a child window.
+ // Per-cell tooltips. The generic (GTK) list receives mouse events in a child window.
  auto tooltip=[this](wxMouseEvent& e){e.Skip();auto target=static_cast<wxWindow*>(e.GetEventObject());int flags=0;long column=-1;long row=list->HitTest(e.GetPosition(),flags,&column);wxString tip;if(row>=0&&size_t(row)<shown.size())tip=column==5?_(L"Transfer speed in bytes per second"):translated(shown[size_t(row)].detail)+"\n"+w(shown[size_t(row)].output);if(target->GetToolTipText()!=tip){if(tip.empty())target->UnsetToolTip();else target->SetToolTip(tip);}};
  list->Bind(wxEVT_MOTION,tooltip);for(auto child:list->GetChildren())child->Bind(wxEVT_MOTION,tooltip);
  list->Bind(wxEVT_SIZE,[this](wxSizeEvent& e){e.Skip();CallAfter([this]{columns();progressCells();});});
@@ -190,7 +190,7 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  // Start in the URL box, ready for a pasted link; the toolbar buttons would otherwise take focus first.
  timer.Start(250);refresh();CallAfter([this]{columns();url->SetFocus();});
 }
-// A transparent 1 x 54 DIP image sets the row height (Qt's taller rows, room for the progress bar).
+// A transparent 1 x 54 DIP image sets the row height (taller rows, with room for the progress bar).
 // Rebuilt on DPI changes: wxListCtrl rescales image lists set as bitmap bundles, not this one.
 void MainWindow::rowHeight(){auto height=FromDIP(54);auto images=new wxImageList(1,height,true);wxImage blank(1,height,true);blank.InitAlpha();std::fill_n(blank.GetAlpha(),height,0);images->Add(wxBitmap(blank));list->AssignImageList(images,wxIMAGE_LIST_SMALL);}
 void MainWindow::columns(){int rest=0;for(int c=1;c<6;++c)rest+=list->GetColumnWidth(c);list->SetColumnWidth(0,std::max(FromDIP(140),list->GetClientSize().x-rest-FromDIP(4)));}
@@ -216,7 +216,7 @@ void MainWindow::progressCells(){
   }
   auto cell=bars[used++];auto& j=shown[size_t(r)];int percent=j.state=="Complete"?100:j.total?int(std::min(100.0,100.0*double(j.done)/double(j.total))):-1;
   cell->SetClientData(reinterpret_cast<void*>(intptr_t(r+1)));
-  // Qt insets the bar by 8 px horizontally and 10 px vertically inside the cell.
+  // The bar is inset by 8 px horizontally and 10 px vertically inside the cell.
   cell->SetSize(rect.x+FromDIP(8),rect.y+FromDIP(10),std::max(1,rect.width-FromDIP(16)),std::max(1,rect.height-FromDIP(20)));cell->SetBackgroundColour(list->GetItemBackgroundColour(r));
   cell->set(percent,percent<0?(j.state=="Active"?_(L"Working…"):w("—")):percent==100&&j.state=="Active"?_(L"Processing…"):wxString::Format("%d%%",percent));cell->SetToolTip(translated(j.detail)+"\n"+w(j.output));cell->Show();
  }
@@ -230,7 +230,7 @@ void MainWindow::fitTabs(){
  RECT rect;if(TabCtrl_GetItemRect(static_cast<HWND>(tabs->GetHWND()),int(tabs->GetPageCount())-1,&rect)){width=rect.right+FromDIP(2);height=rect.bottom+FromDIP(2);}
 #elif defined(__WXGTK__)
  // wxGTK makes the tabs scrollable, which shrinks the preferred width to one tab plus arrows;
- // without the page frame only the tab row (and its baseline) is drawn, like a QTabBar.
+ // without the page frame only the tab row (and its baseline) is drawn, as a plain tab bar.
  gtk_notebook_set_scrollable(GTK_NOTEBOOK(tabs->GetHandle()),FALSE);gtk_notebook_set_show_border(GTK_NOTEBOOK(tabs->GetHandle()),FALSE);
  gint minimum=0,natural=0;gtk_widget_get_preferred_width(tabs->GetHandle(),&minimum,&natural);width=natural;gtk_widget_get_preferred_height(tabs->GetHandle(),&minimum,&natural);height=natural;
  gint pageMinimum=0,pageNatural=0;gtk_widget_get_preferred_height(tabs->GetPage(0)->GetHandle(),&pageMinimum,&pageNatural);height-=pageNatural;
@@ -254,7 +254,7 @@ void MainWindow::refresh(){
   if(rebuild){list->SetItemBackgroundColour(long(i),i%2?wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE):wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));if(std::find(ids.begin(),ids.end(),j.id)!=ids.end())list->SetItemState(long(i),wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}
  }
  list->Thaw();auto current=selected();selectedDetail=_(L"Paste a URL above. Select one, all, or specific files before adding downloads.");for(const auto& j:shown)if(!current.empty()&&j.id==current.front()){selectedDetail=w(j.name)+"\n"+translated(j.detail)+w(j.output.empty()?"":" · "+j.output);break;}detail->SetLabel(selectedDetail);detail->Wrap(std::max(1,detail->GetClientSize().x));
- // Hide the spacer too so the empty row collapses, as Qt's layout does.
+ // Hide the spacer too so the empty row collapses.
  bool history=mode==3;historyRow->ShowItems(history);again->Enable(!current.empty());int active=0,waiting=0,done=0,listed=0;for(auto& j:jobs){active+=j.state=="Active";waiting+=j.state=="Queued"||j.state=="Paused"||j.state=="Failed";done+=j.state=="Complete";listed+=!j.historyOnly;}
  clear->Enable(done>0);int counts[]={listed,active,waiting,done};const wxString names[]={_(L"All"),_(L"Active"),_(L"Queue"),_(L"History")};for(int i=0;i<4;++i){auto label=wxString::Format("%s (%d)",names[i],counts[i]);if(tabs->GetPageText(size_t(i))!=label){tabs->SetPageText(size_t(i),label);fitTabs();}}
  footer->SetLabel(queue.error().empty()?(queue.paused()?_(L"All paused  ·  "):wxString())+wxString::Format(_(L"%d / 4 downloading  ·  %d waiting  ·  %d completed"),active,waiting,done):translated(queue.error()));footer->Wrap(std::max(1,footer->GetClientSize().x));detail->GetParent()->Layout();progressCells();
@@ -266,9 +266,9 @@ void MainWindow::close(wxCloseEvent& e){
  if(!e.CanVeto()){timer.Stop();queue.shutdown();Destroy();return;}e.Veto();if(stopping)return;bool pending=false;auto children=GetChildren();for(auto child:children)if(child->IsTopLevel()){child->Close();if(child->IsShown())pending=true;}if(pending){closeRequested=true;footer->SetLabel(_(L"Stopping dialog tasks before closing…"));return;}stopping=true;panel->Disable();footer->SetLabel(_(L"Stopping downloads and saving history…"));closing=std::async(std::launch::async,[this]{queue.shutdown();});
 }
 void MainWindow::smokeCheck(){
- queue.pauseAll();queue.add("Smoke file","Archive","smoke",{{"target",archive::pathUtf8(dataPath/"smoke.bin")}});refresh();if(list->GetItemCount()!=1)throw std::runtime_error("Queue row not displayed");list->SetItemState(0,wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);refresh();if(selected().size()!=1)throw std::runtime_error("Selection lost");if(list->GetColumnCount()!=6||list->GetItemText(0,1)!=_(L"File"))throw std::runtime_error("Queue columns differ from Qt");search->SetValue("missing");if(list->GetItemCount()!=0)throw std::runtime_error("Filter failed");search->Clear();
+ queue.pauseAll();queue.add("Smoke file","Archive","smoke",{{"target",archive::pathUtf8(dataPath/"smoke.bin")}});refresh();if(list->GetItemCount()!=1)throw std::runtime_error("Queue row not displayed");list->SetItemState(0,wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);refresh();if(selected().size()!=1)throw std::runtime_error("Selection lost");if(list->GetColumnCount()!=6||list->GetItemText(0,1)!=_(L"File"))throw std::runtime_error("Queue columns are not the expected six");search->SetValue("missing");if(list->GetItemCount()!=0)throw std::runtime_error("Filter failed");search->Clear();
  for(int index:{1,2,3,0}){tabs->SetSelection(size_t(index));if(mode!=index||tabs->GetSelection()!=index)throw std::runtime_error("View tab did not switch mode");if(list->GetItemCount()!=((index==0||index==2)?1:0))throw std::runtime_error("View tab filter failed");}
- if(tabs->GetPageText(0)!=wxString::Format("%s (%d)",_(L"All"),1))throw std::runtime_error("View tab counts differ from Qt");
+ if(tabs->GetPageText(0)!=wxString::Format("%s (%d)",_(L"All"),1))throw std::runtime_error("View tab counts are wrong");
  // The four labels need well over 150 px; a strip sized from the empty pages was 3-13 px wide.
  if(tabs->GetSize().x<FromDIP(150)||tabs->GetSize().y<FromDIP(16))throw std::runtime_error("View tabs are not fully visible");
  showFiles(this,queue);showVideo(this,queue);queue.removeAll();std::ofstream(dataPath/"smoke-passed.txt")<<"Native controls, six columns, view buttons, queue selection/filter, file checkboxes and shutdown passed.\n";CallAfter([this]{Close();});

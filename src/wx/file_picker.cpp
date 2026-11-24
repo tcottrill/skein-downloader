@@ -25,7 +25,7 @@ class FilePicker:public wxDialog {
  void summary(){size_t n=0;uint64_t bytes=0;bool unknown=false;for(size_t i=0;i<checked.size();++i)if(checked[i]){++n;bytes+=item.files[i].size;unknown|=!item.files[i].sizeKnown;}status->SetLabel(wxString::Format(_(L"%zu selected / %zu files / "),n,item.files.size())+w(archive::formatBytes(bytes))+(unknown?_(L" + unknown sizes"):wxString()));}
  void preferences(){save("folder",folder->GetValue());save("connections",wxString::Format("%d",connections->GetSelection()));if(!item.files.empty()&&archive::isArchiveItem(item)&&servers->GetSelection()>=0)save("server",w(routes[size_t(servers->GetSelection())]));if(!item.files.empty()){nlohmann::json names=nlohmann::json::array();for(size_t i=0;i<checked.size();++i)if(checked[i])names.push_back(item.files[i].name);save("fileItem",w(item.id));save("fileSelection",w(names.dump()));}}
  void refresh(){
-  // Keep highlighted rows across filtering, as Qt's filter proxy does.
+  // Keep highlighted rows across filtering.
   std::set<size_t> highlighted;for(long r=-1;(r=list->GetNextItem(r,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1;)if(size_t(r)<rows.size())highlighted.insert(rows[size_t(r)]);
   rebuilding=true;list->Freeze();list->DeleteAllItems();rows.clear();auto query=filter->GetValue().Lower();
   std::vector<size_t> shown;for(size_t i=0;i<item.files.size();++i)if(w(item.files[i].name).Lower().Contains(query))shown.push_back(i);order(shown);
@@ -34,7 +34,7 @@ class FilePicker:public wxDialog {
  }
  void select(bool value,bool highlighted){rebuilding=true;for(size_t i=0;i<rows.size();++i)if(!highlighted||(list->GetItemState(long(i),wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)) {checked[rows[i]]=value;list->CheckItem(long(i),value);list->SetItem(long(i),3,value?_(L"Selected"):wxString());}rebuilding=false;summary();}
  void refreshServers(){
-  // Mirrors are listed by host name; speeds follow an em dash, as in Qt.
+  // Mirrors are listed by host name; speeds follow an em dash.
   wxString old=pref("server");servers->Clear();routes={"","standard"};servers->Append(_(L"Automatic (fastest sample)"));servers->Append(_(L"Standard server route"));for(auto& base:item.mirrorBases){routes.push_back(base);auto start=base.find("://");start=start==std::string::npos?0:start+3;servers->Append(w(base.substr(start,base.find('/',start)-start)));}
   for(size_t i=0;i<speeds.size()&&i+1<routes.size();++i)servers->SetString(unsigned(i+1),servers->GetString(unsigned(i+1))+w(" — ")+w(speeds[i].error.empty()?archive::formatBytes(uint64_t(speeds[i].bytesPerSecond))+"/s":speeds[i].error));
   int chosen=0;for(size_t i=0;i<routes.size();++i)if(w(routes[i])==old)chosen=int(i);servers->SetSelection(chosen);
@@ -64,7 +64,7 @@ class FilePicker:public wxDialog {
 public:
  FilePicker(wxWindow* parent,downloads::Queue& q,const wxString& link,bool loadLink):wxDialog(parent,wxID_ANY,_(L"File downloads"),wxDefaultPosition,wxDefaultSize,wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER),queue(q),timer(this){
   appIcons(this);
-  // Qt's default dialog layout: 11 px margins and 6 px between items and rows.
+  // Dialog layout: 11 px margins and 6 px between items and rows.
   const int gap=FromDIP(6);auto outer=new wxBoxSizer(wxVERTICAL);auto box=new wxBoxSizer(wxVERTICAL);outer->Add(box,1,wxEXPAND|wxALL,FromDIP(11));
   auto title=new wxStaticText(this,wxID_ANY,_(L"File downloads"));auto font=title->GetFont();font.SetPointSize(21);title->SetFont(font);box->Add(title,0,wxBOTTOM,gap);auto row=new wxBoxSizer(wxHORIZONTAL);url=field(this,link,_(L"Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"));row->Add(url,1,wxALIGN_CENTER_VERTICAL);button(this,row,_(L"Load files"),[this]{load();});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
   row=new wxBoxSizer(wxHORIZONTAL);filter=field(this,{},_(L"Filter by filename…"));row->Add(filter,1,wxALIGN_CENTER_VERTICAL);button(this,row,_(L"Select all"),[this]{select(true,false);});button(this,row,_(L"Clear selection"),[this]{select(false,false);});box->Add(row,0,wxEXPAND|wxBOTTOM,gap);
@@ -82,7 +82,7 @@ public:
   auto check=[this](wxListEvent& e){if(!rebuilding&&e.GetIndex()>=0&&size_t(e.GetIndex())<rows.size()){checked[rows[size_t(e.GetIndex())]]=list->IsItemChecked(e.GetIndex());list->SetItem(e.GetIndex(),3,list->IsItemChecked(e.GetIndex())?_(L"Selected"):wxString());summary();}};list->Bind(wxEVT_LIST_ITEM_CHECKED,check);list->Bind(wxEVT_LIST_ITEM_UNCHECKED,check);
   list->Bind(wxEVT_LIST_COL_CLICK,[this](wxListEvent& e){sortBy(e.GetColumn());});
   list->Bind(wxEVT_LIST_ITEM_RIGHT_CLICK,[this](wxListEvent& e){if(e.GetIndex()>=0&&!(list->GetItemState(e.GetIndex(),wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)){long row=-1;while((row=list->GetNextItem(row,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)list->SetItemState(row,0,wxLIST_STATE_SELECTED);list->SetItemState(e.GetIndex(),wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}wxMenu menu;menu.Append(1,_(L"Check highlighted"));menu.Append(2,_(L"Uncheck highlighted"));auto id=GetPopupMenuSelectionFromUser(menu);if(id==1||id==2)select(id==1,true);});
-  // Qt closes at once; a lookup still running is stopped and the hidden dialog is destroyed when it returns.
+  // Closes at once; a lookup still running is stopped and the hidden dialog is destroyed when it returns.
   Bind(wxEVT_TIMER,[this](wxTimerEvent&){tick();});Bind(wxEVT_CLOSE_WINDOW,[this](wxCloseEvent& e){preferences();*stop=true;if(busy()&&e.CanVeto()){closing=true;Hide();e.Veto();}else Destroy();});
   timer.Start(100);summary();url->SetFocus();if(loadLink&&!link.empty())CallAfter([this]{load();});
   if(smoke){
