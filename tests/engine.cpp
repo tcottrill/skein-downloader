@@ -303,7 +303,8 @@ void snapshotResume(const std::string& base) {
             writeFile(side / L"state.json", readFile(staging / L"state.json"));
             for (const auto& entry : std::filesystem::directory_iterator(staging)) {
                 const auto name = entry.path().filename();
-                if (name == L"lock" || name == L"state.json") continue;
+                // state.json.tmp exists only while a checkpoint is written and renamed; a crash that leaves one loses nothing, as the engine deletes it at the start.
+                if (name == L"lock" || name == L"state.json" || name == L"state.json.tmp") continue;
                 writeFile(side / name, readFile(entry.path()));
             }
             copied = true;
