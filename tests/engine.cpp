@@ -1,9 +1,11 @@
 // End-to-end download engine tests against the local server in tests/engine_server.py,
 // started by tests/run_engine_tests.py, which passes the server's base URL.
 #include "host_limit.h"
+#include "signin.h"
 #include "sites.h"
 #include "staging.h"
 #include "json.hpp"
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -14,6 +16,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -456,6 +459,187 @@ void loadWatch(const std::string& base) {
     archive::fetch(base + "/stats", stop);
     expect(progress.requests == requests && progress.bytes == counted, "Reads after the LoadWatch is gone count nothing.");
 }
+
+// Sets the sign-in table for one case; the table is process-wide, so it is cleared even when the case fails.
+struct SignIns {
+    explicit SignIns(std::vector<archive::SignIn> table) { archive::setSignIns(std::move(table)); }
+    ~SignIns() { archive::setSignIns({}); }
+};
+
+archive::SignIn passwordFor(const std::string& host, const std::string& user, const std::string& secret) {
+    archive::SignIn s;
+    s.kind = archive::SignInKind::Password;
+    s.host = host;
+    s.user = user;
+    s.secret = secret;
+    return s;
+}
+
+archive::SignIn tokenFor(const std::string& host, const std::string& secret) {
+    archive::SignIn s;
+    s.kind = archive::SignInKind::Token;
+    s.host = host;
+    s.secret = secret;
+    return s;
+}
+
+// The Authorization values the server received on a host name since the last reset.
+std::vector<std::string> authOn(const std::string& base, const std::string& host) {
+    const auto all = stats(base)["auth"];
+    if (!all.contains(host)) return {};
+    return all[host].get<std::vector<std::string>>();
+}
+
+// The number of requests in a server mode that arrived without an Authorization header since the last reset.
+int anonymous(const std::string& base, const std::string& mode) {
+    const auto all = stats(base)["anonymous"];
+    return all.contains(mode) ? all[mode].get<int>() : 0;
+}
+
+// The SignInNeeded a download of url throws.
+archive::SignInNeeded signInNeeded(const std::string& url, const archive::Path& target, const std::string& what) {
+    try {
+        run(url, target, 4);
+    } catch (const archive::SignInNeeded& e) {
+        return e;
+    }
+    throw std::runtime_error(what + " throws SignInNeeded.");
+}
+
+void signInMissing(const std::string& base) {
+    SignIns table({});
+    TempFolder folder("signin-missing");
+    const auto e = signInNeeded(urlFor(base, "basic", 10 * MiB), folder.path / "file.bin", "A download from a server that asks for Basic, with no sign-in saved,");
+    expect(!e.rejected, "A refusal when no sign-in was sent is not reported as a rejected sign-in.");
+    expect(e.basic, "A refusal with a Basic challenge reports that the server offered Basic.");
+    expect(e.host == "127.0.0.1", "A refusal names the host that refused (127.0.0.1), not \"" + e.host + "\".");
+}
+
+void basicRanges(const std::string& base) {
+    SignIns table({passwordFor("127.0.0.1", "user", "pass")});
+    const auto url = urlFor(base, "basic", 10 * MiB);
+    {
+        TempFolder folder("basic-ranges");
+        reset(base);
+        const auto target = folder.path / "file.bin";
+        run(url, target, 4);
+        expect(readFile(target) == expectedBytes(10 * MiB), "A file behind Basic sign-in downloads with the right content.");
+        expect(stats(base)["maxConcurrent"].get<int>() >= 2, "A file behind Basic sign-in is fetched on several connections.");
+        expect(anonymous(base, "basic") <= 2, "After a server's Basic challenge the password is sent at once: at most 2 requests went without it, not " +
+                                                      std::to_string(anonymous(base, "basic")) + ".");
+    }
+    {
+        // A new table forgets which servers challenged: the next request waits for a challenge again.
+        archive::setSignIns({passwordFor("127.0.0.1", "user", "other")});
+        reset(base);
+        std::atomic_bool stop = false;
+        bool rejected = false;
+        try {
+            archive::fetch(url, stop);
+        } catch (const archive::SignInNeeded& e) {
+            rejected = e.rejected;
+        }
+        expect(rejected, "A changed password the server refuses is reported as a rejected sign-in.");
+        expect(anonymous(base, "basic") == 1 && authOn(base, "127.0.0.1").size() == 1,
+               "After the sign-ins change, the first request goes without the password and it is sent once, after the challenge.");
+        archive::setSignIns({passwordFor("127.0.0.1", "user", "pass")});
+    }
+    TempFolder folder("basic-resume");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(url, target, 4, 3 * MiB);
+    run(url, target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A resumed download behind Basic sign-in has the right content.");
+    expect(stats(base)["bytes"].get<uint64_t>() < 15 * MiB, "A resumed download behind Basic sign-in reused the data already received.");
+}
+
+void basicWrong(const std::string& base) {
+    SignIns table({passwordFor("127.0.0.1", "user", "nope")});
+    TempFolder folder("basic-wrong");
+    reset(base);
+    const auto e = signInNeeded(urlFor(base, "basic", 10 * MiB), folder.path / "file.bin", "A download with a wrong password");
+    expect(e.rejected, "A password the server refuses is reported as a rejected sign-in.");
+    expect(authOn(base, "127.0.0.1").size() <= 2, "A refused password is sent at most twice.");
+}
+
+void bearer(const std::string& base) {
+    SignIns table({tokenFor("127.0.0.1", "tok")});
+    TempFolder folder("bearer");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "bearer", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file behind a token downloads with the right content.");
+    const auto auth = authOn(base, "127.0.0.1");
+    expect(auth.size() == stats(base)["requests"].get<size_t>(), "Every request to a host with a saved token carries it.");
+    expect(std::all_of(auth.begin(), auth.end(), [](const std::string& value) {
+               return value == "Bearer tok";
+           }),
+           "The token is sent as \"Bearer tok\".");
+}
+
+void redirectOut(const std::string& base) {
+    SignIns table({tokenFor("127.0.0.1", "tok")});
+    TempFolder folder("redirect-out");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "redirect-out", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file redirected from a signed-in host to another host downloads with the right content.");
+    expect(authOn(base, "localhost").empty(), "A token for 127.0.0.1 is never sent to localhost after a redirect.");
+}
+
+void redirectBack(const std::string& base) {
+    SignIns table({tokenFor("127.0.0.1", "tok")});
+    TempFolder folder("redirect-back");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "redirect-back", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file redirected to a token-protected address on the same host downloads with the right content.");
+}
+
+void redirectLoop(const std::string& base) {
+    SignIns table({tokenFor("127.0.0.1", "tok")});
+    TempFolder folder("redirect-loop");
+    reset(base);
+    bool threw = false;
+    try {
+        run(urlFor(base, "redirect-loop", 10 * MiB), folder.path / "file.bin", 4);
+    } catch (const archive::NetworkError& e) {
+        threw = true;
+        expect(!e.retry, "Too many redirects is not a retryable error.");
+    }
+    expect(threw, "A redirect loop from a signed-in host throws a NetworkError.");
+    expect(stats(base)["requests"].get<int>() <= 11, "A redirect loop is given up after at most 11 requests.");
+}
+
+void forbidden(const std::string& base) {
+    SignIns table({});
+    TempFolder folder("forbidden");
+    std::string message;
+    try {
+        run(urlFor(base, "forbidden", 10 * MiB), folder.path / "file.bin", 4);
+    } catch (const archive::SignInNeeded&) {
+        throw std::runtime_error("A 403 answer is not reported as SignInNeeded.");
+    } catch (const std::exception& e) {
+        message = e.what();
+    }
+    expect(message.starts_with("HTTP 403"), "A 403 answer fails with a message starting \"HTTP 403\", not \"" + message + "\".");
+}
+
+void nothingUnasked(const std::string& base) {
+    SignIns table({tokenFor("localhost", "tok"), passwordFor("127.0.0.1", "user", "pass")});
+    TempFolder folder("unasked");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "etag", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file that needs no sign-in downloads with the right content while sign-ins are saved.");
+    expect(stats(base)["auth"].empty(), "No sign-in is sent to a server that never asked for one.");
+}
+
+void loaderSignsIn(const std::string& base) {
+    SignIns table({passwordFor("127.0.0.1", "user", "pass")});
+    std::atomic_bool stop = false;
+    expect(archive::fetch(urlFor(base, "basic", 1024), stop).file, "A loader's fetch from a Basic-protected address signs in and gets the file.");
+}
 }
 
 int main(int argc, char** argv) {
@@ -482,6 +666,16 @@ int main(int argc, char** argv) {
         oldLayoutLongPart(base);
         hostLimit(base);
         loadWatch(base);
+        signInMissing(base);
+        basicRanges(base);
+        basicWrong(base);
+        bearer(base);
+        redirectOut(base);
+        redirectBack(base);
+        redirectLoop(base);
+        forbidden(base);
+        nothingUnasked(base);
+        loaderSignsIn(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;

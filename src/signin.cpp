@@ -7,6 +7,7 @@ namespace archive {
 namespace {
 std::mutex tableMutex;
 std::vector<SignIn> table;
+uint64_t generation = 0; // guarded by tableMutex
 
 bool endsWith(const std::string& text, const std::string& suffix) {
     return text.size() >= suffix.size() && text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
@@ -70,6 +71,12 @@ void setSignIns(std::vector<SignIn> signIns) {
     for (SignIn& s : signIns) s.host = lower(s.host);
     std::lock_guard<std::mutex> lock(tableMutex);
     table = std::move(signIns);
+    ++generation;
+}
+
+uint64_t signInGeneration() {
+    std::lock_guard<std::mutex> lock(tableMutex);
+    return generation;
 }
 
 std::optional<SignIn> signInFor(const std::string& scheme, const std::string& host, unsigned port) {

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,8 @@ struct SignIn {
 };
 // Replaces the whole table. Thread-safe; takes effect for requests built afterwards.
 void setSignIns(std::vector<SignIn> signIns);
+// Changes with every setSignIns call, so that what was learned under an older table can be forgotten.
+uint64_t signInGeneration();
 // The sign-in a request to scheme://host:port may carry, after the coverage and encryption rules; none otherwise.
 std::optional<SignIn> signInFor(const std::string& scheme, const std::string& host, unsigned port);
 // True when a sign-in is saved for this host at all, whatever the scheme (to tell "refused, none saved" from "may not be sent").

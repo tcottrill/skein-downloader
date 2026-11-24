@@ -11,8 +11,19 @@ Byte i of version v of a file is (i * 31 + 7 + v) & 0xFF. Modes:
   changed  like modified, serving version 1 until 3 ranged requests were answered since /reset,
            then version 2 with its date
   ignore-ifrange  like changed, but never looks at If-Range: always 206 for a Range
+  basic    needs Authorization: Basic for user / pass, else 401 with a Basic challenge; then like etag
+  bearer   needs Authorization: Bearer tok, else 401 with a Bearer challenge; then like etag
+  redirect-out   needs Bearer tok; 302 to mode etag on the other host name (127.0.0.1 <-> localhost)
+  redirect-back  302 to mode bearer on the same host name
+  redirect-loop  302 to itself (a relative Location)
+  forbidden      403 always
+The same port answers as 127.0.0.1 and localhost (and ::1 when it can be bound). /stats has
+"auth": the Host header's name (without port) to the Authorization values of file requests since /reset,
+and "anonymous": the mode to the number of file requests without Authorization since /reset.
 """
+import base64
 import json
+import socket
 import re
 import threading
 import time
@@ -51,11 +62,15 @@ class Stats:
             self.bytes = 0
             self.inflight = 0
             self.max_concurrent = 0
+            self.auth = {}
+            self.anonymous = {}
 
     def snapshot(self):
         with self.lock:
             return {"requests": self.requests, "ranged": self.ranged, "bytes": self.bytes,
-                    "maxConcurrent": self.max_concurrent}
+                    "maxConcurrent": self.max_concurrent,
+                    "auth": {host: list(values) for host, values in self.auth.items()},
+                    "anonymous": dict(self.anonymous)}
 
 
 STATS = Stats()
@@ -95,14 +110,52 @@ class Handler(BaseHTTPRequestHandler):
             STATS.reset()
             self.send_text(200, "ok", "text/plain")
             return
-        match = re.fullmatch(r"/(etag|norange|nolength|modified|weak|rangeprobe|changed|ignore-ifrange)/(\d+)/file\.bin", self.path)
+        match = re.fullmatch(r"/(etag|norange|nolength|modified|weak|rangeprobe|changed|ignore-ifrange|basic|bearer"
+                             r"|redirect-out|redirect-back|redirect-loop|forbidden)/(\d+)/file\.bin", self.path)
         if not match:
             self.send_text(404, "not found", "text/plain")
             return
         mode, size = match.group(1), int(match.group(2))
         range_header = self.headers.get("Range")
+        authorization = self.headers.get("Authorization")
+        # The Host header's name and port: "127.0.0.1:5000", "localhost:5000" or "[::1]:5000".
+        host, _, port = self.headers.get("Host", "").rpartition(":")
+        host = host.strip("[]")
         with STATS.lock:
             STATS.requests += 1
+            if authorization is not None:
+                STATS.auth.setdefault(host, []).append(authorization)
+            else:
+                STATS.anonymous[mode] = STATS.anonymous.get(mode, 0) + 1
+        if mode == "forbidden":
+            self.send_text(403, "forbidden", "text/plain")
+            return
+        if mode in ("basic", "bearer", "redirect-out"):
+            wanted = "Basic " + base64.b64encode(b"user:pass").decode() if mode == "basic" else "Bearer tok"
+            if authorization != wanted:
+                self.send_response(401)
+                self.send_header("WWW-Authenticate", 'Basic realm="test"' if mode == "basic" else "Bearer")
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", "12")
+                self.end_headers()
+                self.wfile.write(b"unauthorized")
+                return
+        if mode.startswith("redirect-"):
+            if mode == "redirect-out":
+                other = "localhost" if host == "127.0.0.1" else "127.0.0.1"
+                location = f"http://{other}:{port}/etag/{size}/file.bin"
+            elif mode == "redirect-back":
+                location = f"http://{host}:{port}/bearer/{size}/file.bin"
+            else:
+                location = "file.bin"
+            self.send_response(302)
+            self.send_header("Location", location)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        if mode in ("basic", "bearer"):
+            mode = "etag"
+        with STATS.lock:
             # The changed modes switch to version 2 once 3 ranged requests were answered since /reset.
             version = 2 if mode in ("changed", "ignore-ifrange") and STATS.ranged >= 3 else 1
             if range_header and range_header != "bytes=0-0":
@@ -171,7 +224,17 @@ def start():
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    return server, f"http://127.0.0.1:{server.server_address[1]}"
+    port = server.server_address[1]
+    # "localhost" may resolve to ::1 first; answering there too spares each request a refused connection.
+    try:
+        class Server6(ThreadingHTTPServer):
+            address_family = socket.AF_INET6
+        server6 = Server6(("::1", port), Handler)
+        server6.daemon_threads = True
+        threading.Thread(target=server6.serve_forever, daemon=True).start()
+    except OSError:
+        pass
+    return server, f"http://127.0.0.1:{port}"
 
 
 if __name__ == "__main__":

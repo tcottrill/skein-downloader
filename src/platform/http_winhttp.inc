@@ -34,6 +34,8 @@ struct Request {
     Request* request = this;                  // header(r->request, ...) reads either kind, as with libcurl
     DWORD status = 0;
     std::string address;
+    bool basic = false;    // a 401 answer offered HTTP Basic
+    std::wstring location; // a manual request's 3xx answer: where it points
     static HINTERNET session() {
         // One session for the whole program, shared by every thread (WinHTTP sessions are thread-safe)
         // and kept across queued ranges and retries. It is never closed: a per-thread session was closed
@@ -71,7 +73,9 @@ struct Request {
     };
     // A body makes this a POST (site APIs); downloads are always GET. wait is how long the
     // server may take to answer or to send more data (slow search services need longer).
-    Request(const Url& url, const std::wstring& headers, bool redirects = true, const std::string* body = nullptr, unsigned wait = 10, std::atomic_bool* stop = nullptr)
+    // manual (a request that carries a sign-in): never follows a redirect, and returns a redirect
+    // or a 401 answer instead of throwing, for the caller to handle.
+    Request(const Url& url, const std::wstring& headers, bool redirects = true, const std::string* body = nullptr, unsigned wait = 10, std::atomic_bool* stop = nullptr, bool manual = false)
         : address(url.address) {
         if (url.isFtp) {
             ftpTransfer = std::make_unique<FtpTransfer>(url.address, headers, stop);
@@ -82,7 +86,7 @@ struct Request {
         http = std::make_unique<Handle>(WinHttpOpenRequest(*connection, body ? L"POST" : L"GET", url.path.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, url.secure ? WINHTTP_FLAG_SECURE : 0));
         auto& handle = *http;
         WinHttpSetTimeouts(handle, 10000, 10000, 10000, int(wait * 1000));
-        DWORD policy = redirects ? WINHTTP_OPTION_REDIRECT_POLICY_DISALLOW_HTTPS_TO_HTTP : WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
+        DWORD policy = redirects && !manual ? WINHTTP_OPTION_REDIRECT_POLICY_DISALLOW_HTTPS_TO_HTTP : WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
         WinHttpSetOption(handle, WINHTTP_OPTION_REDIRECT_POLICY, &policy, sizeof policy);
         auto allHeaders = L"Accept-Encoding: identity\r\n" + headers;
         auto data = body ? (LPVOID)body->data() : WINHTTP_NO_REQUEST_DATA;
@@ -92,6 +96,19 @@ struct Request {
         DWORD n = sizeof status;
         if (!WinHttpQueryHeaders(handle, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nullptr, &status, &n, nullptr))
             throw NetworkError("Cannot read HTTP status");
+        if (status == 401) {
+            DWORD schemes = 0, first = 0, target = 0;
+            basic = WinHttpQueryAuthSchemes(handle, &schemes, &first, &target) && (schemes & WINHTTP_AUTH_SCHEME_BASIC);
+        }
+        if (manual && (status == 401 || isRedirect(status))) {
+            location = header(handle, WINHTTP_QUERY_LOCATION);
+            return;
+        }
+        if (status == 401) {
+            // The host that refused: the last one, after any redirects.
+            const auto after = this->url();
+            throw SignInNeeded(signInHost(after.empty() ? url.host : Url(after).host), false, basic);
+        }
         if (status != 200 && status != 206) {
             unsigned seconds = 1;
             auto retryAfter = header(handle, WINHTTP_QUERY_RETRY_AFTER);

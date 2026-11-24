@@ -1,5 +1,6 @@
 #include "core.h"
 #include "host_limit.h"
+#include "signin.h"
 #include "sites.h"
 #include "staging.h"
 #include "json.hpp"
@@ -24,10 +25,12 @@
 #include <memory>
 #include <mutex>
 #include <regex>
+#include <set>
 #include <stdexcept>
 #include <stop_token>
 #include <thread>
 namespace archive {
+std::string headerUtf8(const std::wstring& value);
 namespace {
 // The registry behind LoadWatch: stop flag address to progress. Reads look it up once per call;
 // watches_ lets a read with no watch anywhere skip the lock.
@@ -44,12 +47,22 @@ LoadProgress* progressFor(const std::atomic_bool& stop) {
 void countRequest(const std::atomic_bool& stop) {
     if (auto progress = progressFor(stop)) ++progress->requests;
 }
-// Shared by both transports for any response other than 200/206.
+// Shared by both transports for any response other than 200/206 (a 401 is SignInNeeded instead).
 NetworkError statusError(unsigned long status, unsigned retryAfter) {
     std::string message = "HTTP " + std::to_string(status);
-    if (status == 401 || status == 403) message += ": file requires access permission or sign-in (not supported in this version).";
+    if (status == 403) message += ": file requires access permission or sign-in (not supported in this version).";
     if (status == 404) message += ": file not found.";
     return NetworkError(message, status == 429 || status == 408 || status >= 500, retryAfter, (unsigned)status);
+}
+// The statuses whose Location the engine follows itself on a request that carries a sign-in.
+bool isRedirect(unsigned long status) {
+    return status == 301 || status == 302 || status == 303 || status == 307 || status == 308;
+}
+// A host as the sign-in table names it: lower case, without the brackets of an IPv6 address.
+std::string signInHost(const std::wstring& host) {
+    auto value = lower(utf8(host));
+    if (value.size() >= 2 && value.front() == '[' && value.back() == ']') value = value.substr(1, value.size() - 2);
+    return value;
 }
 // A ranged request showed that the parts cannot be combined: the server sent the whole file (it will not
 // honor ranges, or the file changed since the probe) or another version of it. Not a NetworkError, so
@@ -111,15 +124,154 @@ struct FtpTransfer {
 #else
 #include "platform/http_curl.inc"
 #endif
+// "/a/./b/../c" as "/a/c" (RFC 3986, section 5.2.4), for a redirect's relative address.
+std::string removeDotSegments(const std::string& path) {
+    std::vector<std::string> kept;
+    bool directory = false; // the last segment was "." or "..": the result ends with a slash
+    for (size_t at = 1; at <= path.size();) {
+        auto end = path.find('/', at);
+        if (end == std::string::npos) end = path.size();
+        const auto segment = path.substr(at, end - at);
+        directory = segment == "." || segment == "..";
+        if (segment == "..") {
+            if (!kept.empty()) kept.pop_back();
+        } else if (segment != ".")
+            kept.push_back(segment);
+        at = end + 1;
+    }
+    std::string out;
+    for (auto& segment : kept) out += "/" + segment;
+    if (out.empty() || directory) out += "/";
+    return out;
+}
+// A redirect's Location made absolute against the address that answered with it; empty when the
+// result is not an http or https address.
+std::string resolveLocation(const std::string& base, std::string location) {
+    location = trim(location);
+    location = location.substr(0, location.find('#'));
+    const auto schemeEnd = base.find("://");
+    if (schemeEnd == std::string::npos) return {};
+    const auto authorityEnd = base.find_first_of("/?#", schemeEnd + 3);
+    const auto origin = base.substr(0, authorityEnd);
+    auto rest = authorityEnd == std::string::npos ? std::string("/") : base.substr(authorityEnd);
+    rest = rest.substr(0, rest.find('#'));
+    if (rest.empty() || rest[0] != '/') rest = "/" + rest;
+    const auto basePath = rest.substr(0, rest.find('?'));
+    std::string target;
+    const auto colon = location.find(':'), delimiter = location.find_first_of("/?");
+    if (colon != std::string::npos && colon > 0 && (delimiter == std::string::npos || colon < delimiter))
+        target = location;
+    else if (location.starts_with("//"))
+        target = base.substr(0, schemeEnd) + ":" + location;
+    else if (location.starts_with("/"))
+        target = origin + location;
+    else if (location.empty())
+        target = origin + rest;
+    else if (location[0] == '?')
+        target = origin + basePath + location;
+    else
+        target = origin + basePath.substr(0, basePath.rfind('/') + 1) + location;
+    const auto lowered = lower(target.substr(0, 8));
+    if (!lowered.starts_with("http://") && !lowered.starts_with("https://")) return {};
+    // The path's dot segments are resolved; the address's own spelling is otherwise kept.
+    const auto hostStart = target.find("://") + 3;
+    const auto pathStart = target.find_first_of("/?", hostStart);
+    if (pathStart == std::string::npos) return target + "/";
+    const auto queryStart = target.find('?', pathStart);
+    const auto path = target.substr(pathStart, queryStart == std::string::npos ? std::string::npos : queryStart - pathStart);
+    return target.substr(0, pathStart) + (path.empty() ? std::string("/") : removeDotSegments(path)) + (queryStart == std::string::npos ? "" : target.substr(queryStart));
+}
+// The servers ("host:port", lower-case host) that answered a request on the manual path with a Basic
+// challenge, so that a password goes with later requests to them at once, as browsers do. Each entry
+// belongs to the sign-in table generation it was learned under: a newer table empties the set, and a
+// request built under an older one neither reads nor changes it.
+std::mutex challengedLock;
+std::set<std::string> challenged;
+uint64_t challengedGeneration = 0;
+void adoptGeneration(uint64_t generation) {
+    if (generation > challengedGeneration) {
+        challenged.clear();
+        challengedGeneration = generation;
+    }
+}
+bool wasChallenged(const std::string& server, uint64_t generation) {
+    std::lock_guard lock(challengedLock);
+    adoptGeneration(generation);
+    return generation == challengedGeneration && challenged.contains(server);
+}
+void setChallenged(const std::string& server, uint64_t generation, bool value) {
+    std::lock_guard lock(challengedLock);
+    adoptGeneration(generation);
+    if (generation != challengedGeneration) return;
+    if (value)
+        challenged.insert(server);
+    else
+        challenged.erase(server);
+}
+// One transport request, as the platform's Request takes its arguments.
+std::unique_ptr<Request> build(const Request::Url& url, const std::wstring& headers, bool redirects, std::atomic_bool& stop, const std::string* body, unsigned wait, bool manual) {
+#ifdef _WIN32
+    return std::make_unique<Request>(url, headers, redirects, body, wait, &stop, manual);
+#else
+    return std::make_unique<Request>(url, headers, redirects, &stop, body, wait, manual);
+#endif
+}
+// Every HTTP request is built here, once, without retries. A request to a host with no saved sign-in
+// is exactly the transport's request, which follows redirects itself (when redirects is true). A host
+// with a sign-in takes the manual path: the sign-in is attached when it may be (at once for a token,
+// after a Basic challenge for a password), and each redirect is followed here, so that every hop looks
+// its own host up again and a sign-in never reaches a host it does not cover. Request::url() is the
+// final address on both paths. A 401 is SignInNeeded on both.
+std::unique_ptr<Request> open(const std::string& url, const std::wstring& headers, std::atomic_bool& stop, bool redirects = true, unsigned wait = 10, const std::string* body = nullptr) {
+    std::string current = url;
+    for (unsigned hops = 0;;) {
+        cancelled(stop);
+        const Request::Url target(current);
+        const auto host = signInHost(target.host);
+        if (target.isFtp || !hasSignIn(host, target.port)) return build(target, headers, redirects, stop, body, wait, false);
+        // Read before the lookup: if the table changes in between, what this request learns is dropped.
+        const auto generation = signInGeneration();
+        const auto signIn = signInFor(target.secure ? "https" : "http", host, target.port);
+        const auto server = host + ":" + std::to_string(target.port);
+        // A password goes at once to a server that has challenged before under this table.
+        const bool early = signIn && !sentAtOnce(*signIn) && wasChallenged(server, generation);
+        bool sent = signIn && (sentAtOnce(*signIn) || early);
+        auto r = build(target, sent ? headers + wide(authorizationHeader(*signIn)) : headers, redirects, stop, body, wait, true);
+        if (r->status == 401 && signIn && !sent && r->basic) {
+            r.reset();
+            setChallenged(server, generation, true);
+            cancelled(stop);
+            sent = true;
+            r = build(target, headers + wide(authorizationHeader(*signIn)), redirects, stop, body, wait, true);
+        }
+        if (r->status == 401) {
+            if (early) setChallenged(server, generation, false);
+            throw SignInNeeded(host, sent, r->basic);
+        }
+        if (!isRedirect(r->status)) return r;
+        // The transport would not have followed it either.
+        const auto status = r->status;
+        if (!redirects) throw statusError(status, 1);
+        const auto next = resolveLocation(current, headerUtf8(r->location));
+        r.reset();
+        if (next.empty()) throw NetworkError("HTTP " + std::to_string(status) + ": the server's redirect has no usable address.", false, 1, (unsigned)status);
+        if (target.secure && !lower(next.substr(0, 8)).starts_with("https://"))
+            throw NetworkError("The server redirected from HTTPS to an unencrypted address, which is not followed.", false, 1, (unsigned)status);
+        if (++hops > 10) throw NetworkError("Too many redirects (more than 10).", false, 1, (unsigned)status);
+        // As browsers and both transports do: a POST redirected by 301, 302 or 303 becomes a GET.
+        if (body && status != 307 && status != 308) body = nullptr;
+        current = next;
+    }
+}
 std::unique_ptr<Request> get(const std::string& url, const std::wstring& headers, std::atomic_bool& stop, bool redirects = true, unsigned wait = 10) {
     for (unsigned attempt = 0;; ++attempt) {
         cancelled(stop);
         try {
-#ifdef _WIN32
-            return std::make_unique<Request>(Request::Url(url), headers, redirects, nullptr, wait, &stop);
-#else
-            return std::make_unique<Request>(Request::Url(url), headers, redirects, &stop, nullptr, wait);
-#endif
+            return open(url, headers, stop, redirects, wait);
+        } catch (const SignInNeeded& e) {
+            // Not retried: the same request would be refused again.
+            LOG_ERROR("Request failed: %s: %s", logUrl(url).c_str(), e.what());
+            throw;
         } catch (const NetworkError& e) {
             if (!e.retry || attempt == 3) {
                 LOG_ERROR("Request failed: %s: %s", logUrl(url).c_str(), e.what());
@@ -261,13 +413,8 @@ Response fetch(const std::string& url, std::atomic_bool& stop, const std::string
     return response;
 }
 Response post(const std::string& url, const std::string& body, std::atomic_bool& stop, const std::string& headers) {
-    cancelled(stop);
-#ifdef _WIN32
-    Request r(Request::Url(url), wide(headers), true, &body);
-#else
-    Request r(Request::Url(url), wide(headers), true, &stop, &body);
-#endif
-    auto response = respond(r, url, stop);
+    auto r = open(url, wide(headers), stop, true, 10, &body);
+    auto response = respond(*r, url, stop);
     countRequest(stop);
     return response;
 }
@@ -371,11 +518,8 @@ std::vector<ServerSpeed> measureServers(const File& file, const std::vector<std:
             result.host = utf8(Request::Url(urls[i]).host);
             uint64_t sample = std::min<uint64_t>(file.size, 256 * 1024);
             auto start = std::chrono::steady_clock::now();
-#ifdef _WIN32
-            Request r(Request::Url(urls[i]), L"Range: bytes=0-" + std::to_wstring(sample - 1) + L"\r\n", i == 0);
-#else
-            Request r(Request::Url(urls[i]), L"Range: bytes=0-" + std::to_wstring(sample - 1) + L"\r\n", i == 0, &stop);
-#endif
+            auto request = open(urls[i], L"Range: bytes=0-" + std::to_wstring(sample - 1) + L"\r\n", stop, i == 0);
+            auto& r = *request;
             validateRange(r, 0, sample - 1, file.size);
             uint64_t got = 0;
             char buffer[32768];

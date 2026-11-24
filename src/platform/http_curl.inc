@@ -18,6 +18,17 @@ std::wstring headerText(const std::string& value) {
         return out;
     }
 }
+// True when WWW-Authenticate challenges (several joined by commas) offer HTTP Basic. Each comma-separated
+// piece is a challenge ("Basic realm=x") or one of its parameters ("charset=UTF-8"), which has '=' in its first word.
+bool offersBasic(const std::string& challenges) {
+    std::istringstream in(challenges);
+    std::string piece;
+    while (std::getline(in, piece, ',')) {
+        const auto text = trim(piece);
+        if (lower(text.substr(0, text.find_first_of(" \t"))) == "basic") return true;
+    }
+    return false;
+}
 // A bundled libcurl (AppImage) only knows the CA path of the distribution it was built on;
 // find this system's bundle instead. SSL_CERT_FILE overrides, as for OpenSSL.
 const char* caBundle() {
@@ -47,23 +58,32 @@ struct Request {
     struct Url {
         std::string address;
         std::wstring host;
-        bool isFtp = false;
+        unsigned port = 0;
+        bool secure = false, isFtp = false;
         explicit Url(const std::string& value)
             : address(value) {
             static CurlInit init;
             if (ftp::isFtpUrl(value)) {
-                host = wide(ftp::parseUrl(value).host);
+                auto u = ftp::parseUrl(value);
+                host = wide(u.host);
+                port = u.port;
                 isFtp = true;
                 return;
             }
             auto u = curl_url();
             if (!u) throw std::runtime_error("Cannot parse URL");
-            char *h = nullptr, *scheme = nullptr;
-            bool ok = curl_url_set(u, CURLUPART_URL, value.c_str(), 0) == CURLUE_OK && curl_url_get(u, CURLUPART_HOST, &h, 0) == CURLUE_OK && curl_url_get(u, CURLUPART_SCHEME, &scheme, 0) == CURLUE_OK;
+            char *h = nullptr, *scheme = nullptr, *p = nullptr;
+            bool ok = curl_url_set(u, CURLUPART_URL, value.c_str(), 0) == CURLUE_OK && curl_url_get(u, CURLUPART_HOST, &h, 0) == CURLUE_OK && curl_url_get(u, CURLUPART_SCHEME, &scheme, 0) == CURLUE_OK &&
+                      curl_url_get(u, CURLUPART_PORT, &p, CURLU_DEFAULT_PORT) == CURLUE_OK;
             ok = ok && scheme && (std::string(scheme) == "https" || std::string(scheme) == "http");
-            if (ok) host = wide(h);
+            if (ok) {
+                host = wide(h);
+                secure = std::string(scheme) == "https";
+                port = (unsigned)std::strtoul(p, nullptr, 10);
+            }
             curl_free(h);
             curl_free(scheme);
+            curl_free(p);
             curl_url_cleanup(u);
             if (!ok) throw std::runtime_error("Invalid download URL");
         }
@@ -76,6 +96,9 @@ struct Request {
     std::map<std::string, std::wstring> fields;
     std::vector<char> buffer;
     bool ready = false, finished = false, paused = false;
+    bool manual = false;   // never follows a redirect; a redirect or a 401 answer is returned, not thrown
+    bool basic = false;    // a 401 answer offered HTTP Basic
+    std::wstring location; // a manual request's 3xx answer: where it points
     CURLcode result = CURLE_OK;
     std::atomic_bool* stop = nullptr;
     std::unique_ptr<FtpTransfer> ftpTransfer; // an FTP file, answered like an HTTP response
@@ -113,7 +136,8 @@ struct Request {
                 auto at = s.find(' ');
                 r.status = std::stoul(s.substr(at + 1));
             } else if (s == "\r\n") {
-                if (r.status >= 200 && (r.status < 300 || r.status >= 400)) r.ready = true;
+                // A manual request follows nothing, so its 3xx answer is the final one.
+                if (r.status >= 200 && (r.status < 300 || r.status >= 400 || r.manual)) r.ready = true;
             } else if (auto at = s.find(':'); at != std::string::npos) {
                 auto key = s.substr(0, at);
                 std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) {
@@ -122,7 +146,12 @@ struct Request {
                 auto value = s.substr(at + 1);
                 auto first = value.find_first_not_of(" \t");
                 auto last = value.find_last_not_of("\r\n \t");
-                r.fields[key] = first == std::string::npos ? L"" : headerText(value.substr(first, last - first + 1));
+                auto text = first == std::string::npos ? L"" : headerText(value.substr(first, last - first + 1));
+                // A server may send several challenges in separate headers; all of them are kept.
+                if (key == "www-authenticate" && !r.fields[key].empty())
+                    r.fields[key] += L", " + text;
+                else
+                    r.fields[key] = text;
             }
             return size;
         } catch (...) {
@@ -150,8 +179,10 @@ struct Request {
     }
     // A body makes this a POST (site APIs); downloads are always GET. wait is how long the
     // server may go without sending data (slow search services need longer).
-    Request(const Url& url, const std::wstring& extra, bool redirects = true, std::atomic_bool* cancel = nullptr, const std::string* post = nullptr, unsigned wait = 10)
-        : stop(cancel), address(url.address) {
+    // manual (a request that carries a sign-in): never follows a redirect, and returns a redirect
+    // or a 401 answer instead of throwing, for the caller to handle.
+    Request(const Url& url, const std::wstring& extra, bool redirects = true, std::atomic_bool* cancel = nullptr, const std::string* post = nullptr, unsigned wait = 10, bool manualRedirects = false)
+        : manual(manualRedirects), stop(cancel), address(url.address) {
         if (url.isFtp) {
             ftpTransfer = std::make_unique<FtpTransfer>(url.address, extra, cancel);
             auto& a = ftpTransfer->answer;
@@ -179,7 +210,7 @@ struct Request {
             curl_easy_setopt(easy, CURLOPT_PROTOCOLS, long(CURLPROTO_HTTP | CURLPROTO_HTTPS));
             curl_easy_setopt(easy, CURLOPT_REDIR_PROTOCOLS, url.address.starts_with("https:") ? long(CURLPROTO_HTTPS) : long(CURLPROTO_HTTP | CURLPROTO_HTTPS));
 #endif
-            curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, redirects ? 1L : 0L);
+            curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, redirects && !manual ? 1L : 0L);
             curl_easy_setopt(easy, CURLOPT_MAXREDIRS, 10L);
             curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, 10L);
             curl_easy_setopt(easy, CURLOPT_LOW_SPEED_LIMIT, 1L);
@@ -209,6 +240,16 @@ struct Request {
             curl_multi_add_handle(multi, easy);
             while (!ready && !finished) pump();
             if (!ready && result != CURLE_OK) throw NetworkError(curl_easy_strerror(result));
+            if (status == 401) basic = offersBasic(utf8(fields["www-authenticate"]));
+            if (manual && (status == 401 || isRedirect(status))) {
+                location = fields["location"];
+                return;
+            }
+            // The host that refused: the last one, after any redirects.
+            if (status == 401) {
+                const auto after = this->url();
+                throw SignInNeeded(signInHost(after.empty() ? url.host : Url(after).host), false, basic);
+            }
             if (status != 200 && status != 206) {
                 unsigned seconds = 1;
                 auto value = fields["retry-after"];

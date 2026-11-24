@@ -109,6 +109,14 @@ static void replaceTests() {
     setSignIns({});
     check(!covers("https", "example.org"), "A second call replaces the whole table.");
     check(!hasSignIn("example.org", 443), "An empty table has no sign-ins.");
+    const auto before = signInGeneration();
+    check(signInGeneration() == before, "Reading the table's generation does not change it.");
+    setSignIns({make(SignInKind::Password, "example.org", 0, "u", "p")});
+    const auto after = signInGeneration();
+    check(after != before, "Replacing the table gives it a new generation.");
+    setSignIns({make(SignInKind::Password, "example.org", 0, "u", "p")});
+    check(signInGeneration() != after, "Every replacement gives a new generation, even with the same entries.");
+    setSignIns({});
 }
 
 static void exceptionTests() {
