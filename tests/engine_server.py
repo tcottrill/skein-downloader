@@ -5,6 +5,12 @@ Byte i of version v of a file is (i * 31 + 7 + v) & 0xFF. Modes:
   etag     strong ETag, no Last-Modified; honors Range; If-Range other than the ETag gives 200
   norange  ignores Range: always 200 with Content-Length
   nolength ignores Range: 200 without Content-Length, closes the connection at the end
+  modified Last-Modified only; honors Range; If-Range other than the date gives 200 with the whole file
+  weak     ETag W/"skein-weak" only; honors Range
+  rangeprobe  Last-Modified only; bytes=0-0 gets 206, every other request gets 200 with the whole file
+  changed  like modified, serving version 1 until 3 ranged requests were answered since /reset,
+           then version 2 with its date
+  ignore-ifrange  like changed, but never looks at If-Range: always 206 for a Range
 """
 import json
 import re
@@ -86,23 +92,30 @@ class Handler(BaseHTTPRequestHandler):
             STATS.reset()
             self.send_text(200, "ok", "text/plain")
             return
-        match = re.fullmatch(r"/(etag|norange|nolength)/(\d+)/file\.bin", self.path)
+        match = re.fullmatch(r"/(etag|norange|nolength|modified|weak|rangeprobe|changed|ignore-ifrange)/(\d+)/file\.bin", self.path)
         if not match:
             self.send_text(404, "not found", "text/plain")
             return
-        mode, size, version = match.group(1), int(match.group(2)), 1
-        etag, modified = VERSIONS[version]
+        mode, size = match.group(1), int(match.group(2))
         range_header = self.headers.get("Range")
         with STATS.lock:
             STATS.requests += 1
+            # The changed modes switch to version 2 once 3 ranged requests were answered since /reset.
+            version = 2 if mode in ("changed", "ignore-ifrange") and STATS.ranged >= 3 else 1
             if range_header and range_header != "bytes=0-0":
                 STATS.ranged += 1
+        etag, modified = VERSIONS[version]
+        if mode == "weak":
+            etag = 'W/"skein-weak"'
+        # The validator the server compares If-Range with.
+        validator = etag if mode == "etag" else modified
         first, last, status = 0, size - 1, 200
         # A range cannot be satisfied in an empty file; like many servers, answer 200 with no body.
-        if mode == "etag" and range_header and size:
+        honors_range = mode in ("etag", "modified", "weak", "changed", "ignore-ifrange") or (mode == "rangeprobe" and range_header == "bytes=0-0")
+        if honors_range and range_header and size:
             parsed = re.fullmatch(r"bytes=(\d+)-(\d*)", range_header)
             if_range = self.headers.get("If-Range")
-            if parsed and (if_range is None or if_range == etag):
+            if parsed and (if_range is None or mode == "ignore-ifrange" or if_range == validator):
                 first = int(parsed.group(1))
                 last = min(int(parsed.group(2)) if parsed.group(2) else size - 1, size - 1)
                 if first >= size or first > last:
@@ -115,8 +128,11 @@ class Handler(BaseHTTPRequestHandler):
         length = last - first + 1 if size else 0
         self.send_response(status)
         self.send_header("Content-Type", "application/octet-stream")
-        if mode == "etag":
+        if mode in ("etag", "weak"):
             self.send_header("ETag", etag)
+        if mode in ("modified", "rangeprobe", "changed", "ignore-ifrange"):
+            self.send_header("Last-Modified", modified)
+        if honors_range:
             self.send_header("Accept-Ranges", "bytes")
         if status == 206:
             self.send_header("Content-Range", f"bytes {first}-{last}/{size}")

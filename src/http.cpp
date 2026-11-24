@@ -32,6 +32,12 @@ NetworkError statusError(unsigned long status, unsigned retryAfter) {
     if (status == 404) message += ": file not found.";
     return NetworkError(message, status == 429 || status == 408 || status >= 500, retryAfter, (unsigned)status);
 }
+// A ranged request showed that the parts cannot be combined: the server sent the whole file (it will not
+// honor ranges, or the file changed since the probe) or another version of it. Not a NetworkError, so
+// the per-part retry does not catch it; download() discards the staged data and starts again on one connection.
+struct RestartWhole : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 void cancelled(const std::atomic_bool& stop) {
     if (stop) throw std::runtime_error("Paused");
 }
@@ -364,7 +370,7 @@ void download(const std::string& url, const File& file, const Path& destination,
     std::filesystem::create_directories(destination.parent_path());
     uint64_t size = file.size;
     bool known = file.sizeKnown, ranged = false;
-    std::wstring etag;
+    std::wstring etag, lastModified;
     if (!known || size) {
         auto probe = get(selectedSource, wayback ? L"" : L"Range: bytes=0-0\r\n", stop, redirects);
         if (wayback && probe->status == 206) {
@@ -396,13 +402,15 @@ void download(const std::string& url, const File& file, const Path& destination,
         }
         etag = header(probe->request, WINHTTP_QUERY_ETAG);
         if (etag.starts_with(L"W/")) etag.clear();
-        LOG_INFO("Probe %s: HTTP %lu, size %s, byte ranges %s, ETag %s", logUrl(selectedSource).c_str(), (unsigned long)probe->status,
-                 known ? std::to_string(size).c_str() : "unknown", ranged ? "yes" : "no", etag.empty() ? "none" : "strong");
+        lastModified = header(probe->request, WINHTTP_QUERY_LAST_MODIFIED);
+        LOG_INFO("Probe %s: HTTP %lu, size %s, byte ranges %s, ETag %s, Last-Modified %s", logUrl(selectedSource).c_str(), (unsigned long)probe->status,
+                 known ? std::to_string(size).c_str() : "unknown", ranged ? "yes" : "no", etag.empty() ? "none" : "strong", lastModified.empty() ? "none" : "yes");
     }
-    // Only reuse partial data when a content hash or strong server validator identifies it.
+    // Only reuse partial data when a content hash or a server validator (strong ETag, else Last-Modified) identifies it.
+    const std::wstring validator = resumeValidator(etag, lastModified);
     const bool sha1Hash = isHex(file.sha1, 40);
     const bool sha256Hash = isHex(file.sha256, 64);
-    bool resumable = ranged && (sha1Hash || sha256Hash || !etag.empty());
+    bool resumable = ranged && (sha1Hash || sha256Hash || !validator.empty());
     // Without a stable identity, combining separate responses could mix file versions.
     if (!resumable) ranged = false;
     connections = std::clamp(connections, 1u, 16u);
@@ -412,7 +420,8 @@ void download(const std::string& url, const File& file, const Path& destination,
         std::wstring tag;
         double rate = 0;
     };
-    std::vector<Source> sources{{selectedSource, utf8(Request::Url(selectedSource).host), etag, 0}};
+    // With a hash the hash is the identity: the tag stays the strong ETag only, as before Last-Modified support.
+    std::vector<Source> sources{{selectedSource, utf8(Request::Url(selectedSource).host), sha1Hash || sha256Hash ? etag : validator, 0}};
     // Measure a small sample before choosing a storage server. Cross-server use
     // requires the Archive's whole-file hash; ETags are not portable between hosts.
     if (forcedSource.empty() && ranged && size >= 1024 * 1024 && !mirrors.empty() && sha1Hash) {
@@ -498,13 +507,21 @@ void download(const std::string& url, const File& file, const Path& destination,
     if (!legacy) state["layout"] = "queued-v1";
     // Recorded only when present so manifests written before SHA-256 support still match.
     if (!file.sha256.empty()) state["sha256"] = file.sha256;
+    // Last-Modified, when it is the validator (no strong ETag); recorded only when present for the same reason.
+    if (etag.empty() && !lastModified.empty()) state["modified"] = utf8(lastModified);
     if (!sha1Hash && !sha256Hash) {
         state["source"] = identity.empty() ? selectedSource : identity;
         if (previous.is_object() && !previous.contains("source")) previous["source"] = url;
     }
     // Server-specific ETags can change across redirects even when the content hash
     // is identical. Preserve verified-identity partials, including older manifests.
-    if (previous.is_object() && (sha1Hash || sha256Hash)) previous["etag"] = state["etag"];
+    if (previous.is_object() && (sha1Hash || sha256Hash)) {
+        previous["etag"] = state["etag"];
+        if (state.contains("modified"))
+            previous["modified"] = state["modified"];
+        else
+            previous.erase("modified");
+    }
     if (!resumable || previous != state || (!hashVerified && !previousClean)) {
         if (previous.is_object())
             LOG_INFO("Discarding partial data for %s: %s", pathUtf8(destination).c_str(),
@@ -512,7 +529,7 @@ void download(const std::string& url, const File& file, const Path& destination,
                                                                                            : "the last run did not stop normally, so its data may not have reached the disk");
         for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
     }
-    const bool needsCleanStop = resumable && !hashVerified;
+    bool needsCleanStop = resumable && !hashVerified;
     auto writeState = [&](bool clean) {
         auto saved = state;
         if (clean) saved["clean"] = true;
@@ -540,20 +557,27 @@ void download(const std::string& url, const File& file, const Path& destination,
     };
     std::mutex reportLock;
     std::atomic_uint64_t done = 0;
-    std::vector<uint64_t> offsets(ranges.size());
-    for (size_t i = 0; i < ranges.size(); ++i) {
-        auto path = partPath(i);
-        if (resumable && std::filesystem::exists(path)) {
-            auto length = ranges[i].last - ranges[i].first + 1;
-            offsets[i] = std::filesystem::file_size(path);
-            if (offsets[i] > length) {
-                std::filesystem::remove(path);
-                offsets[i] = 0;
+    std::vector<uint64_t> offsets;
+    // What the part files already hold (only when partial data may be reused), and whether the rest fits on the disk.
+    // Also run again when the download restarts on one connection.
+    auto loadOffsets = [&] {
+        done = 0;
+        offsets.assign(ranges.size(), 0);
+        for (size_t i = 0; i < ranges.size(); ++i) {
+            auto path = partPath(i);
+            if (resumable && std::filesystem::exists(path)) {
+                auto length = ranges[i].last - ranges[i].first + 1;
+                offsets[i] = std::filesystem::file_size(path);
+                if (offsets[i] > length) {
+                    std::filesystem::remove(path);
+                    offsets[i] = 0;
+                }
+                done += offsets[i];
             }
-            done += offsets[i];
         }
-    }
-    if (known) {
+    };
+    auto checkFreeSpace = [&] {
+        if (!known) return;
         // Assembly copies the whole file next to the parts, so both must fit at once.
         const uint64_t needed = (size - std::min<uint64_t>(done.load(), size)) + size;
         std::error_code spaceError;
@@ -565,7 +589,11 @@ void download(const std::string& url, const File& file, const Path& destination,
                 throw std::runtime_error(message);
             }
         }
-    }
+    };
+    loadOffsets();
+    checkFreeSpace();
+    // Set when a connection finds that the parts cannot be combined, so that the others stop mid-part.
+    std::atomic_bool restartAsked = false;
     std::atomic_uint active = 0;
     // Byte progress (throttle) is sent at most every 100 ms across all connections; the window
     // shows it four times a second, and each report takes the queue's lock.
@@ -595,9 +623,21 @@ void download(const std::string& url, const File& file, const Path& destination,
                     offset = 0;
                 }
                 auto r = get(source.url, headers, stop, redirects);
-                if (useRange)
+                if (useRange) {
+                    if (r->status == 200) {
+                        restartAsked = true;
+                        throw RestartWhole("the server answered a range request with the whole file");
+                    }
                     validateRange(*r, ranges[i].first + offset, ranges[i].last, size);
-                else if (r->status != 200)
+                    // Without a hash only the validator proves that this answer is the file the other parts came from.
+                    // A server may leave the headers out of a 206, which proves nothing either way.
+                    if (!hashVerified && !source.tag.empty()) {
+                        if (validatorChanged(source.tag, header(r->request, WINHTTP_QUERY_ETAG), header(r->request, WINHTTP_QUERY_LAST_MODIFIED))) {
+                            restartAsked = true;
+                            throw RestartWhole("the file changed on the server during the download");
+                        }
+                    }
+                } else if (r->status != 200)
                     throw std::runtime_error("Unexpected partial response");
                 auto effectiveHost = r->host();
                 struct Active {
@@ -611,6 +651,7 @@ void download(const std::string& url, const File& file, const Path& destination,
                 char buffer[65536];
                 for (;;) {
                     cancelled(stop);
+                    if (restartAsked) throw RestartWhole("another connection found that the parts cannot be combined");
                     DWORD n = r->read(buffer, sizeof buffer);
                     if (!n) break;
                     if (known && n > length - offset) throw std::runtime_error("Server sent more bytes than requested");
@@ -647,31 +688,56 @@ void download(const std::string& url, const File& file, const Path& destination,
     notify(ranged ? "Starting parallel download" : "Starting single connection");
     const auto assembled = parts / L"assembled.tmp";
     try { // until the file is published; see saveParts
-        if (ranged && size) {
-            std::mutex errorLock;
-            std::exception_ptr error;
-            std::atomic_size_t next = 0;
-            std::atomic_bool failed = false;
-            std::vector<std::jthread> threads;
-            for (size_t worker = 0; worker < std::min<size_t>(connections, ranges.size()); ++worker) threads.emplace_back([&] {
-                size_t sourceIndex = 0;
-                try {
-                    while (!failed && !stop) {
-                        auto i = next.fetch_add(1);
-                        if (i >= ranges.size()) break;
-                        receive(i, true, sourceIndex);
+        auto transfer = [&] {
+            if (ranged && size) {
+                std::mutex errorLock;
+                std::exception_ptr error;
+                std::atomic_size_t next = 0;
+                std::atomic_bool failed = false;
+                std::vector<std::jthread> threads;
+                for (size_t worker = 0; worker < std::min<size_t>(connections, ranges.size()); ++worker) threads.emplace_back([&] {
+                    size_t sourceIndex = 0;
+                    try {
+                        while (!failed && !stop) {
+                            auto i = next.fetch_add(1);
+                            if (i >= ranges.size()) break;
+                            receive(i, true, sourceIndex);
+                        }
+                    } catch (...) {
+                        failed = true;
+                        std::lock_guard lock(errorLock);
+                        if (!error) error = std::current_exception();
                     }
-                } catch (...) {
-                    failed = true;
-                    std::lock_guard lock(errorLock);
-                    if (!error) error = std::current_exception();
-                }
-            });
-            for (auto& t : threads) t.join();
-            if (error) std::rethrow_exception(error);
-        } else if (!known || size) {
-            size_t sourceIndex = 0;
-            receive(0, false, sourceIndex);
+                });
+                for (auto& t : threads) t.join();
+                if (error) std::rethrow_exception(error);
+            } else if (!known || size) {
+                size_t sourceIndex = 0;
+                receive(0, false, sourceIndex);
+            }
+        };
+        // The one place that gives up on the parts: once per call, the staged data is deleted and the file is
+        // fetched whole on one connection, which cannot mix two versions of it.
+        for (bool restarted = false;; restarted = true) {
+            try {
+                transfer();
+                break;
+            } catch (const RestartWhole& e) {
+                if (restarted) throw;
+                LOG_WARN("Restarting %s on one connection without resume: %s", pathUtf8(destination).c_str(), e.what());
+                for (size_t i = 0; i < cleanupCount; ++i) std::filesystem::remove(partPath(i));
+                ranged = false;
+                resumable = false;
+                needsCleanStop = false;
+                ranges = split(size, 1);
+                state["ranged"] = false;
+                state["parts"] = ranges.size();
+                restartAsked = false;
+                writeState(false);
+                loadOffsets();
+                checkFreeSpace();
+                notify("Starting single connection");
+            }
         }
         cancelled(stop);
         notify("Assembling");

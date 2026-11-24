@@ -4,6 +4,7 @@ using DWORD = unsigned long;
 constexpr const char* WINHTTP_QUERY_CONTENT_RANGE = "content-range";
 constexpr const char* WINHTTP_QUERY_CONTENT_LENGTH = "content-length";
 constexpr const char* WINHTTP_QUERY_ETAG = "etag";
+constexpr const char* WINHTTP_QUERY_LAST_MODIFIED = "last-modified";
 constexpr const char* WINHTTP_QUERY_CONTENT_TYPE = "content-type";
 constexpr const char* WINHTTP_QUERY_CONTENT_DISPOSITION = "content-disposition";
 constexpr const char* HEADER_LINK = "link";

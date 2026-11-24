@@ -114,6 +114,58 @@ void pauseAndResume(const std::string& base) {
     expect(stats(base)["bytes"].get<uint64_t>() < 15 * MiB, "The resumed download reused the data already received.");
 }
 
+std::string urlFor(const std::string& base, const std::string& mode, uint64_t size) {
+    return base + "/" + mode + "/" + std::to_string(size) + "/file.bin";
+}
+
+void lastModifiedRanges(const std::string& base) {
+    TempFolder folder("modified");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "modified", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file with only a Last-Modified header downloads with the right content.");
+    expect(stats(base)["maxConcurrent"].get<int>() >= 2, "A file with only a Last-Modified header is fetched on several connections.");
+}
+
+void lastModifiedResume(const std::string& base) {
+    TempFolder folder("modified-resume");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    const auto url = urlFor(base, "modified", 10 * MiB);
+    run(url, target, 4, 3 * MiB);
+    expect(!std::filesystem::exists(target), "A paused download from a Last-Modified server leaves no destination file.");
+    run(url, target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A download resumed with Last-Modified has the right content.");
+    expect(stats(base)["bytes"].get<uint64_t>() < 15 * MiB, "The download resumed with Last-Modified reused the data already received.");
+}
+
+void weakEtagOnly(const std::string& base) {
+    TempFolder folder("weak");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "weak", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file with only a weak ETag downloads with the right content.");
+    expect(stats(base)["ranged"].get<int>() == 0, "A file with only a weak ETag is fetched without ranged requests.");
+}
+
+void rangeProbeOnly(const std::string& base) {
+    TempFolder folder("rangeprobe");
+    reset(base);
+    const auto target = folder.path / "file.bin";
+    run(urlFor(base, "rangeprobe", 10 * MiB), target, 4);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A server that answers only the one-byte probe with 206 still gives the right content.");
+}
+
+void changedFile(const std::string& base) {
+    for (const char* mode : {"changed", "ignore-ifrange"}) {
+        TempFolder folder(mode);
+        reset(base);
+        const auto target = folder.path / "file.bin";
+        run(urlFor(base, mode, 10 * MiB), target, 4);
+        expect(readFile(target) == expectedBytes(10 * MiB, 2), std::string("A file that changes during the download (mode ") + mode + ") ends as the new version, never a mix.");
+    }
+}
+
 void existingDestination(const std::string& base) {
     TempFolder folder("existing");
     const auto target = folder.path / "file.bin";
@@ -144,6 +196,11 @@ int main(int argc, char** argv) {
         emptyFile(base);
         pauseAndResume(base);
         existingDestination(base);
+        lastModifiedRanges(base);
+        lastModifiedResume(base);
+        weakEtagOnly(base);
+        rangeProbeOnly(base);
+        changedFile(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;
