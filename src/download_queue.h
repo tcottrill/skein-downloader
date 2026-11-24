@@ -3,8 +3,10 @@
 #include "json.hpp"
 #include <chrono>
 #include <condition_variable>
+#include <atomic>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <thread>
 namespace downloads {
 enum class State { Queued,
@@ -33,6 +35,10 @@ using Report = std::function<void(uint64_t, uint64_t, const std::string&, const 
 // Runs one job. Returning means the job is finished (state Complete); a runner that stops
 // early, paused or failed, throws. The stop flag only says which of the two a throw was.
 using Runner = std::function<void(const Job&, std::atomic_bool&, const Report&)>;
+// The least time between the starts of two history file writes. A crash (or a power cut) can lose
+// the queue changes of the last interval, up to this long: job states and the order of the list.
+// It never loses downloaded data, which the engine checkpoints on its own.
+inline constexpr std::chrono::milliseconds defaultSaveInterval{2000};
 class Queue {
     struct Entry {
         Job job;
@@ -65,8 +71,13 @@ class Queue {
     // A write that takes long (a large history, a slow disk) then blocks neither the window nor
     // the downloads, and changes made meanwhile are saved together in the next write.
     // After shutdown the thread has ended (saverDone_) and saveLocked() writes directly.
+    // File writes start at least saveInterval_ apart: changes made meanwhile are gathered and written
+    // together. flush() (flushNow_) and shutdown() (saverStop_) end the wait.
     std::condition_variable saveCv_;
-    bool dirty_ = false, saving_ = false, saverStop_ = false, saverDone_ = false;
+    bool dirty_ = false, saving_ = false, saverStop_ = false, saverDone_ = false, flushNow_ = false;
+    std::optional<std::chrono::steady_clock::time_point> lastWriteStart_;
+    std::chrono::milliseconds saveInterval_ = defaultSaveInterval;
+    std::atomic<uint64_t> writes_{0};
     std::jthread saver_;
     void saveLocked();
     nlohmann::json historyLocked() const;
@@ -84,6 +95,10 @@ public:
     // Waits before each automatic retry of a job that failed for a temporary network reason (the
     // last one repeats) and how many retries in a row without progress are allowed.
     void setRetryWaits(std::vector<std::chrono::milliseconds> waits, unsigned maxRetries);
+    // The least time between the starts of two history file writes (default defaultSaveInterval).
+    void setSaveInterval(std::chrono::milliseconds interval);
+    // The number of history file writes completed so far.
+    uint64_t historyWrites() const;
     // How many downloads may run at once, clamped to 1 to 4 (default 4). Callable at any time from
     // any thread; lowering it never stops a running job, new ones just wait until fewer are running.
     void setLimit(unsigned jobs);

@@ -211,8 +211,13 @@ msgstr "लोड करें"
 msgid "Load files"
 msgstr "फ़ाइलें लोड करें"
 
-msgid "Loading files…"
-msgstr "फ़ाइलें लोड हो रही हैं…"
+#, c-format
+msgid "Loading file list… %s received"
+msgstr "फ़ाइल सूची लोड हो रही है… %s प्राप्त"
+
+#, c-format
+msgid "Loading file list… %s received, %zu requests"
+msgstr "फ़ाइल सूची लोड हो रही है… %s प्राप्त, %zu अनुरोध"
 
 msgid "MKV (original formats)"
 msgstr "MKV (मूल प्रारूप)"

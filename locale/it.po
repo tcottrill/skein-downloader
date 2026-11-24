@@ -211,8 +211,13 @@ msgstr "Carica"
 msgid "Load files"
 msgstr "Carica file"
 
-msgid "Loading files…"
-msgstr "Caricamento dei file…"
+#, c-format
+msgid "Loading file list… %s received"
+msgstr "Caricamento dell'elenco dei file… %s ricevuti"
+
+#, c-format
+msgid "Loading file list… %s received, %zu requests"
+msgstr "Caricamento dell'elenco dei file… %s ricevuti, %zu richieste"
 
 msgid "MKV (original formats)"
 msgstr "MKV (formati originali)"

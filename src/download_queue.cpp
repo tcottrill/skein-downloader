@@ -91,11 +91,22 @@ void Queue::storeHistory(const nlohmann::json& data) {
     temp += L".tmp";
     {
         std::ofstream out(temp, std::ios::trunc);
-        out << data.dump(2);
+        // No indentation: the file is read back by the same parser, and with tens of thousands of jobs
+        // the indentation was a large part of its size. Files written with it still load.
+        out << data.dump();
         out.flush();
         if (!out) throw std::runtime_error("Cannot write history file");
     }
     platform::replace(temp, path_);
+    ++writes_;
+}
+void Queue::setSaveInterval(std::chrono::milliseconds interval) {
+    std::lock_guard lock(mutex_);
+    saveInterval_ = interval;
+    saveCv_.notify_all();
+}
+uint64_t Queue::historyWrites() const {
+    return writes_.load();
 }
 void Queue::saveLocked() {
     if (!historyReadable_) return;
@@ -122,6 +133,16 @@ void Queue::saveLoop() {
             saveCv_.notify_all();
             return;
         }
+        // Gather further changes until the interval since the previous write's start is over, unless
+        // flush() or shutdown() wants the file now. The interval can change meanwhile (the predicate
+        // is evaluated, and the deadline recomputed, on each wake).
+        while (lastWriteStart_ && !flushNow_ && !saverStop_) {
+            const auto due = *lastWriteStart_ + saveInterval_;
+            if (std::chrono::steady_clock::now() >= due) break;
+            saveCv_.wait_until(lock, due);
+        }
+        flushNow_ = false;
+        lastWriteStart_ = std::chrono::steady_clock::now();
         // Only the copy of the jobs is made under the lock. Building the JSON from it takes twice
         // as long (about 250 ms for 40,000 jobs), and under the lock it stalled the window's every
         // call to the queue; writing and flushing the file is slower still.
@@ -149,6 +170,10 @@ void Queue::saveLoop() {
 }
 void Queue::flush() {
     std::unique_lock lock(mutex_);
+    if (dirty_) {
+        flushNow_ = true;
+        saveCv_.notify_all();
+    }
     saveCv_.wait(lock, [this] {
         return saverDone_ || (!dirty_ && !saving_);
     });

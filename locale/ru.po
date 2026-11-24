@@ -211,8 +211,13 @@ msgstr "Загрузить"
 msgid "Load files"
 msgstr "Получить файлы"
 
-msgid "Loading files…"
-msgstr "Загрузка списка файлов…"
+#, c-format
+msgid "Loading file list… %s received"
+msgstr "Загрузка списка файлов… получено %s"
+
+#, c-format
+msgid "Loading file list… %s received, %zu requests"
+msgstr "Загрузка списка файлов… получено %s, запросов: %zu"
 
 msgid "MKV (original formats)"
 msgstr "MKV (исходные форматы)"

@@ -211,8 +211,13 @@ msgstr "加载"
 msgid "Load files"
 msgstr "加载文件"
 
-msgid "Loading files…"
-msgstr "正在加载文件…"
+#, c-format
+msgid "Loading file list… %s received"
+msgstr "正在加载文件列表… 已接收 %s"
+
+#, c-format
+msgid "Loading file list… %s received, %zu requests"
+msgstr "正在加载文件列表… 已接收 %s，%zu 个请求"
 
 msgid "MKV (original formats)"
 msgstr "MKV（原始格式）"

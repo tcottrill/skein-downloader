@@ -20,6 +20,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <regex>
@@ -28,6 +29,21 @@
 #include <thread>
 namespace archive {
 namespace {
+// The registry behind LoadWatch: stop flag address to progress. Reads look it up once per call;
+// watches_ lets a read with no watch anywhere skip the lock.
+std::mutex watchLock;
+std::map<const std::atomic_bool*, LoadProgress*> watched;
+std::atomic<size_t> watches_{0};
+LoadProgress* progressFor(const std::atomic_bool& stop) {
+    if (!watches_.load(std::memory_order_relaxed)) return nullptr;
+    std::lock_guard lock(watchLock);
+    auto found = watched.find(&stop);
+    return found == watched.end() ? nullptr : found->second;
+}
+// One more request answered for the load operation that owns this stop flag, if any.
+void countRequest(const std::atomic_bool& stop) {
+    if (auto progress = progressFor(stop)) ++progress->requests;
+}
 // Shared by both transports for any response other than 200/206.
 NetworkError statusError(unsigned long status, unsigned retryAfter) {
     std::string message = "HTTP " + std::to_string(status);
@@ -139,6 +155,17 @@ std::vector<Range> queuedRanges(uint64_t size) {
     return result;
 }
 }
+LoadWatch::LoadWatch(const std::atomic_bool& stop, LoadProgress& progress)
+    : stop_(&stop) {
+    std::lock_guard lock(watchLock);
+    watched[stop_] = &progress;
+    watches_ = watched.size();
+}
+LoadWatch::~LoadWatch() {
+    std::lock_guard lock(watchLock);
+    watched.erase(stop_);
+    watches_ = watched.size();
+}
 // Header text arrives as Latin-1 characters; servers often send UTF-8 bytes in it.
 std::string headerUtf8(const std::wstring& value) {
     if (std::all_of(value.begin(), value.end(), [](wchar_t c) {
@@ -158,12 +185,14 @@ namespace {
 std::string readBody(Request& r, std::atomic_bool& stop, size_t limit, const char* tooLarge) {
     std::string body;
     char buffer[65536];
+    auto* progress = progressFor(stop);
     for (;;) {
         cancelled(stop);
         auto n = r.read(buffer, sizeof buffer);
         if (!n) break;
         if (body.size() + n > limit) throw std::runtime_error(tooLarge);
         body.append(buffer, n);
+        if (progress) progress->bytes += n;
     }
     return body;
 }
@@ -192,6 +221,7 @@ bool probedSize(Request& r, uint64_t& out) {
 Item loadDirectLink(const std::string& url, std::atomic_bool& stop) {
     if (!isHttpUrl(url) && !ftp::isFtpUrl(url)) throw std::runtime_error("Paste an HTTP, HTTPS or FTP link to a file.");
     auto r = get(url, L"Range: bytes=0-0\r\n", stop);
+    countRequest(stop);
     File file;
     file.sizeKnown = r->status == 206 ? probedSize(*r, file.size) : contentLength(*r, file.size);
     auto type = mediaType(*r);
@@ -226,7 +256,9 @@ Response respond(Request& r, const std::string& requested, std::atomic_bool& sto
 }
 Response fetch(const std::string& url, std::atomic_bool& stop, const std::string& headers, unsigned wait) {
     auto r = get(url, wide(headers), stop, true, wait);
-    return respond(*r, url, stop);
+    auto response = respond(*r, url, stop);
+    countRequest(stop);
+    return response;
 }
 Response post(const std::string& url, const std::string& body, std::atomic_bool& stop, const std::string& headers) {
     cancelled(stop);
@@ -235,7 +267,9 @@ Response post(const std::string& url, const std::string& body, std::atomic_bool&
 #else
     Request r(Request::Url(url), wide(headers), true, &stop, &body);
 #endif
-    return respond(r, url, stop);
+    auto response = respond(r, url, stop);
+    countRequest(stop);
+    return response;
 }
 Item loadHubItem(const std::string& input, std::atomic_bool& stop) {
     auto link = parseHubLink(input);
@@ -248,7 +282,9 @@ Item loadHubItem(const std::string& input, std::atomic_bool& stop) {
     // Check access first: gated repos list their files publicly but refuse every download.
     try {
         auto info = get("https://huggingface.co/api/" + link.kind + "/" + link.repo, L"", stop);
-        if (hubRepoGated(readAll(*info)))
+        const auto infoBody = readAll(*info);
+        countRequest(stop);
+        if (hubRepoGated(infoBody))
             throw std::runtime_error("This repository is gated: its files need you to accept its terms while signed in to Hugging Face. Signed-in downloads are not supported in this version.");
     } catch (const NetworkError& e) {
         // The Hub answers 401 for both missing and private repos.
@@ -261,7 +297,9 @@ Item loadHubItem(const std::string& input, std::atomic_bool& stop) {
     for (unsigned pages = 0; !page.empty(); ++pages) {
         if (pages == 1000) throw std::runtime_error("This repository lists too many files (over 1000 pages).");
         auto r = get(page, L"", stop);
-        auto files = parseHubTree(readAll(*r));
+        auto pageBody = readAll(*r);
+        countRequest(stop);
+        auto files = parseHubTree(pageBody);
         item.files.insert(item.files.end(), std::make_move_iterator(files.begin()), std::make_move_iterator(files.end()));
         page = hubNextPage(headerUtf8(header(r->request, HEADER_LINK)));
     }
@@ -282,7 +320,9 @@ Item loadGitHubRelease(const std::string& input, std::atomic_bool& stop) {
     auto api = "https://api.github.com/repos/" + link.owner + "/" + link.repo + "/releases/" + (link.tag.empty() ? std::string("latest") : "tags/" + encode(link.tag, true));
     try {
         auto r = get(api, L"Accept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n", stop);
-        auto item = parseGitHubRelease(readBody(*r, stop, 16 * 1024 * 1024, "GitHub release data is too large (16 MiB limit)."), link);
+        auto releaseBody = readBody(*r, stop, 16 * 1024 * 1024, "GitHub release data is too large (16 MiB limit).");
+        countRequest(stop);
+        auto item = parseGitHubRelease(releaseBody, link);
         if (item.files.empty()) throw std::runtime_error("This release has no files.");
         return item;
     } catch (const NetworkError& e) {
@@ -313,7 +353,9 @@ Item loadItem(const std::string& input, std::atomic_bool& stop) {
     }
     auto link = parseLink(input);
     auto r = get("https://archive.org/metadata/" + encode(link.id), L"", stop);
-    auto item = parseMetadata(link.id, readBody(*r, stop, 64 * 1024 * 1024, "Item metadata is too large (64 MiB limit)."));
+    auto metadata = readBody(*r, stop, 64 * 1024 * 1024, "Item metadata is too large (64 MiB limit).");
+    countRequest(stop);
+    auto item = parseMetadata(link.id, metadata);
     item.selectedFile = link.file;
     return item;
 }

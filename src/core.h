@@ -139,4 +139,22 @@ void download(const std::string& url, const File& file, const Path& destination,
               const std::vector<std::string>& mirrors = {}, const std::string& forcedSource = {},
               const SpeedReport& speeds = {}, const std::string& identity = {});
 std::string formatBytes(uint64_t bytes);
+// Progress of one load operation, identified by its stop flag. Only atomics: any thread may read it.
+struct LoadProgress {
+    std::atomic<uint64_t> bytes{0};    // response bytes read so far
+    std::atomic<uint64_t> requests{0}; // requests answered so far
+};
+// While it lives, the loaders' reads made with this stop flag add to progress (bytes of each response
+// body read, one request for each response obtained). One per stop flag at a time; the progress
+// object must outlive it. Reads with no watch on their stop flag cost one atomic load.
+class LoadWatch {
+public:
+    LoadWatch(const std::atomic_bool& stop, LoadProgress& progress);
+    ~LoadWatch();
+    LoadWatch(const LoadWatch&) = delete;
+    LoadWatch& operator=(const LoadWatch&) = delete;
+
+private:
+    const std::atomic_bool* stop_;
+};
 }

@@ -34,6 +34,8 @@ class FilePicker : public wxDialog {
     wxListCtrl* list;
     wxChoice *servers, *connections;
     wxStaticText* status;
+    wxGauge* gauge;
+    std::shared_ptr<archive::LoadProgress> loadProgress;
     // The controls that are locked while "Add to downloads" works (see lockForAdding) and the button that becomes Cancel.
     wxButton *loadButton, *selectAllButton, *clearButton, *checkButton, *uncheckButton, *testButton, *addButton;
     wxString addLabel;
@@ -213,11 +215,32 @@ class FilePicker : public wxDialog {
         preferences();
         saveSelection();
         LOG_INFO("Loading files from %s", link.c_str());
-        status->SetLabel(_(L"Loading files…"));
+        // The thread's reads add to this while it runs; the thread holds it too, so a hidden dialog can be destroyed first.
+        loadProgress = std::make_shared<archive::LoadProgress>();
         auto flag = stop;
-        loading = std::async(std::launch::async, [link, flag] {
+        loading = std::async(std::launch::async, [link, flag, progress = loadProgress] {
+            archive::LoadWatch watch(*flag, *progress);
             return archive::loadItem(link, *flag);
         });
+        updateBusy();
+    }
+    // The status line while a file list loads, and the gauge: pulsing while a list loads or speeds are tested, counting
+    // the files checked while "Add to downloads" works (once the dialog shows its look for it), hidden when idle.
+    void updateBusy() {
+        if (loading.valid()) {
+            const auto bytes = w(archive::formatBytes(loadProgress->bytes.load()));
+            const auto requests = loadProgress->requests.load();
+            const auto text = requests > 1 ? wxString::Format(_(L"Loading file list… %s received, %zu requests"), bytes, size_t(requests))
+                                           : wxString::Format(_(L"Loading file list… %s received"), bytes);
+            if (status->GetLabel() != text) status->SetLabel(text);
+        }
+        if (adding.valid() && addLook) {
+            gauge->SetRange(int(std::max<size_t>(addTotal, 1)));
+            gauge->SetValue(int(std::min(addDone->load(), std::max<size_t>(addTotal, 1))));
+        } else if (loading.valid() || measuring.valid())
+            gauge->Pulse();
+        const bool show = (adding.valid() && addLook) || loading.valid() || measuring.valid();
+        if (gauge->IsShown() != show) gauge->Show(show);
     }
     void tick() {
         if (loading.valid() && loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) try {
@@ -256,6 +279,7 @@ class FilePicker : public wxDialog {
                 if (addLook) status->SetLabel(wxString::Format(_(L"Checking files… %zu of %zu"), addDone->load(), addTotal));
             }
         }
+        updateBusy();
         if (closing && !busy()) {
             timer.Stop();
             Destroy();
@@ -405,6 +429,10 @@ public:
         box->Add(row, 0, wxBOTTOM, gap);
         status = new wxStaticText(this, wxID_ANY, "");
         box->Add(status, 0, wxEXPAND | wxBOTTOM, gap);
+        // Shows that the dialog is working (see updateBusy); hidden when idle, with its height kept so the dialog does not jump.
+        gauge = new wxGauge(this, wxID_ANY, 100, wxDefaultPosition, wxDefaultSize, wxGA_HORIZONTAL | wxGA_SMOOTH);
+        gauge->Hide();
+        box->Add(gauge, wxSizerFlags().Expand().Border(wxBOTTOM, gap).ReserveSpaceEvenIfHidden());
         row = new wxBoxSizer(wxHORIZONTAL);
         row->Add(new wxStaticText(this, wxID_ANY, _(L"Save to")), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, gap);
         folder = field(this, pref("folder", downloadFolder()));

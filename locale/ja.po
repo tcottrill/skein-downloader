@@ -211,8 +211,13 @@ msgstr "読み込む"
 msgid "Load files"
 msgstr "ファイルを読み込む"
 
-msgid "Loading files…"
-msgstr "ファイルを読み込み中…"
+#, c-format
+msgid "Loading file list… %s received"
+msgstr "ファイル一覧を読み込み中… %s 受信"
+
+#, c-format
+msgid "Loading file list… %s received, %zu requests"
+msgstr "ファイル一覧を読み込み中… %s 受信、%zu 件のリクエスト"
 
 msgid "MKV (original formats)"
 msgstr "MKV（元の形式）"

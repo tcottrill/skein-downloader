@@ -435,6 +435,27 @@ void existingDestination(const std::string& base) {
     expect(threw, "Downloading onto an existing file throws.");
     expect(readFile(target) == "keep me", "An existing destination file is left unchanged.");
 }
+
+// A LoadWatch counts the response bytes and answered requests of the loaders' reads made with its stop flag, and only those.
+void loadWatch(const std::string& base) {
+    std::atomic_bool stop = false, other = false;
+    archive::LoadProgress progress, otherProgress;
+    size_t bytes = 0;
+    {
+        archive::LoadWatch watch(stop, progress);
+        archive::LoadWatch otherWatch(other, otherProgress);
+        const auto body = archive::fetch(base + "/stats", stop).body;
+        bytes = body.size();
+        expect(bytes > 0, "The stats answer has a body.");
+        expect(progress.requests == 1 && progress.bytes == bytes, "One fetch under a LoadWatch counts one request and the body's bytes.");
+        archive::fetch(base + "/stats", stop);
+        expect(progress.requests == 2 && progress.bytes >= 2 * bytes - 8, "A second fetch is added to the same progress.");
+        expect(otherProgress.requests == 0 && otherProgress.bytes == 0, "A watch on another stop flag counts nothing for this one.");
+    }
+    const auto requests = progress.requests.load(), counted = progress.bytes.load();
+    archive::fetch(base + "/stats", stop);
+    expect(progress.requests == requests && progress.bytes == counted, "Reads after the LoadWatch is gone count nothing.");
+}
 }
 
 int main(int argc, char** argv) {
@@ -460,6 +481,7 @@ int main(int argc, char** argv) {
         oldLayout(base, false);
         oldLayoutLongPart(base);
         hostLimit(base);
+        loadWatch(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;

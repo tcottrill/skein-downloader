@@ -5,7 +5,9 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <iterator>
 #include <stdexcept>
+#include <thread>
 #include <unordered_set>
 
 using namespace std::chrono_literals;
@@ -515,6 +517,98 @@ int main() {
             queue.pause(3);
             if (!advanced()) throw std::runtime_error("Pausing a job waiting to retry did not change the generation");
             if (!queue.changing().empty()) throw std::runtime_error("changing() listed a paused or finished job");
+        }
+        // History writes start at least one save interval apart; flush() and shutdown() write at once. The
+        // file is written without indentation, and files written with it (older versions) still load.
+        {
+            const auto waitFor = [](const std::function<bool()>& condition) {
+                const auto end = std::chrono::steady_clock::now() + 10s;
+                while (!condition() && std::chrono::steady_clock::now() < end) std::this_thread::sleep_for(2ms);
+                return condition();
+            };
+            const auto saved = [](const std::filesystem::path& file) {
+                std::ifstream in(file);
+                nlohmann::json data = nlohmann::json::parse(in, nullptr, false);
+                return data.is_array() ? data.size() : size_t(0);
+            };
+            const auto idle = [](const downloads::Job&, std::atomic_bool&, const downloads::Report&) {
+            };
+            const auto add = [](downloads::Queue& queue, int from, int to) {
+                for (int i = from; i <= to; ++i) queue.add(std::to_string(i), "Archive", std::to_string(i), nullptr);
+            };
+            {
+                const auto file = folder / "throttle.json";
+                downloads::Queue queue(file, idle);
+                queue.setSaveInterval(200ms);
+                add(queue, 1, 20); // within a few milliseconds
+                if (!waitFor([&] {
+                        return saved(file) == 20;
+                    }))
+                    throw std::runtime_error("The last of 20 quick changes was not saved within the wait");
+                if (queue.historyWrites() > 2) throw std::runtime_error("20 quick changes were written in more than 2 file writes");
+                const auto writes = queue.historyWrites();
+                std::this_thread::sleep_for(450ms);
+                if (queue.historyWrites() != writes) throw std::runtime_error("The history was written again with nothing changed");
+            }
+            {
+                const auto file = folder / "flush.json";
+                downloads::Queue queue(file, idle);
+                queue.setSaveInterval(10s);
+                add(queue, 1, 1);
+                if (!waitFor([&] {
+                        return queue.historyWrites() == 1;
+                    }))
+                    throw std::runtime_error("The first change was not written at once");
+                add(queue, 2, 3);
+                const auto start = std::chrono::steady_clock::now();
+                queue.flush();
+                if (std::chrono::steady_clock::now() - start > 5s || saved(file) != 3 || queue.historyWrites() != 2)
+                    throw std::runtime_error("flush() did not write inside the save interval at once");
+                queue.flush(); // nothing changed: no wait, no write
+                if (queue.historyWrites() != 2) throw std::runtime_error("flush() wrote a history that was already saved");
+            }
+            {
+                const auto file = folder / "shutdown.json";
+                downloads::Queue queue(file, idle);
+                queue.setSaveInterval(10s);
+                add(queue, 1, 1);
+                if (!waitFor([&] {
+                        return queue.historyWrites() == 1;
+                    }))
+                    throw std::runtime_error("The first change was not written at once before the shutdown");
+                add(queue, 2, 4);
+                const auto start = std::chrono::steady_clock::now();
+                queue.shutdown();
+                if (std::chrono::steady_clock::now() - start > 5s || saved(file) != 4)
+                    throw std::runtime_error("shutdown() did not leave the final state on disk at once");
+            }
+            {
+                // The format stays compatible both ways.
+                const auto file = folder / "format.json";
+                {
+                    downloads::Queue queue(file, idle);
+                    add(queue, 1, 3);
+                    queue.flush();
+                }
+                std::ifstream in(file);
+                const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                if (text.empty() || text.front() != '[' || text.find('\n') != std::string::npos || text.find("  ") != std::string::npos)
+                    throw std::runtime_error("The history file was not written without indentation");
+                downloads::Queue reread(file, idle);
+                if (reread.snapshot().size() != 3 || !reread.error().empty()) throw std::runtime_error("A history written without indentation did not load");
+                const auto old = folder / "indented.json";
+                nlohmann::json data = nlohmann::json::array();
+                for (int i = 1; i <= 2; ++i)
+                    data.push_back({{"id", i}, {"name", "old" + std::to_string(i)}, {"kind", "Archive"}, {"key", "old" + std::to_string(i)}, {"input", nullptr}, {"state", "Complete"}, {"done", 5}, {"total", 5}, {"detail", "Finished"}, {"output", ""}, {"historyOnly", false}});
+                {
+                    std::ofstream out(old);
+                    out << data.dump(2);
+                }
+                downloads::Queue legacy(old, idle);
+                const auto jobs = legacy.snapshot();
+                if (jobs.size() != 2 || jobs[1].name != "old2" || jobs[0].state != downloads::State::Complete || !legacy.error().empty())
+                    throw std::runtime_error("A history written with indentation did not load");
+            }
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

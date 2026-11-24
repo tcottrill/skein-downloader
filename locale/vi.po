@@ -211,8 +211,13 @@ msgstr "Nạp"
 msgid "Load files"
 msgstr "Nạp tệp"
 
-msgid "Loading files…"
-msgstr "Đang nạp tệp…"
+#, c-format
+msgid "Loading file list… %s received"
+msgstr "Đang nạp danh sách tệp… đã nhận %s"
+
+#, c-format
+msgid "Loading file list… %s received, %zu requests"
+msgstr "Đang nạp danh sách tệp… đã nhận %s, %zu yêu cầu"
 
 msgid "MKV (original formats)"
 msgstr "MKV (định dạng gốc)"
