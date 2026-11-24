@@ -24,6 +24,7 @@ int main() {
             while (job.id <= 4 && !stop && !(job.id == 1 && releaseFirst)) {
                 changed.wait_for(lock, 10ms);
             }
+            if (stop) throw std::runtime_error("Paused"); // a stopped runner throws; returning means finished
         };
 
         {
@@ -48,6 +49,7 @@ int main() {
             if (order != std::vector<uint64_t>{1, 2, 3, 4, 7, 8, 5, 6} || jobs[4].state != "Paused" || jobs[1].state != "Active") {
                 throw std::runtime_error("Moving the selection did not preserve its order or job states");
             }
+            queue.flush(); // history is written by its own thread
             {
                 std::ifstream file(history);
                 const auto saved = nlohmann::json::parse(file);
@@ -66,10 +68,40 @@ int main() {
             }
         }
 
-        downloads::Queue reopened(history, runner);
-        const auto jobs = reopened.snapshot();
-        if (jobs.size() != 8 || jobs[4].id != 7 || jobs[5].id != 8) {
-            throw std::runtime_error("The promoted order was not restored from history");
+        {
+            downloads::Queue reopened(history, runner);
+            const auto jobs = reopened.snapshot();
+            if (jobs.size() != 8 || jobs[4].id != 7 || jobs[5].id != 8) {
+                throw std::runtime_error("The promoted order was not restored from history");
+            }
+        }
+
+        // A pause that arrives after the runner has finished must not turn a saved file into a
+        // Paused job (resuming it would fail because the file already exists).
+        {
+            const auto lateHistory = folder / "late-pause.json";
+            std::atomic_bool finishing = false;
+            auto lateRunner = [&](const downloads::Job&, std::atomic_bool& stop, const downloads::Report&) {
+                finishing = true;
+                while (!stop) std::this_thread::sleep_for(1ms);
+            };
+            downloads::Queue queue(lateHistory, lateRunner);
+            queue.add("late", "Archive", "late", nullptr);
+            queue.start();
+            for (int i = 0; i < 10000 && !finishing; ++i) std::this_thread::sleep_for(1ms);
+            const auto id = queue.snapshot().at(0).id;
+            queue.pause(id);
+            std::string state;
+            for (int i = 0; i < 10000; ++i) {
+                state = queue.snapshot().at(0).state;
+                if (state != "Active") break;
+                std::this_thread::sleep_for(1ms);
+            }
+            if (state != "Complete") throw std::runtime_error("A finished job was marked " + state + " after a late pause");
+            queue.shutdown();
+            std::ifstream file(lateHistory);
+            if (nlohmann::json::parse(file).at(0).at("state") != "Complete")
+                throw std::runtime_error("The completed state was not saved at shutdown");
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

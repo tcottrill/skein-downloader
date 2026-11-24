@@ -14,6 +14,8 @@ std::string pathKey(const archive::Path& path){
 #endif
 }
 Queue::Queue(archive::Path path,Runner runner):path_(std::move(path)),runner_(std::move(runner)) {
+    // Started first, so the early return below cannot skip it; it waits until something changes.
+    saver_=std::jthread([this]{saveLoop();});
     try {
         if(!std::filesystem::exists(path_))return;
         std::ifstream in(path_);nlohmann::json data;in>>data;
@@ -29,17 +31,41 @@ Queue::Queue(archive::Path path,Runner runner):path_(std::move(path)),runner_(st
     }catch(const std::exception& e){jobs_.clear();historyReadable_=false;error_=std::string("History could not be read; original preserved. New downloads cannot be saved: ")+e.what();}
 }
 Queue::~Queue(){shutdown();}
+nlohmann::json Queue::historyLocked()const{
+    nlohmann::json data=nlohmann::json::array();
+    for(auto& e:jobs_){if(e->removing)continue;auto& j=e->job;data.push_back({{"id",j.id},{"name",j.name},{"kind",j.kind},{"key",j.key},{"input",j.input},{"state",j.state},{"done",j.done},{"total",j.total},{"detail",j.detail},{"output",j.output},{"historyOnly",j.historyOnly}});}
+    return data;
+}
+// Touches only the file, so it runs without mutex_; one writer at a time (the saver thread, or
+// saveLocked() once that thread has ended).
+void Queue::storeHistory(const nlohmann::json& data){
+    std::filesystem::create_directories(path_.parent_path());auto temp=path_;temp+=L".tmp";
+    {std::ofstream out(temp,std::ios::trunc);out<<data.dump(2);out.flush();if(!out)throw std::runtime_error("Cannot write history file");}
+    platform::replace(temp,path_);
+}
 void Queue::saveLocked(){
     if(!historyReadable_)return;
-    try{
-        nlohmann::json data=nlohmann::json::array();
-        for(auto& e:jobs_){if(e->removing)continue;auto& j=e->job;data.push_back({{"id",j.id},{"name",j.name},{"kind",j.kind},{"key",j.key},{"input",j.input},{"state",j.state},{"done",j.done},{"total",j.total},{"detail",j.detail},{"output",j.output},{"historyOnly",j.historyOnly}});}
-        std::filesystem::create_directories(path_.parent_path());auto temp=path_;temp+=L".tmp";
-        {std::ofstream out(temp,std::ios::trunc);out<<data.dump(2);out.flush();if(!out)throw std::runtime_error("Cannot write history file");}
-        platform::replace(temp,path_);
-        error_.clear();
-    }catch(const std::exception& e){error_=std::string("History not saved: ")+e.what();}
+    if(saverDone_){
+        try{storeHistory(historyLocked());error_.clear();}catch(const std::exception& e){error_=std::string("History not saved: ")+e.what();}
+        return;
+    }
+    dirty_=true;saveCv_.notify_all();
 }
+void Queue::saveLoop(){
+    std::unique_lock lock(mutex_);
+    for(;;){
+        saveCv_.wait(lock,[this]{return dirty_||saverStop_;});
+        if(!dirty_){saverDone_=true;saveCv_.notify_all();return;}
+        // The copy is made under the lock; the slow part (writing and flushing it to disk) is not.
+        auto data=historyLocked();dirty_=false;saving_=true;
+        lock.unlock();
+        std::string failure;
+        try{storeHistory(data);}catch(const std::exception& e){failure=std::string("History not saved: ")+e.what();}
+        lock.lock();
+        saving_=false;error_=failure;saveCv_.notify_all();
+    }
+}
+void Queue::flush(){std::unique_lock lock(mutex_);saveCv_.wait(lock,[this]{return saverDone_||(!dirty_&&!saving_);});}
 bool Queue::add(std::string name,std::string kind,std::string key,nlohmann::json input){
     Job job;job.name=std::move(name);job.kind=std::move(kind);job.key=std::move(key);job.input=std::move(input);
     return addBatch({std::move(job)})==1;
@@ -65,17 +91,19 @@ void Queue::work(){
             for(auto& e:jobs_)if(e->job.state=="Queued"&&!e->running&&!e->removing&&e->job.kind!=maintenance_){entry=e;break;}
             entry->running=true;entry->stop=false;entry->job.state="Active";entry->job.detail="Connecting";input=entry->job;saveLocked();
         }
-        std::string failure;
+        std::string failure;bool completed=false;
         try{runner_(input,entry->stop,[this,entry](uint64_t done,uint64_t total,const std::string& detail,const std::string& output){
             std::lock_guard lock(mutex_);entry->job.done=done;entry->job.total=total;entry->job.detail=detail;if(!output.empty())entry->job.output=output;
-        });}catch(const std::exception& e){failure=e.what();}catch(...){failure="Unexpected transfer failure";}
+        });completed=true;}catch(const std::exception& e){failure=e.what();}catch(...){failure="Unexpected transfer failure";}
         {
             std::lock_guard lock(mutex_);entry->running=false;
-            entry->job.state=entry->stop?"Paused":failure.empty()?"Complete":"Failed";
-            entry->job.detail=entry->stop?"Partial download retained":failure.empty()?"Finished":failure;
-            if(entry->job.state=="Complete"){if(!entry->job.total)entry->job.total=entry->job.done;entry->job.done=entry->job.total;}
-            if(entry->removing)std::erase(jobs_,entry);
-            else if(entry->resumeRequested&&!closing_&&!pausedAll_){entry->job.state="Queued";entry->job.detail.clear();}
+            // A runner that returns has finished the download, even when a pause arrived at the last
+            // moment; a stopped runner throws. Marking a saved file Paused would make Resume fail.
+            entry->job.state=completed?"Complete":entry->stop?"Paused":"Failed";
+            entry->job.detail=completed?"Finished":entry->stop?"Partial download retained":failure;
+            if(completed){if(!entry->job.total)entry->job.total=entry->job.done;entry->job.done=entry->job.total;}
+            if(entry->removing){if(completed){entry->removing=false;entry->job.historyOnly=true;}else std::erase(jobs_,entry);}
+            else if(!completed&&entry->resumeRequested&&!closing_&&!pausedAll_){entry->job.state="Queued";entry->job.detail.clear();}
             entry->resumeRequested=false;
             saveLocked();cv_.notify_all();
         }
@@ -83,7 +111,10 @@ void Queue::work(){
 }
 void Queue::shutdown(){
     {std::lock_guard lock(mutex_);if(closing_)return;closing_=true;for(auto& e:jobs_){e->stop=true;if(!e->running&&e->job.state=="Queued")e->job.state="Paused";}cv_.notify_all();}
-    workers_.clear();std::lock_guard lock(mutex_);saveLocked();
+    workers_.clear();
+    // The saver writes the final state, then ends; later changes are written directly.
+    {std::lock_guard lock(mutex_);saveLocked();saverStop_=true;saveCv_.notify_all();}
+    if(saver_.joinable())saver_.join();
 }
 void Queue::pause(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->running){e->stop=true;e->job.detail="Pausing…";}else if(e->job.state=="Queued")e->job.state="Paused";}saveLocked();}
 void Queue::resume(uint64_t id){std::lock_guard lock(mutex_);if(closing_)return;for(auto& e:jobs_)if(e->job.id==id&&!e->running&&(e->job.state=="Paused"||e->job.state=="Failed")){e->job.state="Queued";e->job.detail.clear();e->stop=false;}saveLocked();cv_.notify_all();}

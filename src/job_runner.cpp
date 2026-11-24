@@ -46,7 +46,8 @@ void runJob(const downloads::Job& job,std::atomic_bool& stop,const downloads::Re
         archive::Path folder(archive::pathFromUtf8(j.at("folder").get<std::string>()));std::filesystem::create_directories(folder);
         auto args=videoArgs(job,tools);
         auto at=std::find(args.begin(),args.end(),L"--");args.insert(at,{L"--print",L"after_move:OUTPUT %(filepath)s"});
-        {std::string command;for(auto& arg:args)command+=" "+archive::utf8(arg);LOG_INFO("Job %llu: yt-dlp%s",(unsigned long long)job.id,command.c_str());}
+        // The video URL is logged without its query string, which can carry access tokens.
+        {std::string command;for(auto& arg:args){auto text=archive::utf8(arg);command+=" "+(archive::isHttpUrl(text)?archive::logUrl(text):text);}LOG_INFO("Job %llu: yt-dlp%s",(unsigned long long)job.id,command.c_str());}
         uint64_t percent=0;std::string output,lastError;
         int code=video::run(video::toolExecutable(tools,"yt-dlp"),args,stop,[&](const std::string& line){
             if(line.starts_with("PROGRESS ")){try{double value=std::stod(line.substr(9));if(std::isfinite(value))percent=(uint64_t)std::clamp(value,0.0,100.0);}catch(...){}report(percent,100,line.substr(9),output);}
@@ -59,7 +60,8 @@ void runJob(const downloads::Job& job,std::atomic_bool& stop,const downloads::Re
         });
         LOG_INFO("Job %llu: yt-dlp exited with code %d%s",(unsigned long long)job.id,code,stop?" (stopped)":"");
         if(!output.empty())LOG_INFO("Job %llu: saved %s",(unsigned long long)job.id,output.c_str());
-        if(code&&!stop)throw std::runtime_error(lastError.empty()?"Video helper exited with code "+std::to_string(code):lastError);
+        if(stop)throw std::runtime_error("Paused"); // the queue's runner contract: only a finished job returns
+        if(code)throw std::runtime_error(lastError.empty()?"Video helper exited with code "+std::to_string(code):lastError);
     }
 }
 }

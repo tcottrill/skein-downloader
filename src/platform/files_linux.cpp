@@ -12,16 +12,16 @@
 namespace platform {
 static void failure(const char* what){throw std::system_error(errno,std::generic_category(),what);}
 void regular(const archive::Path& path){if(std::filesystem::is_symlink(std::filesystem::symlink_status(path)))throw std::runtime_error("A download path is a symbolic link.");}
-static void syncFile(const archive::Path& path){int f=open(path.c_str(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW);if(f<0)failure("Open completed file");int result=fsync(f);int saved=errno;::close(f);if(result<0){errno=saved;failure("Flush completed file");}}
+void sync(const archive::Path& path){int f=open(path.c_str(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW);if(f<0)failure("Open completed file");int result=fsync(f);int saved=errno;::close(f);if(result<0){errno=saved;failure("Flush completed file");}}
 static void syncDirectory(const archive::Path& path){int f=open(path.parent_path().c_str(),O_DIRECTORY|O_RDONLY|O_CLOEXEC);if(f>=0){fsync(f);::close(f);}}
-void replace(const archive::Path& a,const archive::Path& b){regular(a);regular(b);syncFile(a);if(rename(a.c_str(),b.c_str())<0)failure("Replace history");syncDirectory(b);}
+void replace(const archive::Path& a,const archive::Path& b){regular(a);regular(b);sync(a);if(rename(a.c_str(),b.c_str())<0)failure("Replace history");syncDirectory(b);}
 static void publishByPlaceholder(const archive::Path& a,const archive::Path& b){
     // Reserve the name exclusively, then rename over that empty placeholder only.
     int f=open(b.c_str(),O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC|O_NOFOLLOW,0600);if(f<0)failure("Finalize download without overwriting");::close(f);
     if(rename(a.c_str(),b.c_str())<0){int saved=errno;unlink(b.c_str());errno=saved;failure("Finalize download");}
 }
 void publish(const archive::Path& a,const archive::Path& b){
-    regular(a);regular(b);syncFile(a);
+    regular(a);regular(b);sync(a);
     if(syscall(SYS_renameat2,AT_FDCWD,a.c_str(),AT_FDCWD,b.c_str(),RENAME_NOREPLACE)<0){
         // NFS, CIFS and FUSE folders such as the Flatpak document portal may not support RENAME_NOREPLACE.
         if(errno!=EINVAL&&errno!=ENOSYS&&errno!=EOPNOTSUPP)failure("Finalize download without overwriting");

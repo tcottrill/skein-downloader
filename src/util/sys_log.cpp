@@ -7,7 +7,7 @@
  * A lightweight, thread-safe logging system that formats messages on the caller
  * thread and performs all I/O on a dedicated background thread. Messages are
  * enqueued to a lock-protected queue and flushed to a logfile (and optionally
- * to a Windows console with severity colors). The API is simple:
+ * mirrored to stdout). The API is simple:
  *   - LogOpen("app.log") to start
  *   - LOG_DEBUG/LOG_INFO/LOG_ERROR(...) to write
  *   - LogClose() to flush and shut down
@@ -18,8 +18,9 @@
  * - Non-blocking call-site: minimal time spent under locks.
  * - Varargs formatting (printf-style) with file/function/line source tags.
  * - Compile-time timestamp toggle via LOG_WITH_TIMESTAMP.
- * - Optional Windows console output with per-level color.
- * - Adjustable minimum level (Debug/Info/Error/Off).
+ * - Optional console output (stdout; a console is allocated on Windows).
+ * - Adjustable minimum level (Debug/Info/Warn/Error/Off).
+ * - Messages written while no writer runs are kept up to a limit, then dropped.
  *
  * Threading Model
  * ---------------
@@ -32,7 +33,7 @@
  * -----------------
  * - Formatting uses a fixed-size buffer per call (2 KB cap, safe-truncated).
  * - Each message is flushed immediately to keep logs crash-resilient.
- * - Console output uses Win32 handles; colors are restored after each write.
+ * - Console output is written by the same worker thread, in plain text.
  *
  * API Summary (see sys_log.h)
  * ---------------------------
@@ -65,13 +66,11 @@
  * Build / Platform
  * ----------------
  * - Uses the C++ standard library (thread, mutex, condition_variable, iostream).
- * - Windows console coloring depends on <windows.h>; file I/O is cross-platform
- *   in spirit but this implementation allocates a Win32 console when enabled.
+ * - On Windows, enabling console output allocates a console (<windows.h>).
  *
  * Limitations
  * -----------
  * - Single destination file; no log rotation/retention policy built in.
- * - Console color output is Windows-specific.
  * - Messages longer than the internal buffer are safely truncated.
  *
  * ---------------------------------------------------------------------------
@@ -116,25 +115,6 @@
 #include <fcntl.h>
 #endif
 
-// ANSI SGR colour codes, understood by Linux terminals and by Windows 10+
-// consoles once ENABLE_VIRTUAL_TERMINAL_PROCESSING is enabled (see
-// setConsoleOutputEnabled below). These replaced SetConsoleTextAttribute and
-// its FOREGROUND_* constants, which gave this otherwise portable file its only
-// hard Windows dependency. The colours are chosen to match what the Win32
-// attributes produced, so console output looks the same as before.
-static const char* levelToAnsi(Log::Level level) {
-	switch (level) {
-	case Log::Level::Debug: return "\x1b[90m";  // bright black (grey)
-	case Log::Level::Info:  return "\x1b[97m";  // bright white
-	case Log::Level::Warn:  return "\x1b[93m";  // bright yellow
-	case Log::Level::Error: return "\x1b[91m";  // bright red
-	default:                return "\x1b[37m";  // white
-	}
-}
-
-static const char* ansiReset() { return "\x1b[0m"; }
-
-
 static const char* baseName(const char* path) {
 	// __FILE__ uses '\' under MSVC and '/' under GCC/Clang; take whichever
 	// separator comes last so Linux logs show the file name, not the full path.
@@ -147,17 +127,23 @@ static const char* baseName(const char* path) {
 namespace {
 	FILE* stream = nullptr;
 	std::mutex configMutex;
-	Log::Level currentLogLevel = Log::Level::Debug;
-	bool consoleOutput = true;
+	std::atomic<Log::Level> currentLogLevel = Log::Level::Debug;
+	// Mirrors each message to stdout (plain text). On by default: Linux runs show the log
+	// in the terminal; a Windows GUI process has no console until one is allocated.
+	std::atomic<bool> consoleOutput = true;
 
 	std::mutex queueMutex;
 	std::condition_variable queueCV;
 	std::queue<std::string> messageQueue;
 	std::thread logThread;
-	std::atomic<bool> running = false;
+	// Changed only with queueMutex held, so a message is either queued for a running
+	// worker or counted against the limit below, never left in a queue nobody drains.
+	bool running = false;
+	// Messages kept while no writer runs (before open, after close, or when the file
+	// could not be opened). Beyond this they are dropped instead of growing without end.
+	constexpr size_t kMaxPendingWithoutWriter = 1000;
 
-	static std::atomic<bool> consoleOutputEnabled = false;
-	static std::once_flag consoleInitFlag;
+	std::once_flag consoleInitFlag;
 
 	const char* levelToString(Log::Level level) {
 		switch (level) {
@@ -192,7 +178,7 @@ namespace {
 		std::unique_lock<std::mutex> lock(queueMutex);
 		for (;;) {
 			queueCV.wait(lock, [] {
-				return !messageQueue.empty() || !running.load();
+				return !messageQueue.empty() || !running;
 				});
 
 			while (!messageQueue.empty()) {
@@ -215,7 +201,7 @@ namespace {
 			}
 			// Queue drained with the lock held, so nothing queued before
 			// close() set running to false can be left behind.
-			if (!running.load())
+			if (!running)
 				return;
 		}
 	}
@@ -223,9 +209,34 @@ namespace {
 	void enqueueMessage(std::string&& msg) {
 		{
 			std::lock_guard<std::mutex> lock(queueMutex);
+			if (!running && messageQueue.size() >= kMaxPendingWithoutWriter)
+				return;
 			messageQueue.push(std::move(msg));
 		}
 		queueCV.notify_one();
+	}
+
+	// Stops and joins the writer, then writes what is still queued. configMutex is held.
+	void stopWriter() {
+		{
+			std::lock_guard<std::mutex> lock(queueMutex);
+			running = false;
+		}
+		queueCV.notify_all();
+		if (logThread.joinable())
+			logThread.join();
+
+		std::lock_guard<std::mutex> lock(queueMutex);
+		while (!messageQueue.empty()) {
+			const std::string& msg = messageQueue.front();
+			if (stream)
+				std::fputs(msg.c_str(), stream);
+			if (consoleOutput)
+				std::cout << msg;
+			messageQueue.pop();
+		}
+		if (stream)
+			std::fflush(stream);
 	}
 }
 
@@ -233,6 +244,9 @@ namespace Log {
 	bool open(const std::string& filename) {
 		std::lock_guard<std::mutex> lock(configMutex);
 
+		// Opening again replaces the file: the old writer must finish first
+		// (assigning over a joinable std::thread would terminate the program).
+		stopWriter();
 		if (stream) {
 			std::fclose(stream);
 			stream = nullptr;
@@ -251,42 +265,25 @@ namespace Log {
 			return false;
 #endif
 
-		running = true;
+		{
+			std::lock_guard<std::mutex> queueLock(queueMutex);
+			running = true;
+		}
 		logThread = std::thread(logWorker);
 		return true;
 	}
 
 	void close() {
-		{
-			std::lock_guard<std::mutex> lock(configMutex);
-			if (!running) return;
-			running = false;
-		}
-
-		queueCV.notify_all();
-		if (logThread.joinable())
-			logThread.join();
-
-		// Flush any remaining messages
-		std::lock_guard<std::mutex> lock(queueMutex);
-		while (!messageQueue.empty()) {
-			const std::string& msg = messageQueue.front();
-			if (stream)
-				std::fputs(msg.c_str(), stream);
-			if (consoleOutput)
-				std::cout << msg;
-			messageQueue.pop();
-		}
-
+		std::lock_guard<std::mutex> lock(configMutex);
+		if (!logThread.joinable()) return;
+		stopWriter();
 		if (stream) {
-			std::fflush(stream);
 			std::fclose(stream);
 			stream = nullptr;
 		}
 	}
 
 	void setLevel(Level level) {
-		std::lock_guard<std::mutex> lock(configMutex);
 		currentLogLevel = level;
 	}
 
@@ -308,19 +305,6 @@ namespace Log {
 				_setmode(_fileno(stdout), _O_TEXT);
 				_setmode(_fileno(stderr), _O_TEXT);
 
-				// Make the console interpret the ANSI escapes levelToAnsi()
-				// emits. Supported since Windows 10 build 1511, and AAE
-				// already requires Win10/11 (win10_win11_required_code.cpp),
-				// so it is always available. If it somehow fails, output
-				// degrades to uncoloured text - never to visible escape
-				// sequences, because the codes are only ever written to this
-				// same handle.
-				{
-					HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-					DWORD mode = 0;
-					if (hOut != INVALID_HANDLE_VALUE && GetConsoleMode(hOut, &mode))
-						SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-				}
 #endif
 				std::cout.clear();
 				std::cerr.clear();
@@ -351,14 +335,7 @@ namespace Log {
 			<< baseName(file) << ":" << line << " " << function << ") - "
 			<< formatted << "\n";
 
-		enqueueMessage(std::move(oss.str()));
-
-		if (consoleOutputEnabled) {
-			// One code path for both platforms. The Win32 console-attribute
-			// save/restore dance this replaced did the same job, but only on
-			// Windows; the escape codes work everywhere and need no handle.
-			std::cout << levelToAnsi(level) << oss.str() << ansiReset();
-			std::cout.flush();
-		}
+		// The writer thread copies it to the console too when that is enabled.
+		enqueueMessage(std::move(oss).str());
 	}
 }

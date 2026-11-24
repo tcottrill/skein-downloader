@@ -334,6 +334,8 @@ void download(const std::string& url, const File& file, const Path& destination,
         } else {
             auto length = header(probe->request, WINHTTP_QUERY_CONTENT_LENGTH);
             if (!length.empty()) {
+                if (length.size() > 19 || length.find_first_not_of(L"0123456789") != std::wstring::npos)
+                    throw NetworkError("The server sent an invalid file size (Content-Length).", false);
                 auto actual = std::stoull(length);
                 if (known && actual != size) throw std::runtime_error("File size changed. Reload the item.");
                 size = actual; known = true;
@@ -347,7 +349,7 @@ void download(const std::string& url, const File& file, const Path& destination,
     // Only reuse partial data when a content hash or strong server validator identifies it.
     const bool sha1Hash = std::regex_match(file.sha1, std::regex("[0-9a-fA-F]{40}"));
     const bool sha256Hash = std::regex_match(file.sha256, std::regex("[0-9a-fA-F]{64}"));
-    bool resumable = ranged && (!file.sha1.empty() || sha256Hash || !etag.empty());
+    bool resumable = ranged && (sha1Hash || sha256Hash || !etag.empty());
     // Without a stable identity, combining separate responses could mix file versions.
     if (!resumable) ranged = false;
     connections=std::clamp(connections,1u,16u);
@@ -397,6 +399,12 @@ void download(const std::string& url, const File& file, const Path& destination,
     regular(parts / L"state.json"); regular(parts / L"assembled.tmp");
     nlohmann::json previous;
     try { std::ifstream in(parts / L"state.json"); in >> previous; } catch (...) {}
+    // Partial data identified only by an ETag is never checked against a hash, so it is reused only
+    // when the last run stopped normally and saved its parts to disk first ("clean", see saveParts).
+    // After a crash or power loss a part file can be longer than the data that reached the disk.
+    const bool hashVerified = sha1Hash || sha256Hash;
+    const bool previousClean = previous.is_object() && previous.value("clean", false);
+    if (previous.is_object()) previous.erase("clean");
     size_t oldCount=0;
     if(previous.is_object() && previous.contains("parts") && previous["parts"].is_number_unsigned()) {
         auto count=previous["parts"].get<uint64_t>();
@@ -420,13 +428,32 @@ void download(const std::string& url, const File& file, const Path& destination,
     // Server-specific ETags can change across redirects even when the content hash
     // is identical. Preserve verified-identity partials, including older manifests.
     if (previous.is_object() && (sha1Hash || sha256Hash)) previous["etag"]=state["etag"];
-    if (!resumable || previous != state) {
+    if (!resumable || previous != state || (!hashVerified && !previousClean)) {
         if (previous.is_object())
             LOG_INFO("Discarding partial data for %s: %s", pathUtf8(destination).c_str(),
-                resumable ? "the file or its source changed" : "the server cannot resume this file");
+                !resumable ? "the server cannot resume this file" : previous != state ? "the file or its source changed"
+                : "the last run did not stop normally, so its data may not have reached the disk");
         for (size_t i=0;i<cleanupCount;++i) std::filesystem::remove(partPath(i));
     }
-    { std::ofstream out(parts / L"state.json", std::ios::trunc); out << state.dump(); if (!out) throw std::runtime_error("Cannot save resume state"); }
+    const bool needsCleanStop = resumable && !hashVerified;
+    auto writeState = [&](bool clean) {
+        auto saved = state; if (clean) saved["clean"] = true;
+        { std::ofstream out(parts / L"state.json", std::ios::trunc); out << saved.dump(); out.flush(); if (!out) throw std::runtime_error("Cannot save resume state"); }
+        // On disk before any new part data: a "clean" state left from the last run must not outlive this one.
+        if (needsCleanStop) platform::sync(parts / L"state.json");
+    };
+    writeState(false);
+    // Called when the transfer stops early (pause, error): saves the parts to disk, then records that
+    // they may be reused. Hashed downloads skip this; their data is verified after assembly anyway.
+    auto saveParts = [&] {
+        if (!needsCleanStop) return;
+        try {
+            for (size_t i=0;i<ranges.size();++i) if (std::filesystem::exists(partPath(i))) platform::sync(partPath(i));
+            writeState(true);
+        } catch (const std::exception& e) {
+            LOG_WARN("Could not save the partial data of %s to disk (%s); it will be downloaded again", pathUtf8(destination).c_str(), e.what());
+        }
+    };
     std::mutex reportLock;
     std::atomic_uint64_t done = 0;
     std::vector<uint64_t> offsets(ranges.size());
@@ -440,7 +467,16 @@ void download(const std::string& url, const File& file, const Path& destination,
         }
     }
     std::atomic_uint active = 0;
-    auto notify = [&](const std::string& status, const std::string& host = "") { std::lock_guard guard(reportLock); if (report) report({done.load(), known ? size : 0, status, active.load(), host.empty()?sources[0].host:host}); };
+    // Byte progress (throttle) is sent at most every 100 ms across all connections; the window
+    // shows it four times a second, and each report takes the queue's lock.
+    std::chrono::steady_clock::time_point lastReport{};
+    auto notify = [&](const std::string& status, const std::string& host = "", bool throttle = false) {
+        std::lock_guard guard(reportLock);
+        const auto now = std::chrono::steady_clock::now();
+        if (throttle && now - lastReport < std::chrono::milliseconds(100)) return;
+        lastReport = now;
+        if (report) report({done.load(), known ? size : 0, status, active.load(), host.empty()?sources[0].host:host});
+    };
     auto receive = [&](size_t i, bool useRange, size_t& sourceIndex) {
         uint64_t length = known ? (useRange ? ranges[i].last-ranges[i].first+1 : size) : UINT64_MAX;
         auto path = partPath(i); uint64_t offset = i<offsets.size()?offsets[i]:0;
@@ -467,7 +503,7 @@ void download(const std::string& url, const File& file, const Path& destination,
                     DWORD n = r->read(buffer, sizeof buffer); if (!n) break;
                     if (known && n > length-offset) throw std::runtime_error("Server sent more bytes than requested");
                     out.write(buffer,n); if (!out) throw std::runtime_error("Disk write failed. Check available space.");
-                    offset += n; done += n; notify("Downloading",effectiveHost);
+                    offset += n; done += n; notify("Downloading",effectiveHost,true);
                 }
                 out.flush(); if (!out) throw std::runtime_error("Cannot flush downloaded data");
                 if (known && offset != length) throw NetworkError("Server closed the connection before the file was complete");
@@ -492,6 +528,8 @@ void download(const std::string& url, const File& file, const Path& destination,
             ranged ? "parallel" : "single connection", ranges.size(), ranged ? connections : 1u, (unsigned long long)done.load(), hosts.c_str());
     }
     notify(ranged ? "Starting parallel download" : "Starting single connection");
+    const auto assembled = parts / L"assembled.tmp";
+    try { // until the file is published; see saveParts
     if (ranged && size) {
         std::mutex errorLock; std::exception_ptr error;
         std::atomic_size_t next=0;std::atomic_bool failed=false;
@@ -509,7 +547,6 @@ void download(const std::string& url, const File& file, const Path& destination,
         if (error) std::rethrow_exception(error);
     } else if (!known || size) {size_t sourceIndex=0;receive(0,false,sourceIndex);}
     cancelled(stop); notify("Assembling");
-    auto assembled = parts / L"assembled.tmp";
     {
         std::ofstream out(assembled, std::ios::binary|std::ios::trunc);
         if (!out) throw std::runtime_error("Cannot assemble download");
@@ -538,6 +575,7 @@ void download(const std::string& url, const File& file, const Path& destination,
         }
     }
     cancelled(stop);
+    } catch (...) { saveParts(); throw; } // from the transfer, assembly or verification
     platform::publish(assembled,destination);
     for (size_t i=0;i<cleanupCount;++i) std::filesystem::remove(partPath(i));
     std::filesystem::remove(parts/L"state.json");
