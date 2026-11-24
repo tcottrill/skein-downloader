@@ -49,6 +49,11 @@ class Queue {
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     std::vector<std::shared_ptr<Entry>> jobs_;
+    // generation(): moved under mutex_ by every change it covers. active_ holds the entries that
+    // are running or waiting to retry, so changing() never walks the whole list.
+    uint64_t generation_ = 0;
+    std::vector<std::shared_ptr<Entry>> active_;
+    void changedLocked();
     std::vector<std::jthread> workers_;
     uint64_t next_ = 1;
     bool closing_ = false, historyReadable_ = true, pausedAll_ = false;
@@ -88,6 +93,13 @@ public:
     void remove(uint64_t id);
     void moveToTop(const std::vector<uint64_t>& ids);
     std::vector<Job> snapshot() const;
+    // A counter that moves on every change of the set of jobs, their order, or a job's state,
+    // name, historyOnly flag or retry wait; byte progress (done, total, detail, output of a running
+    // job) does not move it. A window takes a new snapshot() only when it moved.
+    uint64_t generation() const;
+    // The jobs whose shown values change between generations: those running and those waiting to
+    // retry (retryIn filled as by snapshot()), in queue order. Costs nothing per job that is idle.
+    std::vector<Job> changing() const;
     std::string error() const;
     // Waits until every change made so far is in the history file (or failed to save; see error()).
     void flush();

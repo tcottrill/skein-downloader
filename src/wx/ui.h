@@ -19,6 +19,8 @@
 #include <set>
 #include <fstream>
 #include <map>
+#include <optional>
+#include <unordered_map>
 
 namespace lite {
 inline wxString w(const std::string& s) {
@@ -117,6 +119,17 @@ class MainWindow : public wxFrame {
     long selectionAnchor = -1;
     std::map<uint64_t, std::string> loggedStates;
     std::string loggedError;
+    // The list is virtual: it asks cell() for the rows on screen. shown is rebuilt from a full
+    // snapshot only when the queue's generation, the search text or the view tab changed; between
+    // those, only the jobs the queue reports as changing are updated (rowOf finds their rows).
+    std::optional<uint64_t> shownGeneration;
+    wxString shownQuery;
+    int shownMode = -1;
+    std::unordered_map<uint64_t, size_t> rowOf;
+    int activeCount = 0, waitingCount = 0, doneCount = 0;
+    bool refreshQueued = false;
+    wxString cellText(const downloads::Job&, long column) const;
+    void rebuild(uint64_t generation, const wxString& query);
     void refresh();
     void route();
     void fitTabs();

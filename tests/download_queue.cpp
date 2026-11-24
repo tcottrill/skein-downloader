@@ -1,8 +1,10 @@
 #include "download_queue.h"
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -389,6 +391,130 @@ int main() {
                 queue.shutdown();
                 queue.setLimit(2);
             }
+        }
+
+        // Change tracking for the main window: generation() moves on every change of the job set,
+        // order, states, names, the History flag or a retry wait, never on byte progress; changing()
+        // lists exactly the running jobs and those waiting to retry.
+        {
+            // The runner reports growing progress until the test tells its job to finish or to fail
+            // for a temporary network reason; a stopped runner throws.
+            enum class Next { Run,
+                              Finish,
+                              Fail };
+            std::mutex genMutex;
+            std::condition_variable genChanged;
+            std::map<uint64_t, Next> next;
+            std::vector<uint64_t> genStarted;
+            auto genRunner = [&](const downloads::Job& job, std::atomic_bool& stop, const downloads::Report& report) {
+                {
+                    std::lock_guard lock(genMutex);
+                    genStarted.push_back(job.id);
+                    genChanged.notify_all();
+                }
+                for (uint64_t done = 1;; ++done) {
+                    report(done, 1000000, "Downloading", "");
+                    std::unique_lock lock(genMutex);
+                    if (stop) throw std::runtime_error("Paused");
+                    if (next[job.id] == Next::Finish) return;
+                    if (next[job.id] == Next::Fail) {
+                        next[job.id] = Next::Run;
+                        throw archive::NetworkError("x", true, 0);
+                    }
+                    genChanged.wait_for(lock, 1ms);
+                }
+            };
+            auto tell = [&](uint64_t id, Next what) {
+                std::lock_guard lock(genMutex);
+                next[id] = what;
+                genChanged.notify_all();
+            };
+            auto waitStarted = [&](size_t count) {
+                std::unique_lock lock(genMutex);
+                return genChanged.wait_for(lock, 10s, [&] {
+                    return genStarted.size() >= count;
+                });
+            };
+            auto job = [](downloads::Queue& queue, uint64_t id) {
+                for (auto& j : queue.snapshot())
+                    if (j.id == id) return j;
+                throw std::runtime_error("A job is missing from the snapshot");
+            };
+            auto waitFor = [](const std::function<bool()>& condition) {
+                const auto end = std::chrono::steady_clock::now() + 10s;
+                while (!condition() && std::chrono::steady_clock::now() < end) std::this_thread::sleep_for(2ms);
+                return condition();
+            };
+            auto changingIds = [](downloads::Queue& queue) {
+                std::vector<uint64_t> ids;
+                for (auto& j : queue.changing()) ids.push_back(j.id);
+                std::sort(ids.begin(), ids.end());
+                return ids;
+            };
+            downloads::Queue queue(folder / "generation.json", genRunner);
+            queue.setRetryWaits({10s}, 12);
+            queue.setLimit(1);
+            auto generation = queue.generation();
+            auto advanced = [&] {
+                const auto now = queue.generation();
+                const bool moved = now != generation;
+                generation = now;
+                return moved;
+            };
+            queue.add("a", "Archive", "a", nullptr); // id 1
+            if (!advanced()) throw std::runtime_error("Adding a job did not change the generation");
+            queue.add("b", "Archive", "b", nullptr); // id 2
+            queue.add("c", "Archive", "c", nullptr); // id 3
+            advanced();
+            if (!queue.changing().empty()) throw std::runtime_error("Jobs that are only queued were listed as changing");
+            queue.start();
+            if (!waitStarted(1) || !waitFor([&] {
+                    return job(queue, 1).state == downloads::State::Active;
+                }))
+                throw std::runtime_error("The first job did not start");
+            if (!advanced()) throw std::runtime_error("A job starting did not change the generation");
+            const auto before = job(queue, 1).done;
+            if (!waitFor([&] {
+                    return job(queue, 1).done > before + 5;
+                }))
+                throw std::runtime_error("The runner did not report progress");
+            if (advanced()) throw std::runtime_error("Progress reports changed the generation");
+            const auto moving = queue.changing();
+            if (moving.size() != 1 || moving[0].id != 1 || moving[0].state != downloads::State::Active || moving[0].done == 0 || moving[0].detail != "Downloading")
+                throw std::runtime_error("changing() did not list exactly the running job with its progress");
+            queue.pause(3);
+            if (!advanced()) throw std::runtime_error("Pausing a job did not change the generation");
+            queue.resume(3);
+            if (!advanced()) throw std::runtime_error("Resuming a job did not change the generation");
+            queue.moveToTop({3});
+            if (!advanced()) throw std::runtime_error("Moving a job to the top did not change the generation");
+            queue.remove(2);
+            if (!advanced()) throw std::runtime_error("Removing a job did not change the generation");
+            tell(1, Next::Finish);
+            if (!waitFor([&] {
+                    return job(queue, 1).state == downloads::State::Complete;
+                }))
+                throw std::runtime_error("The first job did not finish");
+            if (!advanced()) throw std::runtime_error("A job finishing did not change the generation");
+            // The limit of 1 now starts job 3; it fails for a temporary reason and waits 10 s.
+            if (!waitStarted(2) || !waitFor([&] {
+                    return job(queue, 3).state == downloads::State::Active;
+                }))
+                throw std::runtime_error("The third job did not start");
+            advanced();
+            if (changingIds(queue) != std::vector<uint64_t>{3}) throw std::runtime_error("changing() did not list exactly the running job after the first finished");
+            tell(3, Next::Fail);
+            if (!waitFor([&] {
+                    return job(queue, 3).retryIn != 0;
+                }))
+                throw std::runtime_error("The third job did not wait to retry");
+            if (!advanced()) throw std::runtime_error("A scheduled retry did not change the generation");
+            const auto waiting = queue.changing();
+            if (waiting.size() != 1 || waiting[0].id != 3 || waiting[0].state != downloads::State::Queued || waiting[0].retryIn < 1 || waiting[0].retryIn > 10)
+                throw std::runtime_error("changing() did not list the job waiting to retry with its countdown");
+            queue.pause(3);
+            if (!advanced()) throw std::runtime_error("Pausing a job waiting to retry did not change the generation");
+            if (!queue.changing().empty()) throw std::runtime_error("changing() listed a paused or finished job");
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

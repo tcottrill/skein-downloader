@@ -25,6 +25,31 @@ wxString jobDetail(const downloads::Job& j) {
     if (j.retryIn) return wxString::Format(_(L"Retrying in %d s"), int(j.retryIn)) + " · " + translated(j.detail);
     return translated(j.detail);
 }
+// Alternate rows: the window colour, then the button-face colour (the progress bars match it).
+wxColour rowColour(long row) {
+    return wxSystemSettings::GetColour(row % 2 ? wxSYS_COLOUR_BTNFACE : wxSYS_COLOUR_WINDOW);
+}
+// The download list in virtual mode: the control asks only for the rows it draws, so neither
+// painting nor a change of the rows costs more with 40,000 jobs than with 40. The same class is
+// the native list view on Windows and wx's generic list on GTK.
+class JobList : public wxListCtrl {
+    std::function<wxString(long, long)> text;
+    mutable wxItemAttr even, odd;
+
+public:
+    JobList(wxWindow* parent, std::function<wxString(long, long)> cellText)
+        : wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_VIRTUAL | wxCLIP_CHILDREN), text(std::move(cellText)) {}
+
+protected:
+    wxString OnGetItemText(long item, long column) const override { return text(item, column); }
+    // The image list only sets the row height; no row shows an image.
+    int OnGetItemImage(long) const override { return -1; }
+    wxItemAttr* OnGetItemAttr(long item) const override {
+        auto& attr = item % 2 ? odd : even;
+        attr.SetBackgroundColour(rowColour(item));
+        return &attr;
+    }
+};
 // Ko-fi's support button, drawn at the exact pixel size of each monitor: the
 // label in the system font and the rounded outline as anti-aliased shapes, so only the cup
 // logo is an image (scaled down with high-quality filtering). A scaled picture of the whole
@@ -318,7 +343,9 @@ MainWindow::MainWindow(downloads::Queue& q)
     });
     row->AddStretchSpacer();
     box->Add(row, 0, wxEXPAND | wxBOTTOM, FromDIP(12));
-    list = new wxListCtrl(p, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxCLIP_CHILDREN);
+    list = new JobList(p, [this](long row, long column) {
+        return row >= 0 && size_t(row) < shown.size() ? cellText(shown[size_t(row)], column) : wxString();
+    });
     int c = 0;
     for (auto s : {_(L"Name"), _(L"Type"), _(L"Size"), _(L"Progress"), _(L"Status"), _(L"Speed")}) list->InsertColumn(c++, s);
     rowHeight();
@@ -362,12 +389,19 @@ MainWindow::MainWindow(downloads::Queue& q)
     auto selection = [this](wxListEvent& e) {
         if (e.GetEventType() == wxEVT_LIST_ITEM_SELECTED && !wxGetKeyState(WXK_SHIFT)) selectionAnchor = e.GetIndex();
         e.Skip();
+        // One refresh for a burst of changes (a selection restored on many rows sends one each).
+        if (refreshQueued) return;
+        refreshQueued = true;
         CallAfter([this] {
+            refreshQueued = false;
             if (!stopping) refresh();
         });
     };
     list->Bind(wxEVT_LIST_ITEM_SELECTED, selection);
     list->Bind(wxEVT_LIST_ITEM_DESELECTED, selection);
+    // A virtual native list reports a Shift range as one range change, which wx does not turn into
+    // selection events; the focus moving to the clicked row still comes as an event.
+    list->Bind(wxEVT_LIST_ITEM_FOCUSED, selection);
     // Per-cell tooltips. The generic (GTK) list receives mouse events in a child window.
     auto tooltip = [this](wxMouseEvent& e) {
         e.Skip();
@@ -554,8 +588,10 @@ void MainWindow::columns() {
 }
 std::vector<uint64_t> MainWindow::selected() const {
     std::vector<uint64_t> ids;
+    // GetNextItem walks the rows after the last selected one; with none selected that is every row.
+    const size_t count = size_t(list->GetSelectedItemCount());
     long i = -1;
-    while ((i = list->GetNextItem(i, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1)
+    while (ids.size() < count && (i = list->GetNextItem(i, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1)
         if (size_t(i) < shown.size()) ids.push_back(shown[size_t(i)].id);
     return ids;
 }
@@ -635,7 +671,7 @@ void MainWindow::progressCells() {
         cell->SetClientData(reinterpret_cast<void*>(intptr_t(r + 1)));
         // The bar is inset by 8 px horizontally and 10 px vertically inside the cell.
         cell->SetSize(rect.x + FromDIP(8), rect.y + FromDIP(10), std::max(1, rect.width - FromDIP(16)), std::max(1, rect.height - FromDIP(20)));
-        cell->SetBackgroundColour(list->GetItemBackgroundColour(r));
+        cell->SetBackgroundColour(rowColour(r));
         cell->set(percent, percent < 0 ? (j.state == downloads::State::Active ? _(L"Working…") : w("—")) : percent == 100 && j.state == downloads::State::Active ? _(L"Processing…")
                                                                                                                                                                  : wxString::Format("%d%%", percent));
         cell->SetToolTip(jobDetail(j) + "\n" + w(j.output));
@@ -680,12 +716,32 @@ void MainWindow::logLayout() {
     LOG_INFO("Window %dx%d client %dx%d%s", GetSize().x, GetSize().y, GetClientSize().x, GetClientSize().y, IsMaximized() ? " maximized" : "");
     LOG_INFO("Layout: url %s; tabs %s; search %s; list %s", u(r(url)).c_str(), u(r(tabs)).c_str(), u(r(search)).c_str(), u(r(list)).c_str());
 }
-void MainWindow::refresh() {
-    if (stopping) return;
-    auto ids = selected();
+wxString MainWindow::cellText(const downloads::Job& j, long column) const {
+    switch (column) {
+    case 0: return w(j.name);
+    case 1: return j.kind == "Archive" ? _(L"File") : _(L"Video");
+    case 2: return j.kind == "Video" ? w("—") : j.total ? w(archive::formatBytes(j.total))
+                                                        : _(L"Unknown");
+    case 4: return translated(downloads::stateName(j.state));
+    case 5: {
+        auto rate = rates.find(j.id);
+        return rate == rates.end() ? w("—") : rate->second;
+    }
+    }
+    return {}; // the Progress column is drawn by a ProgressBar
+}
+// The full update: a new snapshot, state logging, the filter and the tab counts. Run only when the
+// queue's generation, the search text or the view tab changed.
+void MainWindow::rebuild(uint64_t generation, const wxString& query) {
+    const auto ids = selected();
     auto jobs = queue.snapshot();
-    updateRates(jobs);
+    activeCount = waitingCount = doneCount = 0;
+    int listed = 0;
     for (auto& j : jobs) {
+        activeCount += j.state == downloads::State::Active;
+        waitingCount += j.state == downloads::State::Queued || j.state == downloads::State::Paused || j.state == downloads::State::Failed;
+        doneCount += j.state == downloads::State::Complete;
+        listed += !j.historyOnly;
         auto& seen = loggedStates[j.id];
         const std::string state = downloads::stateName(j.state);
         if (seen != state) {
@@ -696,60 +752,29 @@ void MainWindow::refresh() {
             seen = state;
         }
     }
-    if (queue.error() != loggedError) {
-        loggedError = queue.error();
-        if (!loggedError.empty()) LOG_ERROR("Queue: %s", loggedError.c_str());
-    }
     std::vector<downloads::Job> next;
-    auto query = search->GetValue().Lower();
     for (auto& j : jobs)
-        if (visible(j, mode, "") && w(j.name).Lower().Contains(query)) next.push_back(j);
-    bool rebuild = next.size() != shown.size();
-    if (!rebuild)
-        for (size_t i = 0; i < next.size(); ++i)
-            if (next[i].id != shown[i].id) {
-                rebuild = true;
-                break;
-            }
-    list->Freeze();
-    if (rebuild) list->DeleteAllItems();
-    shown = next;
-    for (size_t i = 0; i < next.size(); ++i) {
-        auto& j = next[i];
-        if (rebuild) list->InsertItem(long(i), w(j.name));
-        wxString values[] = {w(j.name), j.kind == "Archive" ? _(L"File") : _(L"Video"), j.kind == "Video" ? w("—") : j.total ? w(archive::formatBytes(j.total))
-                                                                                                                             : _(L"Unknown"),
-                             "", translated(downloads::stateName(j.state)), rates[j.id]};
-        for (int c = 0; c < 6; ++c)
-            if (rebuild || list->GetItemText(long(i), c) != values[c]) list->SetItem(long(i), c, values[c]);
-        if (rebuild) {
-            list->SetItemBackgroundColour(long(i), i % 2 ? wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE) : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-            if (std::find(ids.begin(), ids.end(), j.id) != ids.end()) list->SetItemState(long(i), wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
-        }
+        if (visible(j, mode, "") && (query.empty() || w(j.name).Lower().Contains(query))) next.push_back(std::move(j));
+    bool same = next.size() == shown.size();
+    for (size_t i = 0; same && i < next.size(); ++i) same = next[i].id == shown[i].id;
+    shown = std::move(next);
+    shownGeneration = generation;
+    shownQuery = query;
+    shownMode = mode;
+    if (!same) {
+        rowOf.clear();
+        rowOf.reserve(shown.size());
+        for (size_t i = 0; i < shown.size(); ++i) rowOf.emplace(shown[i].id, i);
+        // The control keeps selections by row: move them to the rows the same jobs now have.
+        if (!ids.empty()) list->SetItemState(-1, 0, wxLIST_STATE_SELECTED);
+        list->SetItemCount(long(shown.size()));
+        for (auto id : ids)
+            if (auto row = rowOf.find(id); row != rowOf.end()) list->SetItemState(long(row->second), wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
     }
-    list->Thaw();
-    auto current = selected();
-    selectedDetail = _(L"Paste a URL above. Select one, all, or specific files before adding downloads.");
-    for (const auto& j : shown)
-        if (!current.empty() && j.id == current.front()) {
-            selectedDetail = w(j.name) + "\n" + jobDetail(j) + w(j.output.empty() ? "" : " · " + j.output);
-            break;
-        }
-    detail->SetLabel(selectedDetail);
-    detail->Wrap(std::max(1, detail->GetClientSize().x));
-    // Hide the spacer too so the empty row collapses.
-    bool history = mode == 3;
-    historyRow->ShowItems(history);
-    again->Enable(!current.empty());
-    int active = 0, waiting = 0, done = 0, listed = 0;
-    for (auto& j : jobs) {
-        active += j.state == downloads::State::Active;
-        waiting += j.state == downloads::State::Queued || j.state == downloads::State::Paused || j.state == downloads::State::Failed;
-        done += j.state == downloads::State::Complete;
-        listed += !j.historyOnly;
-    }
-    clear->Enable(done > 0);
-    int counts[] = {listed, active, waiting, done};
+    // Only the rows on screen are drawn again.
+    list->Refresh();
+    clear->Enable(doneCount > 0);
+    int counts[] = {listed, activeCount, waitingCount, doneCount};
     const wxString names[] = {_(L"All"), _(L"Active"), _(L"Queue"), _(L"History")};
     for (int i = 0; i < 4; ++i) {
         auto label = wxString::Format("%s (%d)", names[i], counts[i]);
@@ -758,7 +783,50 @@ void MainWindow::refresh() {
             fitTabs();
         }
     }
-    footer->SetLabel(queue.error().empty() ? (queue.paused() ? _(L"All paused  ·  ") : wxString()) + wxString::Format(_(L"%d / 4 downloading  ·  %d waiting  ·  %d completed"), active, waiting, done) : translated(queue.error()));
+}
+void MainWindow::refresh() {
+    if (stopping) return;
+    // The generation is read first: a change after it is seen again on the next tick.
+    const auto generation = queue.generation();
+    auto changing = queue.changing();
+    const auto oldRates = rates;
+    updateRates(changing);
+    const auto query = search->GetValue().Lower();
+    if (generation != shownGeneration || query != shownQuery || mode != shownMode)
+        rebuild(generation, query);
+    else
+        // Nothing structural changed: only running jobs and retry countdowns move. Their rows keep
+        // their place and filter, so they are updated where they are, and redrawn when a cell differs.
+        for (auto& j : changing) {
+            auto row = rowOf.find(j.id);
+            if (row == rowOf.end()) continue;
+            auto& old = shown[row->second];
+            auto rate = [&](const std::map<uint64_t, wxString>& from) {
+                auto found = from.find(j.id);
+                return found == from.end() ? wxString() : found->second;
+            };
+            const bool redraw = old.name != j.name || old.total != j.total || old.state != j.state || rate(oldRates) != rate(rates);
+            old = std::move(j);
+            if (redraw) list->RefreshItem(long(row->second));
+        }
+    if (queue.error() != loggedError) {
+        loggedError = queue.error();
+        if (!loggedError.empty()) LOG_ERROR("Queue: %s", loggedError.c_str());
+    }
+    // The first selected row; GetNextItem would scan every row when none is selected.
+    const long first = list->GetSelectedItemCount() ? list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED) : -1;
+    selectedDetail = _(L"Paste a URL above. Select one, all, or specific files before adding downloads.");
+    if (first >= 0 && size_t(first) < shown.size()) {
+        const auto& j = shown[size_t(first)];
+        selectedDetail = w(j.name) + "\n" + jobDetail(j) + w(j.output.empty() ? "" : " · " + j.output);
+    }
+    detail->SetLabel(selectedDetail);
+    detail->Wrap(std::max(1, detail->GetClientSize().x));
+    // Hide the spacer too so the empty row collapses.
+    bool history = mode == 3;
+    historyRow->ShowItems(history);
+    again->Enable(first >= 0);
+    footer->SetLabel(queue.error().empty() ? (queue.paused() ? _(L"All paused  ·  ") : wxString()) + wxString::Format(_(L"%d / 4 downloading  ·  %d waiting  ·  %d completed"), activeCount, waitingCount, doneCount) : translated(queue.error()));
     footer->Wrap(std::max(1, footer->GetClientSize().x));
     detail->GetParent()->Layout();
     progressCells();
