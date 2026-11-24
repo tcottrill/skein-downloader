@@ -101,4 +101,46 @@ void FileLock::removeAndUnlock() {
     if (impl && impl->fd >= 0 && unlink(impl->path.c_str()) < 0 && errno != ENOENT) failure("Remove download lock");
     impl.reset();
 }
+struct DataFile::Impl {
+    int fd = -1;
+    ~Impl() {
+        if (fd >= 0) ::close(fd);
+    }
+};
+DataFile::DataFile(const archive::Path& path, bool sizeKnown, uint64_t size)
+    : impl(std::make_unique<Impl>()) {
+    regular(path);
+    impl->fd = open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (impl->fd < 0) throw std::runtime_error("Cannot open the download file.");
+    if (!sizeKnown) return;
+    struct stat info{};
+    if (fstat(impl->fd, &info) < 0) throw std::runtime_error("Cannot read the download file size.");
+    if (static_cast<uint64_t>(info.st_size) == size) return;
+    int result;
+    do {
+        result = ftruncate(impl->fd, static_cast<off_t>(size));
+    } while (result < 0 && errno == EINTR);
+    if (result < 0) throw std::runtime_error("Cannot set the download file size. Check available space.");
+}
+DataFile::~DataFile() = default;
+void DataFile::write(uint64_t offset, const char* data, size_t size) {
+    while (size) {
+        const ssize_t written = pwrite(impl->fd, data, size, static_cast<off_t>(offset));
+        if (written < 0) {
+            if (errno == EINTR) continue;
+            throw std::runtime_error("Disk write failed. Check available space.");
+        }
+        if (written == 0) throw std::runtime_error("Disk write failed. Check available space.");
+        data += written;
+        offset += static_cast<uint64_t>(written);
+        size -= static_cast<size_t>(written);
+    }
+}
+void DataFile::sync() {
+    int result;
+    do {
+        result = fsync(impl->fd);
+    } while (result < 0 && errno == EINTR);
+    if (result < 0) throw std::runtime_error("Cannot save the download file to disk.");
+}
 }
