@@ -28,6 +28,9 @@ msgstr ""
 msgid "+ Video"
 msgstr ""
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr ""
+
 msgid "About"
 msgstr ""
 
@@ -194,6 +197,9 @@ msgid "Enter the secret key."
 msgstr ""
 
 msgid "Enter the user name."
+msgstr ""
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr ""
 
 msgid "Failed"
@@ -425,6 +431,10 @@ msgstr ""
 msgid "Sign-in"
 msgstr ""
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr ""
+
 msgid "Sign-ins"
 msgstr ""
 
@@ -491,6 +501,9 @@ msgstr ""
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr ""
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr ""
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr ""
 
@@ -506,7 +519,20 @@ msgstr ""
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr ""
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr ""
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr ""
+
 msgid "Theme"
+msgstr ""
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr ""
+
+msgid "This server needs a sign-in."
 msgstr ""
 
 msgid "Transfer speed in bytes per second"

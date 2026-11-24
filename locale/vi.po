@@ -28,6 +28,9 @@ msgstr "+ Tệp"
 msgid "+ Video"
 msgstr "+ Video"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "Không thể gửi mã qua liên kết không mã hóa. Hãy dùng liên kết https."
+
 msgid "About"
 msgstr "Giới thiệu"
 
@@ -195,6 +198,9 @@ msgstr "Hãy nhập khóa bí mật."
 
 msgid "Enter the user name."
 msgstr "Hãy nhập tên người dùng."
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP luôn gửi mật khẩu không mã hóa. Hãy đánh dấu ô để cho phép với máy chủ này, hoặc hủy."
 
 msgid "Failed"
 msgstr "Thất bại"
@@ -425,6 +431,10 @@ msgstr "Đăng nhập bằng"
 msgid "Sign-in"
 msgstr "Đăng nhập"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "Cần đăng nhập cho %s. Hãy thêm trong Cài đặt rồi tiếp tục."
+
 msgid "Sign-ins"
 msgstr "Đăng nhập"
 
@@ -491,6 +501,9 @@ msgstr "Kiểm tra tốc độ"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Đang kiểm tra tốc độ máy chủ… tối đa 256 KiB mỗi nguồn. Không lưu tệp nào."
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "Liên kết có chứa mật khẩu. Lưu làm đăng nhập cho máy chủ này?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "Số kết nối tối đa tới một máy chủ, dùng chung cho mọi lượt tải."
 
@@ -506,8 +519,21 @@ msgstr "Bất kỳ ai trên đường truyền mạng đều có thể đọc đ
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Không thể lưu đăng nhập vào kho thông tin xác thực. Nó sẽ được giữ đến khi Skein đóng."
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "Đăng nhập cho %s không được chấp nhận."
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "Đăng nhập không được chấp nhận. Hãy kiểm tra và thử lại."
+
 msgid "Theme"
 msgstr "Giao diện"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "Liên kết này không được mã hóa. Hãy đánh dấu ô để cho phép gửi mật khẩu đến máy chủ này, hoặc hủy."
+
+msgid "This server needs a sign-in."
+msgstr "Máy chủ này cần đăng nhập."
 
 msgid "Transfer speed in bytes per second"
 msgstr "Tốc độ truyền tính bằng byte mỗi giây"

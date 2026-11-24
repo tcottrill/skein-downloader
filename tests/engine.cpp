@@ -623,6 +623,7 @@ void forbidden(const std::string& base) {
         message = e.what();
     }
     expect(message.starts_with("HTTP 403"), "A 403 answer fails with a message starting \"HTTP 403\", not \"" + message + "\".");
+    expect(message == "HTTP 403: the server refused access to this file.", "A 403 answer says the server refused access, not \"" + message + "\".");
 }
 
 void nothingUnasked(const std::string& base) {

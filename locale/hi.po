@@ -28,6 +28,9 @@ msgstr "+ फ़ाइल"
 msgid "+ Video"
 msgstr "+ वीडियो"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "टोकन को असुरक्षित (अनएन्क्रिप्टेड) लिंक पर नहीं भेजा जा सकता। https लिंक का उपयोग करें।"
+
 msgid "About"
 msgstr "परिचय"
 
@@ -195,6 +198,9 @@ msgstr "गुप्त कुंजी दर्ज करें।"
 
 msgid "Enter the user name."
 msgstr "उपयोगकर्ता नाम दर्ज करें।"
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP हमेशा पासवर्ड बिना एन्क्रिप्शन के भेजता है। इस सर्वर के लिए अनुमति देने हेतु चेक बॉक्स चुनें, या निरस्त करें।"
 
 msgid "Failed"
 msgstr "विफल"
@@ -425,6 +431,10 @@ msgstr "इससे साइन इन करें"
 msgid "Sign-in"
 msgstr "साइन-इन"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "%s के लिए साइन-इन चाहिए। उसे सेटिंग में जोड़ें, इसके बाद फिर शुरू करें।"
+
 msgid "Sign-ins"
 msgstr "साइन-इन"
 
@@ -491,6 +501,9 @@ msgstr "गति जाँचें"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "सर्वर गति जाँची जा रही है… प्रति स्रोत अधिकतम 256 KiB। कोई फ़ाइल सहेजी नहीं जाती।"
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "लिंक में पासवर्ड था। इसे इस सर्वर के साइन-इन के रूप में सहेजें?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "एक सर्वर से कनेक्शन की अधिकतम संख्या, जो सभी डाउनलोड के बीच साझा होती है।"
 
@@ -506,8 +519,21 @@ msgstr "नेटवर्क मार्ग पर कोई भी पास�
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "साइन-इन को क्रेडेंशियल स्टोर में सहेजा नहीं जा सका। इसे Skein बंद होने तक रखा जाएगा।"
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "%s का साइन-इन स्वीकार नहीं किया गया।"
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "साइन-इन स्वीकार नहीं किया गया। उसे जाँचें और फिर कोशिश करें।"
+
 msgid "Theme"
 msgstr "थीम"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "यह लिंक एन्क्रिप्टेड नहीं है। इस सर्वर को पासवर्ड भेजने की अनुमति देने हेतु चेक बॉक्स चुनें, या निरस्त करें।"
+
+msgid "This server needs a sign-in."
+msgstr "इस सर्वर को साइन-इन चाहिए।"
 
 msgid "Transfer speed in bytes per second"
 msgstr "प्रति सेकंड बाइट में स्थानांतरण गति"

@@ -28,6 +28,9 @@ msgstr "+ Archivo"
 msgid "+ Video"
 msgstr "+ Vídeo"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "Un token no se puede enviar por un enlace sin cifrar. Usa un enlace https."
+
 msgid "About"
 msgstr "Acerca de"
 
@@ -195,6 +198,9 @@ msgstr "Introduce la clave secreta."
 
 msgid "Enter the user name."
 msgstr "Introduce el nombre de usuario."
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP siempre envía la contraseña sin cifrar. Marca la casilla para permitirlo en este servidor, o cancela."
 
 msgid "Failed"
 msgstr "Fallida"
@@ -425,6 +431,10 @@ msgstr "Iniciar sesión con"
 msgid "Sign-in"
 msgstr "Inicio de sesión"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "Se necesita un inicio de sesión para %s. Añádelo en Ajustes y después reanuda."
+
 msgid "Sign-ins"
 msgstr "Inicios de sesión"
 
@@ -491,6 +501,9 @@ msgstr "Probar velocidades"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Probando velocidades… hasta 256 KiB por fuente. No se guarda ningún archivo."
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "El enlace contenía una contraseña. ¿Guardarla como inicio de sesión para este servidor?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "El número máximo de conexiones a un servidor, compartido por todas las descargas."
 
@@ -506,8 +519,21 @@ msgstr "Cualquiera que esté en la ruta de red puede leer la contraseña."
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "No se pudo guardar el inicio de sesión en el almacén de credenciales. Se conservará hasta que se cierre Skein."
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "No se aceptó el inicio de sesión de %s."
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "No se aceptó el inicio de sesión. Revísalo e inténtalo de nuevo."
+
 msgid "Theme"
 msgstr "Tema"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "Este enlace no está cifrado. Marca la casilla para permitir el envío de la contraseña a este servidor, o cancela."
+
+msgid "This server needs a sign-in."
+msgstr "Este servidor necesita un inicio de sesión."
 
 msgid "Transfer speed in bytes per second"
 msgstr "Velocidad de transferencia en bytes por segundo"

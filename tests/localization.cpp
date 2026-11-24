@@ -63,6 +63,17 @@ int main() {
         check(_(L"Browse…") == wxString::FromUTF8("Parcourir…"), "Non-ASCII source message");
         check(lite::translated("Downloading · example.org") == wxString::FromUTF8("Téléchargement · example.org"), "Progress source preserved");
         check(lite::translated("12.5% | 1.2MiB/s | ETA 00:09") == "12.5% | 1.2MiB/s | ETA 00:09", "Untranslated backend detail passes through");
+        // The two sign-in sentences carry a host: the pattern is translated with any host put back in.
+        check(lite::translated("Sign-in needed for example.org. Add it in Settings, then resume.") == wxString::FromUTF8("Connexion requise pour example.org. Ajoutez-la dans les Paramètres, puis reprenez."), "Missing sign-in sentence translated with the host");
+        check(lite::translated("Sign-in needed for ftp.example.net:2121. Add it in Settings, then resume.") == wxString::FromUTF8("Connexion requise pour ftp.example.net:2121. Ajoutez-la dans les Paramètres, puis reprenez."), "Missing sign-in sentence with another host");
+        check(lite::translated("The sign-in for huggingface.co was not accepted.") == wxString::FromUTF8("La connexion pour huggingface.co n’a pas été acceptée."), "Rejected sign-in sentence translated with the host");
+        check(lite::translated("The sign-in for 50%s.example was not accepted.") == wxString::FromUTF8("La connexion pour 50%s.example n’a pas été acceptée."), "A host with a percent sign is not read as a format");
+        for (const char* other : {"Sign-in needed for example.org. Add it in Settings, then resume. Extra words", "Sign-in needed for . Add it in Settings, then resume.", "Sign-in needed for two words. Add it in Settings, then resume.",
+                                  "The sign-in for the bank account was not accepted.", "The sign-in for example.org was not accepted by the bank.", "Please say the sign-in for example.org was not accepted.", "Sign-in needed for example.org"})
+            check(lite::translated(other) == wxString::FromUTF8(other), "A message that only resembles a sign-in sentence is left alone");
+        check(lite::translated("Sign-in needed for example.org. Add it in Settings, then resume. · ftp.example.org") == wxString::FromUTF8("Connexion requise pour example.org. Ajoutez-la dans les Paramètres, puis reprenez. · ftp.example.org"), "Sign-in sentence before a server suffix");
+        lite::initTranslations("en");
+        check(lite::translated("Sign-in needed for example.org. Add it in Settings, then resume.") == "Sign-in needed for example.org. Add it in Settings, then resume.", "English sign-in sentence unchanged");
         lite::initTranslations("es");
         check(lite::currentLanguage() == "es", "Spanish active language");
         check(_(L"Language") == L"Idioma", "Spanish application catalog");

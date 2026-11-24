@@ -28,6 +28,9 @@ msgstr "+ ファイル"
 msgid "+ Video"
 msgstr "+ 動画"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "トークンは暗号化されていないリンクでは送信できません。https のリンクを使用してください。"
+
 msgid "About"
 msgstr "このアプリについて"
 
@@ -195,6 +198,9 @@ msgstr "シークレットキーを入力してください。"
 
 msgid "Enter the user name."
 msgstr "ユーザー名を入力してください。"
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP は常にパスワードを暗号化せずに送信します。このサーバーで許可するにはチェックボックスをオンにするか、キャンセルしてください。"
 
 msgid "Failed"
 msgstr "失敗"
@@ -425,6 +431,10 @@ msgstr "サインイン方法"
 msgid "Sign-in"
 msgstr "サインイン"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "%s のサインインが必要です。設定で追加してから再開してください。"
+
 msgid "Sign-ins"
 msgstr "サインイン"
 
@@ -491,6 +501,9 @@ msgstr "速度をテスト"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "サーバー速度をテスト中…各ソース最大 256 KiB。ファイルは保存しません。"
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "リンクにパスワードが含まれていました。このサーバーのサインインとして保存しますか?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "1つのサーバーへの接続数の上限です。すべてのダウンロードで共有されます。"
 
@@ -506,8 +519,21 @@ msgstr "パスワードはネットワーク経路上の誰にでも読み取ら
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "サインインを資格情報ストアに保存できませんでした。Skein を閉じるまで保持されます。"
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "%s のサインインは受け付けられませんでした。"
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "サインインは受け付けられませんでした。内容を確認してもう一度お試しください。"
+
 msgid "Theme"
 msgstr "テーマ"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "このリンクは暗号化されていません。このサーバーへのパスワードの送信を許可するにはチェックボックスをオンにするか、キャンセルしてください。"
+
+msgid "This server needs a sign-in."
+msgstr "このサーバーにはサインインが必要です。"
 
 msgid "Transfer speed in bytes per second"
 msgstr "転送速度（バイト/秒）"

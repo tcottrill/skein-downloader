@@ -4,6 +4,7 @@
 #include <wx/statline.h>
 #include "core.h"
 #include "host_limit.h"
+#include "signins_format.h"
 #include "util/sys_log.h"
 #include <algorithm>
 #include <cstring>
@@ -77,7 +78,9 @@ void scrub(std::string& s) {
 // text control, cleared as soon as the dialog is done, and in the one SignIn it hands back.
 class SignInDialog : public wxDialog {
     const bool hostFixed, editing, storeOk;
-    const archive::SignIn initial;
+    archive::SignIn initial;  // its secret is scrubbed once it is in the text box
+    const std::string scheme; // "ftp", "http" or "https" when the sign-in is for a link
+
     wxChoice *site, *kind;
     wxTextCtrl *server, *user, *secret;
     wxStaticText *serverLabel, *kindLabel, *linkLabel, *userLabel, *secretLabel;
@@ -153,6 +156,17 @@ class SignInDialog : public wxDialog {
             return;
         }
         r.allowUnencrypted = r.kind == archive::SignInKind::Password && unencrypted->GetValue();
+        if (!scheme.empty()) {
+            const auto use = signInUsableFor(scheme, r.host, r);
+            if (use == LinkUse::NeverUnencrypted) {
+                problem(_(L"A token cannot be sent over an unencrypted link. Use an https link."), secret);
+                return;
+            }
+            if (use == LinkUse::NeedsUnencryptedTick) {
+                problem(scheme == "ftp" ? _(L"FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel.") : _(L"This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."), unencrypted);
+                return;
+            }
+        }
         scrub(result.secret);
         result = std::move(r);
         EndModal(wxID_OK);
@@ -166,8 +180,8 @@ class SignInDialog : public wxDialog {
 
 public:
     archive::SignIn result;
-    SignInDialog(wxWindow* parent, const archive::SignIn& value, bool rememberIt, bool fixed)
-        : wxDialog(parent, wxID_ANY, _(L"Sign-in"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE), hostFixed(fixed), editing(listed(value)), storeOk(signInStoreUsable()), initial(value) {
+    SignInDialog(wxWindow* parent, const archive::SignIn& value, bool rememberIt, bool fixed, const wxString& notice, const std::string& linkScheme)
+        : wxDialog(parent, wxID_ANY, _(L"Sign-in"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE), hostFixed(fixed), editing(listed(value)), storeOk(signInStoreUsable()), initial(value), scheme(linkScheme) {
         appIcons(this);
         grid = new wxFlexGridSizer(2, 0, FromDIP(12));
         grid->AddGrowableCol(1);
@@ -203,6 +217,9 @@ public:
             kind->SetSelection(value.kind == archive::SignInKind::Token ? 1 : 0);
         }
         if (value.kind != archive::SignInKind::Token) user->SetValue(w(value.user));
+        // A secret handed in (a password that came with an FTP link) is offered in the box, to be kept or changed.
+        if (!value.secret.empty()) secret->SetValue(w(value.secret));
+        scrub(initial.secret);
         if (editing) secret->SetHint(_(L"Leave empty to keep the saved one"));
         if (hostFixed) {
             site->Enable(false);
@@ -218,6 +235,11 @@ public:
         unencryptedNote->Wrap(FromDIP(340));
 
         auto box = new wxBoxSizer(wxVERTICAL);
+        if (!notice.empty()) {
+            auto why = new wxStaticText(this, wxID_ANY, notice);
+            why->Wrap(FromDIP(380));
+            box->Add(why, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(12));
+        }
         box->Add(grid, 0, wxEXPAND | wxALL, FromDIP(12));
         if (!storeOk) {
             auto note = new wxStaticText(this, wxID_ANY, _(L"No credential store is available here: sign-ins are kept only until Skein closes."));
@@ -251,6 +273,7 @@ public:
     }
     ~SignInDialog() override {
         wipe();
+        scrub(initial.secret);
         scrub(result.secret);
     }
     // Clears the typed secret from the control (called before the dialog goes away).
@@ -271,8 +294,8 @@ wxString hostText(const archive::SignIn& s) {
     return s.port ? w(s.host) + wxString::Format(":%u", s.port) : w(s.host);
 }
 }
-bool editSignIn(wxWindow* parent, archive::SignIn& value, bool& remember, bool hostFixed) {
-    SignInDialog dialog(parent, value, remember, hostFixed);
+bool editSignIn(wxWindow* parent, archive::SignIn& value, bool& remember, bool hostFixed, const wxString& notice, const std::string& linkScheme) {
+    SignInDialog dialog(parent, value, remember, hostFixed, notice, linkScheme);
     const bool ok = dialog.ShowModal() == wxID_OK;
     dialog.wipe();
     if (ok) {

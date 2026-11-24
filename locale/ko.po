@@ -28,6 +28,9 @@ msgstr "+ 파일"
 msgid "+ Video"
 msgstr "+ 동영상"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "토큰은 암호화되지 않은 링크로 보낼 수 없습니다. https 링크를 사용하세요."
+
 msgid "About"
 msgstr "정보"
 
@@ -195,6 +198,9 @@ msgstr "비밀 키를 입력하세요."
 
 msgid "Enter the user name."
 msgstr "사용자 이름을 입력하세요."
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP는 항상 비밀번호를 암호화하지 않고 보냅니다. 이 서버에 허용하려면 확인란을 선택하거나 취소하세요."
 
 msgid "Failed"
 msgstr "실패"
@@ -425,6 +431,10 @@ msgstr "로그인 방식"
 msgid "Sign-in"
 msgstr "로그인"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "%s의 로그인이 필요합니다. 설정에서 추가한 다음 다시 시작하세요."
+
 msgid "Sign-ins"
 msgstr "로그인"
 
@@ -491,6 +501,9 @@ msgstr "속도 테스트"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "서버 속도를 테스트하는 중… 소스당 최대 256 KiB를 사용합니다. 파일은 저장하지 않습니다."
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "링크에 비밀번호가 포함되어 있습니다. 이 서버의 로그인으로 저장할까요?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "한 서버에 대한 최대 연결 수이며, 모든 다운로드가 함께 사용합니다."
 
@@ -506,8 +519,21 @@ msgstr "비밀번호는 네트워크 경로상의 누구나 읽을 수 있습니
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "로그인을 자격 증명 저장소에 저장하지 못했습니다. Skein을 닫을 때까지 유지됩니다."
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "%s의 로그인이 승인되지 않았습니다."
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "로그인이 승인되지 않았습니다. 확인한 후 다시 시도하세요."
+
 msgid "Theme"
 msgstr "테마"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "이 링크는 암호화되지 않았습니다. 이 서버로 비밀번호를 보내도록 허용하려면 확인란을 선택하거나 취소하세요."
+
+msgid "This server needs a sign-in."
+msgstr "이 서버에는 로그인이 필요합니다."
 
 msgid "Transfer speed in bytes per second"
 msgstr "초당 바이트 단위의 전송 속도"

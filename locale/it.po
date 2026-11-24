@@ -28,6 +28,9 @@ msgstr "+ File"
 msgid "+ Video"
 msgstr "+ Video"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "Un token non può essere inviato su un link non cifrato. Usa un link https."
+
 msgid "About"
 msgstr "Informazioni"
 
@@ -195,6 +198,9 @@ msgstr "Inserisci la chiave segreta."
 
 msgid "Enter the user name."
 msgstr "Inserisci il nome utente."
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP invia sempre la password senza cifratura. Seleziona la casella per consentirlo per questo server, oppure annulla."
 
 msgid "Failed"
 msgstr "Non riuscito"
@@ -425,6 +431,10 @@ msgstr "Accedi con"
 msgid "Sign-in"
 msgstr "Accesso"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "Serve un accesso per %s. Aggiungilo in Impostazioni, poi riprendi."
+
 msgid "Sign-ins"
 msgstr "Accessi"
 
@@ -491,6 +501,9 @@ msgstr "Testa velocità"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Test di velocità… fino a 256 KiB per fonte. Nessun file viene salvato."
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "Il link conteneva una password. Salvarla come accesso per questo server?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "Il numero massimo di connessioni a un server, condiviso da tutti i download."
 
@@ -506,8 +519,21 @@ msgstr "La password può essere letta da chiunque si trovi sul percorso di rete.
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Non è stato possibile salvare l’accesso nell’archivio delle credenziali. Verrà conservato fino alla chiusura di Skein."
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "L’accesso per %s non è stato accettato."
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "L’accesso non è stato accettato. Controllalo e riprova."
+
 msgid "Theme"
 msgstr "Tema"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "Questo link non è cifrato. Seleziona la casella per consentire l’invio della password a questo server, oppure annulla."
+
+msgid "This server needs a sign-in."
+msgstr "Questo server richiede un accesso."
 
 msgid "Transfer speed in bytes per second"
 msgstr "Velocità di trasferimento in byte al secondo"

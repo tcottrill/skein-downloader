@@ -48,6 +48,44 @@ int main() {
         check(bad.entries.size() == 2 && bad.entries[0].host == "a.org" && bad.entries[1].host == "d.org", "Entries that do not parse are skipped, the others kept.");
         check(bad.skipped == 5, "Skipped entries are counted.");
         check(lite::signInsFromJson(R"([{"host":"A.Org","port":0,"kind":"token"}])").entries[0].host == "a.org", "Hosts are kept in lower case.");
+        // What the sign-in dialog starts from for a refused host.
+        auto preset = [](const std::string& host, bool basic) {
+            return lite::suggestedSignIn(host, basic);
+        };
+        for (const char* host : {"huggingface.co", "hf.co", "HuggingFace.co"})
+            check(preset(host, false).host == "huggingface.co" && preset(host, true).kind == SignInKind::Token, "Hugging Face hosts give the Hugging Face token, kept under huggingface.co.");
+        for (const char* host : {"github.com", "api.github.com"})
+            check(preset(host, true).host == "github.com" && preset(host, true).kind == SignInKind::Token, "GitHub hosts give the GitHub token, kept under github.com.");
+        for (const char* host : {"archive.org", "ia800001.us.archive.org", "ia.archive.org"})
+            check(preset(host, false).host == "archive.org" && preset(host, false).kind == SignInKind::ArchiveKeys, "archive.org hosts give the archive.org keys, kept under archive.org.");
+        check(preset("web.archive.org", true).host == "web.archive.org" && preset("web.archive.org", true).kind == SignInKind::Password, "The Wayback Machine is an ordinary server.");
+        check(preset("notarchive.org", false).host == "notarchive.org" && preset("notarchive.org", false).kind == SignInKind::Token, "A host that only ends in the letters of archive.org is an ordinary server.");
+        check(preset("example.org", true).kind == SignInKind::Password && preset("example.org", true).host == "example.org", "A server that offered Basic gets a password.");
+        check(preset("Example.ORG", false).kind == SignInKind::Token && preset("Example.ORG", false).host == "example.org", "Any other server gets a token, with the host in lower case.");
+        check(preset("example.org", true).port == 0 && preset("example.org", true).secret.empty() && !preset("example.org", true).allowUnencrypted, "The preset has no port, no secret and no unencrypted permission.");
+        // Whether a sign-in can be sent over a link's scheme.
+        {
+            using lite::LinkUse;
+            auto pw = [](bool unencrypted) {
+                return make(SignInKind::Password, "example.org", 0, "u", "p", unencrypted);
+            };
+            check(lite::signInUsableFor("https", "example.org", pw(false)) == LinkUse::Usable, "A password over https needs no permission.");
+            check(lite::signInUsableFor("ftp", "example.org", pw(false)) == LinkUse::NeedsUnencryptedTick, "An FTP password needs the unencrypted permission.");
+            check(lite::signInUsableFor("ftp", "example.org", pw(true)) == LinkUse::Usable, "An FTP password with the permission is usable.");
+            check(lite::signInUsableFor("http", "example.org", pw(false)) == LinkUse::NeedsUnencryptedTick, "An http password needs the unencrypted permission.");
+            check(lite::signInUsableFor("http", "example.org", pw(true)) == LinkUse::Usable, "An http password with the permission is usable.");
+            for (const char* host : {"127.0.0.1", "::1", "localhost"}) {
+                check(lite::signInUsableFor("http", host, pw(false)) == LinkUse::Usable, "A loopback host counts as encrypted for http.");
+                check(lite::signInUsableFor("ftp", host, pw(false)) == LinkUse::Usable, "A loopback host counts as encrypted for ftp.");
+            }
+            check(lite::signInUsableFor("http", "localhost.example.org", pw(false)) == LinkUse::NeedsUnencryptedTick, "A name that only starts with localhost is not loopback.");
+            for (auto kind : {SignInKind::Token, SignInKind::ArchiveKeys}) {
+                auto s = make(kind, "example.org", 0, "u", "p", true);
+                check(lite::signInUsableFor("http", "example.org", s) == LinkUse::NeverUnencrypted && lite::signInUsableFor("ftp", "example.org", s) == LinkUse::NeverUnencrypted, "A token or key is never sent unencrypted, whatever the permission.");
+                check(lite::signInUsableFor("https", "example.org", s) == LinkUse::Usable && lite::signInUsableFor("http", "127.0.0.1", s) == LinkUse::Usable, "A token over https or loopback is usable.");
+            }
+            check(lite::signInUsableFor("HTTP", "Example.org", pw(false)) == LinkUse::NeedsUnencryptedTick, "The scheme and host are compared in lower case.");
+        }
         std::cout << "Sign-in list tests passed." << std::endl;
         return 0;
     } catch (const std::exception& e) {

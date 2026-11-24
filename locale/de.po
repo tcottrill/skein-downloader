@@ -28,6 +28,9 @@ msgstr "+ Datei"
 msgid "+ Video"
 msgstr "+ Video"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "Ein Token kann nicht über einen unverschlüsselten Link gesendet werden. Verwenden Sie einen https-Link."
+
 msgid "About"
 msgstr "Über"
 
@@ -195,6 +198,9 @@ msgstr "Den geheimen Schlüssel eingeben."
 
 msgid "Enter the user name."
 msgstr "Den Benutzernamen eingeben."
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP sendet das Passwort immer unverschlüsselt. Aktivieren Sie das Kontrollkästchen, um es für diesen Server zu erlauben, oder brechen Sie ab."
 
 msgid "Failed"
 msgstr "Fehlgeschlagen"
@@ -425,6 +431,10 @@ msgstr "Anmelden mit"
 msgid "Sign-in"
 msgstr "Anmeldung"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "Anmeldung für %s erforderlich. Fügen Sie sie in den Einstellungen hinzu und setzen Sie dann fort."
+
 msgid "Sign-ins"
 msgstr "Anmeldungen"
 
@@ -491,6 +501,9 @@ msgstr "Geschwindigkeiten testen"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Servergeschwindigkeiten werden getestet… bis zu 256 KiB pro Quelle. Es wird keine Datei gespeichert."
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "Der Link enthielt ein Passwort. Als Anmeldung für diesen Server speichern?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "Die maximale Anzahl von Verbindungen zu einem Server, gemeinsam für alle Downloads."
 
@@ -506,8 +519,21 @@ msgstr "Das Passwort kann von jedem im Netzwerkpfad gelesen werden."
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Die Anmeldung konnte nicht im Anmeldedatenspeicher gespeichert werden. Sie wird bis zum Beenden von Skein behalten."
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "Die Anmeldung für %s wurde nicht akzeptiert."
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "Die Anmeldung wurde nicht akzeptiert. Prüfen Sie sie und versuchen Sie es erneut."
+
 msgid "Theme"
 msgstr "Design"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "Dieser Link ist nicht verschlüsselt. Aktivieren Sie das Kontrollkästchen, um das Senden des Passworts an diesen Server zu erlauben, oder brechen Sie ab."
+
+msgid "This server needs a sign-in."
+msgstr "Dieser Server erfordert eine Anmeldung."
 
 msgid "Transfer speed in bytes per second"
 msgstr "Übertragungsgeschwindigkeit in Bytes pro Sekunde"

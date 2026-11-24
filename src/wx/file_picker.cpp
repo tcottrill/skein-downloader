@@ -1,6 +1,8 @@
 #include "ui.h"
 #include <wx/menu.h>
 #include "util/sys_log.h"
+#include "platform/ftp.h"
+#include "signins_format.h"
 #include <deque>
 #include <unordered_set>
 namespace lite {
@@ -28,6 +30,17 @@ protected:
         return &attr;
     }
 };
+// What the background load hands back: the item, or the fact that a server wanted a sign-in. The exception is
+// caught on the thread so that the window code, on the GUI thread, decides whether to ask; nothing opens there.
+struct Loaded {
+    archive::Item item;
+    bool needed = false, rejected = false, basic = false;
+    std::string host, message;
+};
+void wipe(std::string& text) {
+    std::fill(text.begin(), text.end(), '\0');
+    text.clear();
+}
 }
 class FilePicker : public wxDialog {
     downloads::Queue& queue;
@@ -45,7 +58,11 @@ class FilePicker : public wxDialog {
     std::vector<size_t> rows;
     std::vector<std::string> routes;
     std::vector<archive::ServerSpeed> speeds;
-    std::future<archive::Item> loading;
+    std::future<Loaded> loading;
+    // The link of the load in progress. It may carry a password (ftp://user:password@host/); that is kept only until
+    // the load ends, and the link box and everything stored or logged get the address without it.
+    std::string loadLink;
+    bool asking = false; // the sign-in dialog is open (a nested event loop: tick() must not run its work again)
     std::future<std::vector<archive::ServerSpeed>> measuring;
     std::shared_ptr<std::atomic_bool> stop = std::make_shared<std::atomic_bool>(false);
     // The work of "Add to downloads" runs on a thread on copies of what it needs; it writes only these two values.
@@ -215,13 +232,28 @@ class FilePicker : public wxDialog {
             }
         preferences();
         saveSelection();
-        LOG_INFO("Loading files from %s", link.c_str());
+        begin(link);
+    }
+    // Starts the load of a link that passed the checks in load(); also used to load the same link again after a sign-in was saved.
+    void begin(const std::string& link) {
+        LOG_INFO("Loading files from %s", archive::logUrl(link).c_str());
+        loadLink = link;
         // The thread's reads add to this while it runs; the thread holds it too, so a hidden dialog can be destroyed first.
         loadProgress = std::make_shared<archive::LoadProgress>();
         auto flag = stop;
         loading = std::async(std::launch::async, [link, flag, progress = loadProgress] {
             archive::LoadWatch watch(*flag, *progress);
-            return archive::loadItem(link, *flag);
+            Loaded result;
+            try {
+                result.item = archive::loadItem(link, *flag);
+            } catch (const archive::SignInNeeded& e) {
+                result.needed = true;
+                result.host = e.host;
+                result.rejected = e.rejected;
+                result.basic = e.basic;
+                result.message = e.what();
+            }
+            return result;
         });
         updateBusy();
     }
@@ -243,22 +275,149 @@ class FilePicker : public wxDialog {
         const bool show = (adding.valid() && addLook) || loading.valid() || measuring.valid();
         if (gauge->IsShown() != show) gauge->Show(show);
     }
-    void tick() {
-        if (loading.valid() && loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) try {
-                item = loading.get();
-                checked.assign(item.files.size(), false);
-                auto names = nlohmann::json::parse(u(pref("fileSelection", "[]")), nullptr, false);
-                bool restore = item.selectedFile.empty() && pref("fileItem") == w(item.id) && names.is_array();
-                std::unordered_set<std::string> saved;
-                if (restore)
-                    for (auto& name : names)
-                        if (name.is_string()) saved.insert(name.get<std::string>());
-                for (size_t i = 0; i < checked.size(); ++i) checked[i] = item.files[i].name == item.selectedFile || (restore ? saved.contains(item.files[i].name) : item.selectedFile.empty() && item.checkAll);
-                speeds.clear();
-                refreshServers();
-                servers->Enable(archive::isArchiveItem(item));
-                refresh();
+    // The list of a finished load goes into the window.
+    void accept(archive::Item loaded) {
+        item = std::move(loaded);
+        checked.assign(item.files.size(), false);
+        auto names = nlohmann::json::parse(u(pref("fileSelection", "[]")), nullptr, false);
+        bool restore = item.selectedFile.empty() && pref("fileItem") == w(item.id) && names.is_array();
+        std::unordered_set<std::string> saved;
+        if (restore)
+            for (auto& name : names)
+                if (name.is_string()) saved.insert(name.get<std::string>());
+        for (size_t i = 0; i < checked.size(); ++i) checked[i] = item.files[i].name == item.selectedFile || (restore ? saved.contains(item.files[i].name) : item.selectedFile.empty() && item.checkAll);
+        speeds.clear();
+        refreshServers();
+        servers->Enable(archive::isArchiveItem(item));
+        refresh();
+    }
+    // A server wants a sign-in (or did not accept the one sent). Runs on the GUI thread, from tick(). The dialog opens only while
+    // this window is shown; OK saves the sign-in and loads the same link again, Cancel leaves the error on the status line.
+    void askSignIn(const Loaded& refused) {
+        LOG_WARN("%s", refused.message.c_str());
+        status->SetLabel(translated(refused.message));
+        std::string link = std::move(loadLink);
+        loadLink.clear();
+        if (closing || !IsShown()) {
+            wipe(link);
+            return;
+        }
+        archive::SignIn value = lite::suggestedSignIn(refused.host, refused.basic);
+        bool remember = true;
+        // An FTP link names the server's port and the user; it always takes a password. A password typed in the link was refused,
+        // so it is not offered again; the unencrypted tick starts ticked then, because the user chose to send it over plain FTP.
+        try {
+            if (archive::ftp::isFtpUrl(link)) {
+                const auto address = archive::ftp::parseUrl(link);
+                if (archive::lower(address.host) == archive::lower(refused.host)) {
+                    value.host = archive::lower(address.host);
+                    value.port = address.port == 21 ? 0 : address.port;
+                    value.user = address.user;
+                }
+                value.kind = archive::SignInKind::Password;
+                value.allowUnencrypted = !address.password.empty();
+            }
+        } catch (const std::exception&) {}
+        const bool ftpLink = archive::ftp::isFtpUrl(link);
+        const std::string scheme = ftpLink ? "ftp" : archive::lower(link).rfind("http://", 0) == 0 ? "http"
+                                                                                                   : "https";
+        {
+            // A token or key is never sent over an unencrypted link: asking for one would only come back.
+            auto probe = value;
+            probe.allowUnencrypted = true;
+            if (lite::signInUsableFor(scheme, refused.host, probe) == lite::LinkUse::NeverUnencrypted) {
+                status->SetLabel(_(L"A token cannot be sent over an unencrypted link. Use an https link."));
+                wipe(link);
+                return;
+            }
+        }
+        wxWeakRef<wxWindow> self(this);
+        asking = true;
+        const bool ok = editSignIn(this, value, remember, true, refused.rejected ? _(L"The sign-in was not accepted. Check it and try again.") : _(L"This server needs a sign-in."), scheme);
+        if (!self) {
+            wipe(value.secret);
+            wipe(link);
+            return;
+        }
+        asking = false;
+        bool saved = false;
+        if (ok) try {
+                const bool wrote = saveSignIn(value, remember);
+                saved = true;
+                if (remember && !wrote) wxMessageBox(_(L"The sign-in could not be saved to the credential store. It will be kept until Skein closes."), _(L"Sign-ins"), wxOK | wxICON_WARNING, this);
             } catch (const std::exception& e) {
+                LOG_ERROR("A sign-in was not saved: %s", e.what());
+                status->SetLabel(w(e.what()));
+            }
+        wipe(value.secret);
+        if (!saved) {
+            wipe(link);
+            return;
+        }
+        // The new sign-in is used from the address without the user name and password written in it (the password in the link
+        // is the one that was refused).
+        if (ftpLink) {
+            link = archive::ftp::withoutUserInfo(link);
+            url->ChangeValue(w(link));
+        }
+        begin(link);
+    }
+    // After a successful load of an FTP link that carried a password: the address in the link box loses its user name and
+    // password, and the dialog offers to keep them as a sign-in. Whatever the answer, no copy of the password stays.
+    void offerLinkLogin() {
+        std::string link = std::move(loadLink);
+        loadLink.clear();
+        archive::ftp::Url address;
+        try {
+            if (!archive::ftp::isFtpUrl(link)) return;
+            address = archive::ftp::parseUrl(link);
+        } catch (const std::exception&) {
+            wipe(link);
+            return;
+        }
+        if (address.password.empty()) {
+            wipe(link);
+            return;
+        }
+        url->ChangeValue(w(archive::ftp::withoutUserInfo(link)));
+        wipe(link);
+        archive::SignIn value;
+        value.kind = archive::SignInKind::Password;
+        value.host = archive::lower(address.host);
+        value.port = address.port == 21 ? 0 : address.port;
+        value.user = address.user;
+        value.secret = std::move(address.password);
+        value.allowUnencrypted = true; // the user already chose to send it over plain FTP
+        bool remember = true;
+        wxWeakRef<wxWindow> self(this);
+        asking = true;
+        const bool ok = editSignIn(this, value, remember, true, _(L"The link contained a password. Save it as a sign-in for this server?"), "ftp");
+        if (!self) {
+            wipe(value.secret);
+            return;
+        }
+        asking = false;
+        if (ok) try {
+                const bool wrote = saveSignIn(value, remember);
+                if (remember && !wrote) wxMessageBox(_(L"The sign-in could not be saved to the credential store. It will be kept until Skein closes."), _(L"Sign-ins"), wxOK | wxICON_WARNING, this);
+            } catch (const std::exception& e) {
+                LOG_ERROR("A sign-in was not saved: %s", e.what());
+                status->SetLabel(w(e.what()));
+            }
+        wipe(value.secret);
+    }
+    void tick() {
+        if (asking) return; // a nested event loop of the sign-in dialog is running this timer
+        if (loading.valid() && loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) try {
+                auto result = loading.get();
+                if (result.needed)
+                    askSignIn(result);
+                else {
+                    accept(std::move(result.item));
+                    offerLinkLogin();
+                }
+            } catch (const std::exception& e) {
+                wipe(loadLink);
                 LOG_ERROR("Loading files failed: %s", e.what());
                 status->SetLabel(translated(e.what()));
             }
@@ -598,6 +757,7 @@ public:
         }
     }
     ~FilePicker() override {
+        wipe(loadLink);
         *stop = true;
         *addStop = true;
         timer.Stop();

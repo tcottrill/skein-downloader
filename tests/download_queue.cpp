@@ -1,4 +1,5 @@
 #include "download_queue.h"
+#include "signin.h"
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -186,6 +187,19 @@ int main() {
                     throw std::runtime_error("A failure marked not retryable did not fail with its text");
                 std::this_thread::sleep_for(100ms);
                 if (runCount() != 1) throw std::runtime_error("A failure marked not retryable was run again");
+            }
+            { // b2. A missing sign-in fails the job at once, naming the host; it is not run again and no window is involved.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw archive::SignInNeeded("example.org", false, true);
+                };
+                downloads::Queue queue(begin("b2"), retryRunner);
+                queue.setRetryWaits({10ms}, 12);
+                queue.add("b2", "Archive", "b2", nullptr);
+                queue.start();
+                if (!waitState(queue, downloads::State::Failed, 10s) || queue.snapshot().at(0).detail != "Sign-in needed for example.org. Add it in Settings, then resume.")
+                    throw std::runtime_error("A missing sign-in did not fail the job with the sentence naming the host");
+                std::this_thread::sleep_for(100ms);
+                if (runCount() != 1) throw std::runtime_error("A job that needed a sign-in was run again");
             }
             { // c. The retry limit.
                 behavior = [&](int, const downloads::Job&, const downloads::Report&) {

@@ -90,8 +90,10 @@ void showSettings(wxWindow*, downloads::Queue&);
 // Modal dialog that adds or edits one sign-in. `value` is the starting point (empty host: a new one) and
 // receives the result on OK; an empty secret in it means "keep the saved one". `remember` is the starting
 // state of the "Remember on this computer" tick and receives its final state. hostFixed disables the
-// choice of site and server (editing one, or signing in to a given server). Returns true on OK.
-bool editSignIn(wxWindow* parent, archive::SignIn& value, bool& remember, bool hostFixed);
+// choice of site and server (editing one, or signing in to a given server). A non-empty notice is shown as a
+// wrapped line at the top of the dialog (why it was opened). A linkScheme ("ftp", "http", "https") says the sign-in is for a link
+// of that scheme: OK is then refused, with a message, when it could not be sent over it (see signInUsableFor). Returns true on OK.
+bool editSignIn(wxWindow* parent, archive::SignIn& value, bool& remember, bool hostFixed, const wxString& notice = {}, const std::string& linkScheme = {});
 // Dedicated toolbar selector with circular flag icons in its native popup menu.
 wxButton* languageButton(wxWindow*);
 // With load, a given link is loaded at once (the main window's Load); otherwise it is only filled in.

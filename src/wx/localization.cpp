@@ -82,7 +82,22 @@ wxString translated(const std::string& message) {
     const auto lookup = [](const wxString& s) {
         auto catalogs = wxTranslations::Get();
         auto found = catalogs ? catalogs->GetTranslatedString(s) : nullptr;
-        return found ? *found : s;
+        if (found) return *found;
+        // The two sign-in sentences name a host: translate the sentence with "%s" in its place, then put the host back.
+        // The host must be one word, so that a message that only resembles these sentences is left alone.
+        struct Pattern {
+            const char *before, *after;
+        };
+        static const Pattern patterns[] = {{"Sign-in needed for ", ". Add it in Settings, then resume."}, {"The sign-in for ", " was not accepted."}};
+        for (const auto& p : patterns) {
+            const wxString before = wxString::FromUTF8(p.before), after = wxString::FromUTF8(p.after);
+            if (s.length() <= before.length() + after.length() || !s.StartsWith(before) || !s.EndsWith(after)) continue;
+            const auto host = s.Mid(before.length(), s.length() - before.length() - after.length());
+            if (host.find_first_of(" \t\r\n") != wxString::npos) continue;
+            auto pattern = catalogs ? catalogs->GetTranslatedString(before + "%s" + after) : nullptr;
+            if (pattern) return wxString::Format(*pattern, host);
+        }
+        return s;
     };
     // File progress may append a server URL. Translate only the status part.
     const auto split = text.find(wxString::FromUTF8(" · "));
@@ -103,5 +118,6 @@ wxString translated(const std::string& message) {
         wxTRANSLATE("Choose an absolute download folder."), wxTRANSLATE("Invalid file selection."),
         wxTRANSLATE("Paste a valid HTTP or HTTPS video URL."), wxTRANSLATE("Install video tools from Add > Video first."),
         wxTRANSLATE("Operation cancelled. You can retry."), wxTRANSLATE("Stopped. Use the same URL, quality and folder to resume."),
+        wxTRANSLATE("Sign-in needed for %s. Add it in Settings, then resume."), wxTRANSLATE("The sign-in for %s was not accepted."),
         wxTRANSLATE("Video tools ready."), wxTRANSLATE("yt-dlp update finished."), wxTRANSLATE("Unexpected error while managing video tools.")};
 }

@@ -28,6 +28,9 @@ msgstr "+ 檔案"
 msgid "+ Video"
 msgstr "+ 影片"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "權杖不能透過未加密的連結傳送。請使用 https 連結。"
+
 msgid "About"
 msgstr "關於"
 
@@ -195,6 +198,9 @@ msgstr "請輸入私密金鑰。"
 
 msgid "Enter the user name."
 msgstr "請輸入使用者名稱。"
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP 一律以未加密方式傳送密碼。請勾選該核取方塊以對此伺服器允許，或取消。"
 
 msgid "Failed"
 msgstr "失敗"
@@ -425,6 +431,10 @@ msgstr "登入方式"
 msgid "Sign-in"
 msgstr "登入"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "%s 需要登入。請在「設定」中新增，然後繼續。"
+
 msgid "Sign-ins"
 msgstr "登入"
 
@@ -491,6 +501,9 @@ msgstr "測試速度"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "正在測試伺服器速度… 每個來源最多使用 256 KiB。不會儲存檔案。"
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "該連結包含密碼。要將其儲存為此伺服器的登入資訊嗎？"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "對單一伺服器的最大連線數上限，所有下載共用。"
 
@@ -506,8 +519,21 @@ msgstr "網路路徑上的任何人都可以讀取該密碼。"
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "無法將登入資訊儲存到認證存放區。它會保留到 Skein 關閉為止。"
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "%s 的登入資訊未被接受。"
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "登入資訊未被接受。請檢查後再試一次。"
+
 msgid "Theme"
 msgstr "佈景主題"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "此連結未加密。請勾選該核取方塊以允許向此伺服器傳送密碼，或取消。"
+
+msgid "This server needs a sign-in."
+msgstr "此伺服器需要登入。"
 
 msgid "Transfer speed in bytes per second"
 msgstr "傳輸速度（位元組／秒）"

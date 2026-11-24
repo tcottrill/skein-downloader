@@ -50,7 +50,7 @@ void countRequest(const std::atomic_bool& stop) {
 // Shared by both transports for any response other than 200/206 (a 401 is SignInNeeded instead).
 NetworkError statusError(unsigned long status, unsigned retryAfter) {
     std::string message = "HTTP " + std::to_string(status);
-    if (status == 403) message += ": file requires access permission or sign-in (not supported in this version).";
+    if (status == 403) message += ": the server refused access to this file.";
     if (status == 404) message += ": file not found.";
     return NetworkError(message, status == 429 || status == 408 || status >= 500, retryAfter, (unsigned)status);
 }

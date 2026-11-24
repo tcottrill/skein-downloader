@@ -8,6 +8,7 @@
 #include <wx/wrapsizer.h>
 #include <wx/secretstore.h>
 #include "signins_format.h"
+#include "platform/ftp.h"
 #ifdef __WXMSW__
 #include <wx/msw/wrapcctl.h>
 #elif defined(__WXGTK__)
@@ -886,9 +887,12 @@ void MainWindow::update() {
 void MainWindow::route() {
     auto text = url->GetValue().Strip(wxString::both);
     auto link = u(text);
-    if (fileHost(text) || archive::looksLikeFileUrl(link))
+    if (fileHost(text) || archive::looksLikeFileUrl(link)) {
         showFiles(this, queue, text);
-    else if (video::validUrl(text.ToStdWstring()))
+        // An FTP link may carry a password: the picker has it now, and this box keeps only the address (nothing here logs or stores the box).
+        const auto plain = archive::ftp::withoutUserInfo(link);
+        if (plain != link) url->ChangeValue(w(plain));
+    } else if (video::validUrl(text.ToStdWstring()))
         showVideo(this, queue, text);
     else
         wxMessageBox(_(L"Paste a valid HTTP, HTTPS or FTP file, folder, archive.org or video URL."), "URL", wxOK | wxICON_WARNING, this);

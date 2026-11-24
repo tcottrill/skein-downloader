@@ -28,6 +28,9 @@ msgstr "+ Файл"
 msgid "+ Video"
 msgstr "+ Видео"
 
+msgid "A token cannot be sent over an unencrypted link. Use an https link."
+msgstr "Токен нельзя отправлять по незашифрованной ссылке. Используйте ссылку https."
+
 msgid "About"
 msgstr "О программе"
 
@@ -195,6 +198,9 @@ msgstr "Введите секретный ключ."
 
 msgid "Enter the user name."
 msgstr "Введите имя пользователя."
+
+msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
+msgstr "FTP всегда передаёт пароль без шифрования. Установите флажок, чтобы разрешить это для данного сервера, или отмените."
 
 msgid "Failed"
 msgstr "Ошибка"
@@ -425,6 +431,10 @@ msgstr "Войти с помощью"
 msgid "Sign-in"
 msgstr "Вход"
 
+#, c-format
+msgid "Sign-in needed for %s. Add it in Settings, then resume."
+msgstr "Для %s нужен вход. Добавьте его в Настройках, затем продолжите."
+
 msgid "Sign-ins"
 msgstr "Входы"
 
@@ -491,6 +501,9 @@ msgstr "Проверить скорость"
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Проверка скорости… до 256 КиБ на источник. Файлы не сохраняются."
 
+msgid "The link contained a password. Save it as a sign-in for this server?"
+msgstr "Ссылка содержала пароль. Сохранить его как вход для этого сервера?"
+
 msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr "Максимальное число соединений с одним сервером, общее для всех загрузок."
 
@@ -506,8 +519,21 @@ msgstr "Пароль может прочитать любой, кто наход
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Не удалось сохранить вход в хранилище учётных данных. Он будет храниться до закрытия Skein."
 
+#, c-format
+msgid "The sign-in for %s was not accepted."
+msgstr "Вход для %s не принят."
+
+msgid "The sign-in was not accepted. Check it and try again."
+msgstr "Вход не принят. Проверьте его и повторите попытку."
+
 msgid "Theme"
 msgstr "Тема"
+
+msgid "This link is not encrypted. Tick the box to allow sending the password to this server, or cancel."
+msgstr "Эта ссылка не зашифрована. Установите флажок, чтобы разрешить отправку пароля на этот сервер, или отмените."
+
+msgid "This server needs a sign-in."
+msgstr "Этому серверу нужен вход."
 
 msgid "Transfer speed in bytes per second"
 msgstr "Скорость передачи в байтах в секунду"
