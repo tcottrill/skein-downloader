@@ -31,6 +31,15 @@ msgstr "+ 동영상"
 msgid "About"
 msgstr "정보"
 
+msgid "Access key"
+msgstr "액세스 키"
+
+msgid "Access keys"
+msgstr "액세스 키"
+
+msgid "Access token"
+msgstr "액세스 토큰"
+
 msgid "Active"
 msgstr "진행 중"
 
@@ -44,17 +53,26 @@ msgstr "다운로드 %zu개를 추가했습니다. 기존 파일과 중복된 �
 msgid "Added to downloads."
 msgstr "다운로드에 추가했습니다."
 
+msgid "Add…"
+msgstr "추가…"
+
 msgid "All"
 msgstr "전체"
 
 msgid "All paused  ·  "
 msgstr "모두 일시 중지됨  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "암호화되지 않은 연결(http 또는 ftp)에서 허용"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "이미 다운로드 목록에 있습니다. 기본 창에서 다시 시작하세요."
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "파일과 동영상을 위한 오픈 소스 다운로드 관리자입니다.\n현재 개발 중입니다."
+
+msgid "Another server"
+msgstr "다른 서버"
 
 msgid "Assembling"
 msgstr "파일 병합 중"
@@ -88,6 +106,9 @@ msgstr "파일을 추가할 수 없음"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell을 찾을 수 없습니다."
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "로그인 변경 사항은 바로 저장됩니다. 확인과 취소는 위의 두 설정에 적용됩니다."
 
 msgid "Check highlighted"
 msgstr "강조된 항목 체크"
@@ -154,6 +175,27 @@ msgstr "다운로드 중"
 msgid "Downloads at once"
 msgstr "동시 다운로드 수"
 
+msgid "Edit…"
+msgstr "편집…"
+
+msgid "Enter a server name such as example.org."
+msgstr "example.org와 같은 서버 이름을 입력하세요."
+
+msgid "Enter the access key."
+msgstr "액세스 키를 입력하세요."
+
+msgid "Enter the access token."
+msgstr "액세스 토큰을 입력하세요."
+
+msgid "Enter the password."
+msgstr "비밀번호를 입력하세요."
+
+msgid "Enter the secret key."
+msgstr "비밀 키를 입력하세요."
+
+msgid "Enter the user name."
+msgstr "사용자 이름을 입력하세요."
+
 msgid "Failed"
 msgstr "실패"
 
@@ -196,8 +238,14 @@ msgstr "검증된 동영상 도구 설치 중…"
 msgid "Invalid file selection."
 msgstr "파일 선택이 올바르지 않습니다."
 
+msgid "Kind"
+msgstr "종류"
+
 msgid "Language"
 msgstr "언어"
+
+msgid "Leave empty to keep the saved one"
+msgstr "저장된 값을 유지하려면 비워 두세요"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "연령 확인 등의 제한을 통과하기 위해 yt-dlp가 브라우저에서 이 사이트의 쿠키를 읽도록 허용합니다. 브라우저의 로그인 상태로 작동합니다."
@@ -237,6 +285,9 @@ msgstr "대기열 맨 위로 이동"
 msgid "Name"
 msgstr "이름"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "여기에서는 자격 증명 저장소를 사용할 수 없습니다. 로그인은 Skein을 닫을 때까지만 유지됩니다."
+
 msgid "Open folder"
 msgstr "폴더 열기"
 
@@ -245,6 +296,9 @@ msgstr "작업이 취소되었습니다. 다시 시도할 수 있습니다."
 
 msgid "Partial download retained"
 msgstr "부분 다운로드가 보관됨"
+
+msgid "Password"
+msgstr "비밀번호"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "위에 URL을 붙여 넣으세요. 다운로드에 추가하기 전에 원하는 파일을 선택하세요."
@@ -303,11 +357,18 @@ msgstr "목록에서 제거(&M)\tDel"
 msgid "Re&try"
 msgstr "다시 시도(&T)"
 
+msgid "Remember on this computer"
+msgstr "이 컴퓨터에 기억"
+
 msgid "Remove"
 msgstr "제거"
 
 msgid "Remove All"
 msgstr "모두 제거"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "%s의 로그인을 제거할까요?"
 
 msgid "Resume all"
 msgstr "모두 다시 시작"
@@ -330,6 +391,9 @@ msgstr "저장 위치"
 
 msgid "Search downloads"
 msgstr "다운로드 검색"
+
+msgid "Secret key"
+msgstr "비밀 키"
 
 msgid "Select all"
 msgstr "모두 선택"
@@ -354,6 +418,18 @@ msgstr "서버 속도"
 
 msgid "Settings"
 msgstr "설정"
+
+msgid "Sign in with"
+msgstr "로그인 방식"
+
+msgid "Sign-in"
+msgstr "로그인"
+
+msgid "Sign-ins"
+msgstr "로그인"
+
+msgid "Site"
+msgstr "사이트"
 
 msgid "Site access"
 msgstr "사이트 접근"
@@ -424,6 +500,12 @@ msgstr "새 언어는 Skein Downloader를 다음에 시작할 때 적용됩니�
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "새 테마는 Skein Downloader를 다음에 시작할 때 적용됩니다."
 
+msgid "The password can be read by anyone on the network path."
+msgstr "비밀번호는 네트워크 경로상의 누구나 읽을 수 있습니다."
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "로그인을 자격 증명 저장소에 저장하지 못했습니다. Skein을 닫을 때까지 유지됩니다."
+
 msgid "Theme"
 msgstr "테마"
 
@@ -472,6 +554,12 @@ msgstr "yt-dlp 업데이트"
 msgid "Use cookies from"
 msgstr "쿠키를 가져올 브라우저"
 
+msgid "User name"
+msgstr "사용자 이름"
+
+msgid "User name and password"
+msgstr "사용자 이름과 비밀번호"
+
 msgid "Verifying SHA-1"
 msgstr "SHA-1 검증 중"
 
@@ -510,6 +598,12 @@ msgstr "사용 가능한 연결을 기다리는 중"
 
 msgid "Working…"
 msgstr "작업 중…"
+
+msgid "not available"
+msgstr "사용할 수 없음"
+
+msgid "until Skein closes"
+msgstr "Skein을 닫을 때까지"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp 업데이트가 완료되었습니다."

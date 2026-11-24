@@ -31,6 +31,15 @@ msgstr "+ 動画"
 msgid "About"
 msgstr "このアプリについて"
 
+msgid "Access key"
+msgstr "アクセスキー"
+
+msgid "Access keys"
+msgstr "アクセスキー"
+
+msgid "Access token"
+msgstr "アクセストークン"
+
 msgid "Active"
 msgstr "実行中"
 
@@ -44,17 +53,26 @@ msgstr "%zu 件のダウンロードを追加しました。既存のファイ�
 msgid "Added to downloads."
 msgstr "ダウンロードに追加しました。"
 
+msgid "Add…"
+msgstr "追加…"
+
 msgid "All"
 msgstr "すべて"
 
 msgid "All paused  ·  "
 msgstr "すべて一時停止  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "暗号化されていない接続 (http または ftp) でも許可する"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "すでにダウンロードにあります。メイン画面から再開してください。"
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "ファイルと動画用のオープンソースダウンロードマネージャー。\n現在開発中です。"
+
+msgid "Another server"
+msgstr "その他のサーバー"
 
 msgid "Assembling"
 msgstr "結合中"
@@ -88,6 +106,9 @@ msgstr "ファイルを追加できません"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell が見つかりません。"
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "サインインの変更はすぐに保存されます。[OK] と [キャンセル] は上の 2 つの設定に適用されます。"
 
 msgid "Check highlighted"
 msgstr "選択項目にチェック"
@@ -154,6 +175,27 @@ msgstr "ダウンロード中"
 msgid "Downloads at once"
 msgstr "同時ダウンロード数"
 
+msgid "Edit…"
+msgstr "編集…"
+
+msgid "Enter a server name such as example.org."
+msgstr "example.org のようなサーバー名を入力してください。"
+
+msgid "Enter the access key."
+msgstr "アクセスキーを入力してください。"
+
+msgid "Enter the access token."
+msgstr "アクセストークンを入力してください。"
+
+msgid "Enter the password."
+msgstr "パスワードを入力してください。"
+
+msgid "Enter the secret key."
+msgstr "シークレットキーを入力してください。"
+
+msgid "Enter the user name."
+msgstr "ユーザー名を入力してください。"
+
 msgid "Failed"
 msgstr "失敗"
 
@@ -196,8 +238,14 @@ msgstr "検証済みの動画ツールをインストール中…"
 msgid "Invalid file selection."
 msgstr "ファイルの選択が無効です。"
 
+msgid "Kind"
+msgstr "種類"
+
 msgid "Language"
 msgstr "言語"
+
+msgid "Leave empty to keep the saved one"
+msgstr "空のままにすると保存済みのものを使い続けます"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "年齢確認などの制限のために、yt-dlp がブラウザーからサイトの Cookie を読み取れるようにします。ブラウザーのログイン状態で動作します。"
@@ -237,6 +285,9 @@ msgstr "キューの先頭に移動"
 msgid "Name"
 msgstr "名前"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "ここでは資格情報ストアを利用できません。サインインは Skein を閉じるまでのみ保持されます。"
+
 msgid "Open folder"
 msgstr "フォルダーを開く"
 
@@ -245,6 +296,9 @@ msgstr "操作をキャンセルしました。再試行できます。"
 
 msgid "Partial download retained"
 msgstr "途中までのダウンロードを保持しました"
+
+msgid "Password"
+msgstr "パスワード"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "上に URL を貼り付けてください。ダウンロードに追加する前に、必要なファイルを選択してください。"
@@ -303,11 +357,18 @@ msgstr "一覧から削除(&M)\tDel"
 msgid "Re&try"
 msgstr "再試行(&T)"
 
+msgid "Remember on this computer"
+msgstr "このコンピューターに記憶する"
+
 msgid "Remove"
 msgstr "削除"
 
 msgid "Remove All"
 msgstr "すべて削除"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "%s のサインインを削除しますか?"
 
 msgid "Resume all"
 msgstr "すべて再開"
@@ -330,6 +391,9 @@ msgstr "保存先"
 
 msgid "Search downloads"
 msgstr "ダウンロードを検索"
+
+msgid "Secret key"
+msgstr "シークレットキー"
 
 msgid "Select all"
 msgstr "すべて選択"
@@ -354,6 +418,18 @@ msgstr "サーバー速度"
 
 msgid "Settings"
 msgstr "設定"
+
+msgid "Sign in with"
+msgstr "サインイン方法"
+
+msgid "Sign-in"
+msgstr "サインイン"
+
+msgid "Sign-ins"
+msgstr "サインイン"
+
+msgid "Site"
+msgstr "サイト"
 
 msgid "Site access"
 msgstr "サイトへのアクセス"
@@ -424,6 +500,12 @@ msgstr "新しい言語は Skein Downloader の次回起動時に適用されま
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "新しいテーマは Skein Downloader の次回起動時に適用されます。"
 
+msgid "The password can be read by anyone on the network path."
+msgstr "パスワードはネットワーク経路上の誰にでも読み取られる可能性があります。"
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "サインインを資格情報ストアに保存できませんでした。Skein を閉じるまで保持されます。"
+
 msgid "Theme"
 msgstr "テーマ"
 
@@ -472,6 +554,12 @@ msgstr "yt-dlp を更新"
 msgid "Use cookies from"
 msgstr "Cookie の取得元"
 
+msgid "User name"
+msgstr "ユーザー名"
+
+msgid "User name and password"
+msgstr "ユーザー名とパスワード"
+
 msgid "Verifying SHA-1"
 msgstr "SHA-1 を検証中"
 
@@ -510,6 +598,12 @@ msgstr "空き接続を待っています"
 
 msgid "Working…"
 msgstr "処理中…"
+
+msgid "not available"
+msgstr "利用不可"
+
+msgid "until Skein closes"
+msgstr "Skein を閉じるまで"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp の更新が完了しました。"

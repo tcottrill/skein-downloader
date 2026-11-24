@@ -31,6 +31,15 @@ msgstr "+ 视频"
 msgid "About"
 msgstr "关于"
 
+msgid "Access key"
+msgstr "访问密钥"
+
+msgid "Access keys"
+msgstr "访问密钥"
+
+msgid "Access token"
+msgstr "访问令牌"
+
 msgid "Active"
 msgstr "下载中"
 
@@ -44,17 +53,26 @@ msgstr "已添加 %zu 个下载。保留了现有文件和重复的队列条目�
 msgid "Added to downloads."
 msgstr "已添加到下载。"
 
+msgid "Add…"
+msgstr "添加…"
+
 msgid "All"
 msgstr "全部"
 
 msgid "All paused  ·  "
 msgstr "已全部暂停  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "允许在未加密的连接（http 或 ftp）上使用"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "已在下载列表中。请从主窗口继续。"
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "用于文件和视频的开源下载管理器。\n仍在开发中。"
+
+msgid "Another server"
+msgstr "其他服务器"
 
 msgid "Assembling"
 msgstr "正在合并"
@@ -88,6 +106,9 @@ msgstr "无法添加文件"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "找不到 Windows PowerShell。"
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "登录信息的更改会立即保存。“确定”和“取消”仅适用于上面的两项设置。"
 
 msgid "Check highlighted"
 msgstr "勾选高亮项"
@@ -154,6 +175,27 @@ msgstr "正在下载"
 msgid "Downloads at once"
 msgstr "同时下载数"
 
+msgid "Edit…"
+msgstr "编辑…"
+
+msgid "Enter a server name such as example.org."
+msgstr "请输入服务器名称，例如 example.org。"
+
+msgid "Enter the access key."
+msgstr "请输入访问密钥。"
+
+msgid "Enter the access token."
+msgstr "请输入访问令牌。"
+
+msgid "Enter the password."
+msgstr "请输入密码。"
+
+msgid "Enter the secret key."
+msgstr "请输入私密密钥。"
+
+msgid "Enter the user name."
+msgstr "请输入用户名。"
+
 msgid "Failed"
 msgstr "失败"
 
@@ -196,8 +238,14 @@ msgstr "正在安装已验证的视频工具…"
 msgid "Invalid file selection."
 msgstr "文件选择无效。"
 
+msgid "Kind"
+msgstr "类型"
+
 msgid "Language"
 msgstr "语言"
+
+msgid "Leave empty to keep the saved one"
+msgstr "留空则保留已保存的内容"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "允许 yt-dlp 从浏览器读取此网站的 Cookie，用于年龄验证等访问限制。将使用您在浏览器中的登录状态。"
@@ -237,6 +285,9 @@ msgstr "移到队列顶部"
 msgid "Name"
 msgstr "名称"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "此处没有可用的凭据存储：登录信息仅保留到 Skein 关闭为止。"
+
 msgid "Open folder"
 msgstr "打开文件夹"
 
@@ -245,6 +296,9 @@ msgstr "操作已取消。可以重试。"
 
 msgid "Partial download retained"
 msgstr "已保留未完成的下载"
+
+msgid "Password"
+msgstr "密码"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "在上方粘贴网址。添加下载前，请选择一个、全部或指定的文件。"
@@ -303,11 +357,18 @@ msgstr "从列表中移除(&M)\tDel"
 msgid "Re&try"
 msgstr "重试(&T)"
 
+msgid "Remember on this computer"
+msgstr "在此计算机上记住"
+
 msgid "Remove"
 msgstr "移除"
 
 msgid "Remove All"
 msgstr "全部移除"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "移除 %s 的登录信息？"
 
 msgid "Resume all"
 msgstr "全部继续"
@@ -330,6 +391,9 @@ msgstr "保存到"
 
 msgid "Search downloads"
 msgstr "搜索下载"
+
+msgid "Secret key"
+msgstr "私密密钥"
 
 msgid "Select all"
 msgstr "全选"
@@ -354,6 +418,18 @@ msgstr "服务器速度"
 
 msgid "Settings"
 msgstr "设置"
+
+msgid "Sign in with"
+msgstr "登录方式"
+
+msgid "Sign-in"
+msgstr "登录"
+
+msgid "Sign-ins"
+msgstr "登录"
+
+msgid "Site"
+msgstr "网站"
 
 msgid "Site access"
 msgstr "网站访问"
@@ -424,6 +500,12 @@ msgstr "新语言将在下次启动 Skein Downloader 时生效。"
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "新主题将在下次启动 Skein Downloader 时生效。"
 
+msgid "The password can be read by anyone on the network path."
+msgstr "网络路径上的任何人都可以读取该密码。"
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "无法将登录信息保存到凭据存储。它将保留到 Skein 关闭为止。"
+
 msgid "Theme"
 msgstr "主题"
 
@@ -472,6 +554,12 @@ msgstr "更新 yt-dlp"
 msgid "Use cookies from"
 msgstr "使用以下浏览器的 Cookie"
 
+msgid "User name"
+msgstr "用户名"
+
+msgid "User name and password"
+msgstr "用户名和密码"
+
 msgid "Verifying SHA-1"
 msgstr "正在验证 SHA-1"
 
@@ -510,6 +598,12 @@ msgstr "正在等待空闲连接"
 
 msgid "Working…"
 msgstr "正在处理…"
+
+msgid "not available"
+msgstr "不可用"
+
+msgid "until Skein closes"
+msgstr "直到 Skein 关闭"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp 更新完成。"

@@ -1019,6 +1019,15 @@ static void signInSmokeCheck() {
             saveSignIn(token, true);
             if (!inStore(host)) throw std::runtime_error("The sign-in was not written to the store again");
         }
+        // Host names are case-insensitive: saving for SMOKE.invalid and removing smoke.invalid leaves nothing.
+        archive::SignIn upper = token;
+        upper.host = "SMOKE.invalid";
+        upper.secret = secret;
+        saveSignIn(upper, false);
+        removeSignIn("smoke.invalid", 0);
+        if (listed(host) || listed("SMOKE.invalid")) throw std::runtime_error("A sign-in saved with an upper-case host was not one entry with its lower-case name");
+        upper.host = host;
+        saveSignIn(upper, usable);
         removeSignIn(host, 0);
         if (listed(host) || engineSecret(host) != "(none)" || inStore(host) || settingsText().find(secret) != std::string::npos) throw std::runtime_error("A removed sign-in is still present");
     } catch (...) {

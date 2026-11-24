@@ -87,6 +87,11 @@ void showAbout(wxWindow*);
 void applySettings(downloads::Queue&);
 // Modal dialog for those two settings; OK saves them and applies them at once.
 void showSettings(wxWindow*, downloads::Queue&);
+// Modal dialog that adds or edits one sign-in. `value` is the starting point (empty host: a new one) and
+// receives the result on OK; an empty secret in it means "keep the saved one". `remember` is the starting
+// state of the "Remember on this computer" tick and receives its final state. hostFixed disables the
+// choice of site and server (editing one, or signing in to a given server). Returns true on OK.
+bool editSignIn(wxWindow* parent, archive::SignIn& value, bool& remember, bool hostFixed);
 // Dedicated toolbar selector with circular flag icons in its native popup menu.
 wxButton* languageButton(wxWindow*);
 // With load, a given link is loaded at once (the main window's Load); otherwise it is only filled in.

@@ -31,6 +31,15 @@ msgstr "+ वीडियो"
 msgid "About"
 msgstr "परिचय"
 
+msgid "Access key"
+msgstr "एक्सेस कुंजी"
+
+msgid "Access keys"
+msgstr "एक्सेस कुंजियाँ"
+
+msgid "Access token"
+msgstr "एक्सेस टोकन"
+
 msgid "Active"
 msgstr "सक्रिय"
 
@@ -44,17 +53,26 @@ msgstr "%zu डाउनलोड जोड़े गए। मौजूदा �
 msgid "Added to downloads."
 msgstr "डाउनलोड में जोड़ा गया।"
 
+msgid "Add…"
+msgstr "जोड़ें…"
+
 msgid "All"
 msgstr "सभी"
 
 msgid "All paused  ·  "
 msgstr "सभी रुके हुए  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "अनएन्क्रिप्टेड कनेक्शन (http या ftp) पर अनुमति दें"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "यह पहले से डाउनलोड सूची में है। इसे मुख्य विंडो से फिर शुरू करें।"
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "फ़ाइलों और वीडियो के लिए खुला-स्रोत डाउनलोड प्रबंधक।\nअभी इस पर काम जारी है।"
+
+msgid "Another server"
+msgstr "अन्य सर्वर"
 
 msgid "Assembling"
 msgstr "जोड़ रहा है"
@@ -88,6 +106,9 @@ msgstr "फ़ाइलें नहीं जोड़ सकते"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell नहीं मिल सका।"
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "साइन-इन में किए गए बदलाव तुरंत सहेजे जाते हैं। ठीक है और रद्द करें ऊपर की दोनों सेटिंग पर लागू होते हैं।"
 
 msgid "Check highlighted"
 msgstr "हाइलाइट किए गए चुनें"
@@ -154,6 +175,27 @@ msgstr "डाउनलोड हो रहा है"
 msgid "Downloads at once"
 msgstr "एक साथ डाउनलोड"
 
+msgid "Edit…"
+msgstr "संपादित करें…"
+
+msgid "Enter a server name such as example.org."
+msgstr "example.org जैसा सर्वर नाम दर्ज करें।"
+
+msgid "Enter the access key."
+msgstr "एक्सेस कुंजी दर्ज करें।"
+
+msgid "Enter the access token."
+msgstr "एक्सेस टोकन दर्ज करें।"
+
+msgid "Enter the password."
+msgstr "पासवर्ड दर्ज करें।"
+
+msgid "Enter the secret key."
+msgstr "गुप्त कुंजी दर्ज करें।"
+
+msgid "Enter the user name."
+msgstr "उपयोगकर्ता नाम दर्ज करें।"
+
 msgid "Failed"
 msgstr "विफल"
 
@@ -196,8 +238,14 @@ msgstr "सत्यापित वीडियो उपकरण स्था
 msgid "Invalid file selection."
 msgstr "अमान्य फ़ाइल चयन।"
 
+msgid "Kind"
+msgstr "प्रकार"
+
 msgid "Language"
 msgstr "भाषा"
+
+msgid "Leave empty to keep the saved one"
+msgstr "सहेजा हुआ रखने के लिए खाली छोड़ें"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "आयु जाँच या अन्य प्रतिबंधों के लिए yt-dlp को आपके ब्राउज़र से इस साइट की कुकीज़ पढ़ने देता है। यह आपके ब्राउज़र के साइन-इन का उपयोग करता है।"
@@ -237,6 +285,9 @@ msgstr "कतार में सबसे ऊपर ले जाएँ"
 msgid "Name"
 msgstr "नाम"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "यहाँ कोई क्रेडेंशियल स्टोर उपलब्ध नहीं है: साइन-इन केवल Skein बंद होने तक रखे जाते हैं।"
+
 msgid "Open folder"
 msgstr "फ़ोल्डर खोलें"
 
@@ -245,6 +296,9 @@ msgstr "कार्रवाई रद्द की गई। आप फिर 
 
 msgid "Partial download retained"
 msgstr "आंशिक डाउनलोड रखा गया"
+
+msgid "Password"
+msgstr "पासवर्ड"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "ऊपर URL चिपकाएँ। डाउनलोड जोड़ने से पहले एक, सभी या चुनी हुई फ़ाइलें चुनें।"
@@ -303,11 +357,18 @@ msgstr "सूची से हटाएँ(&M)\tDel"
 msgid "Re&try"
 msgstr "फिर कोशिश करें(&T)"
 
+msgid "Remember on this computer"
+msgstr "इस कंप्यूटर पर याद रखें"
+
 msgid "Remove"
 msgstr "हटाएँ"
 
 msgid "Remove All"
 msgstr "सभी हटाएँ"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "%s का साइन-इन हटाएँ?"
 
 msgid "Resume all"
 msgstr "सभी फिर शुरू करें"
@@ -330,6 +391,9 @@ msgstr "यहाँ सहेजें"
 
 msgid "Search downloads"
 msgstr "डाउनलोड खोजें"
+
+msgid "Secret key"
+msgstr "गुप्त कुंजी"
 
 msgid "Select all"
 msgstr "सभी चुनें"
@@ -354,6 +418,18 @@ msgstr "सर्वर गति"
 
 msgid "Settings"
 msgstr "सेटिंग"
+
+msgid "Sign in with"
+msgstr "इससे साइन इन करें"
+
+msgid "Sign-in"
+msgstr "साइन-इन"
+
+msgid "Sign-ins"
+msgstr "साइन-इन"
+
+msgid "Site"
+msgstr "साइट"
 
 msgid "Site access"
 msgstr "साइट पहुँच"
@@ -424,6 +500,12 @@ msgstr "नई भाषा Skein Downloader के अगली बार श�
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "नई थीम Skein Downloader के अगली बार शुरू होने पर लागू होगी।"
 
+msgid "The password can be read by anyone on the network path."
+msgstr "नेटवर्क मार्ग पर कोई भी पासवर्ड पढ़ सकता है।"
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "साइन-इन को क्रेडेंशियल स्टोर में सहेजा नहीं जा सका। इसे Skein बंद होने तक रखा जाएगा।"
+
 msgid "Theme"
 msgstr "थीम"
 
@@ -472,6 +554,12 @@ msgstr "yt-dlp अपडेट करें"
 msgid "Use cookies from"
 msgstr "यहाँ से कुकीज़ उपयोग करें"
 
+msgid "User name"
+msgstr "उपयोगकर्ता नाम"
+
+msgid "User name and password"
+msgstr "उपयोगकर्ता नाम और पासवर्ड"
+
 msgid "Verifying SHA-1"
 msgstr "SHA-1 सत्यापित हो रहा है"
 
@@ -510,6 +598,12 @@ msgstr "खाली कनेक्शन की प्रतीक्षा �
 
 msgid "Working…"
 msgstr "काम जारी…"
+
+msgid "not available"
+msgstr "उपलब्ध नहीं"
+
+msgid "until Skein closes"
+msgstr "Skein बंद होने तक"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp अपडेट पूरा हुआ।"

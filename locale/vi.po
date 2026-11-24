@@ -31,6 +31,15 @@ msgstr "+ Video"
 msgid "About"
 msgstr "Giới thiệu"
 
+msgid "Access key"
+msgstr "Khóa truy cập"
+
+msgid "Access keys"
+msgstr "Khóa truy cập"
+
+msgid "Access token"
+msgstr "Mã truy cập"
+
 msgid "Active"
 msgstr "Đang hoạt động"
 
@@ -44,17 +53,26 @@ msgstr "Đã thêm %zu lượt tải. Các tệp hiện có và mục trùng l�
 msgid "Added to downloads."
 msgstr "Đã thêm vào danh sách tải."
 
+msgid "Add…"
+msgstr "Thêm…"
+
 msgid "All"
 msgstr "Tất cả"
 
 msgid "All paused  ·  "
 msgstr "Đã tạm dừng tất cả  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "Cho phép trên kết nối không mã hóa (http hoặc ftp)"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "Đã có trong danh sách tải. Hãy tiếp tục từ cửa sổ chính."
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "Trình quản lý tải tệp và video mã nguồn mở.\nVẫn đang được phát triển."
+
+msgid "Another server"
+msgstr "Máy chủ khác"
 
 msgid "Assembling"
 msgstr "Đang ghép"
@@ -88,6 +106,9 @@ msgstr "Không thể thêm tệp"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "Không tìm thấy Windows PowerShell."
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "Thay đổi đối với các đăng nhập được lưu ngay khi bạn thực hiện. OK và Hủy áp dụng cho hai cài đặt ở trên."
 
 msgid "Check highlighted"
 msgstr "Đánh dấu các mục được chọn"
@@ -154,6 +175,27 @@ msgstr "Đang tải"
 msgid "Downloads at once"
 msgstr "Số lượt tải cùng lúc"
 
+msgid "Edit…"
+msgstr "Sửa…"
+
+msgid "Enter a server name such as example.org."
+msgstr "Hãy nhập tên máy chủ, chẳng hạn example.org."
+
+msgid "Enter the access key."
+msgstr "Hãy nhập khóa truy cập."
+
+msgid "Enter the access token."
+msgstr "Hãy nhập mã truy cập."
+
+msgid "Enter the password."
+msgstr "Hãy nhập mật khẩu."
+
+msgid "Enter the secret key."
+msgstr "Hãy nhập khóa bí mật."
+
+msgid "Enter the user name."
+msgstr "Hãy nhập tên người dùng."
+
 msgid "Failed"
 msgstr "Thất bại"
 
@@ -196,8 +238,14 @@ msgstr "Đang cài đặt công cụ video đã xác minh…"
 msgid "Invalid file selection."
 msgstr "Lựa chọn tệp không hợp lệ."
 
+msgid "Kind"
+msgstr "Loại"
+
 msgid "Language"
 msgstr "Ngôn ngữ"
+
+msgid "Leave empty to keep the saved one"
+msgstr "Để trống để giữ mục đã lưu"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "Cho phép yt-dlp đọc cookie của trang web từ trình duyệt để xác minh tuổi hoặc vượt qua các bước kiểm tra khác. Công cụ sử dụng phiên đăng nhập của trình duyệt."
@@ -237,6 +285,9 @@ msgstr "Chuyển lên đầu hàng đợi"
 msgid "Name"
 msgstr "Tên"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "Ở đây không có kho thông tin xác thực: các đăng nhập chỉ được giữ đến khi Skein đóng."
+
 msgid "Open folder"
 msgstr "Mở thư mục"
 
@@ -245,6 +296,9 @@ msgstr "Đã hủy thao tác. Bạn có thể thử lại."
 
 msgid "Partial download retained"
 msgstr "Đã giữ lại phần đã tải"
+
+msgid "Password"
+msgstr "Mật khẩu"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "Dán URL ở trên. Chọn một, tất cả hoặc các tệp cụ thể trước khi thêm vào danh sách tải."
@@ -303,11 +357,18 @@ msgstr "&Xóa khỏi danh sách\tDel"
 msgid "Re&try"
 msgstr "Thử &lại"
 
+msgid "Remember on this computer"
+msgstr "Ghi nhớ trên máy tính này"
+
 msgid "Remove"
 msgstr "Xóa"
 
 msgid "Remove All"
 msgstr "Xóa tất cả"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "Xóa đăng nhập cho %s?"
 
 msgid "Resume all"
 msgstr "Tiếp tục tất cả"
@@ -330,6 +391,9 @@ msgstr "Lưu vào"
 
 msgid "Search downloads"
 msgstr "Tìm kiếm lượt tải"
+
+msgid "Secret key"
+msgstr "Khóa bí mật"
 
 msgid "Select all"
 msgstr "Chọn tất cả"
@@ -354,6 +418,18 @@ msgstr "Tốc độ máy chủ"
 
 msgid "Settings"
 msgstr "Cài đặt"
+
+msgid "Sign in with"
+msgstr "Đăng nhập bằng"
+
+msgid "Sign-in"
+msgstr "Đăng nhập"
+
+msgid "Sign-ins"
+msgstr "Đăng nhập"
+
+msgid "Site"
+msgstr "Trang web"
 
 msgid "Site access"
 msgstr "Truy cập trang web"
@@ -424,6 +500,12 @@ msgstr "Ngôn ngữ mới sẽ được áp dụng khi khởi động Skein Down
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "Giao diện mới sẽ được áp dụng khi khởi động Skein Downloader lần tới."
 
+msgid "The password can be read by anyone on the network path."
+msgstr "Bất kỳ ai trên đường truyền mạng đều có thể đọc được mật khẩu."
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "Không thể lưu đăng nhập vào kho thông tin xác thực. Nó sẽ được giữ đến khi Skein đóng."
+
 msgid "Theme"
 msgstr "Giao diện"
 
@@ -472,6 +554,12 @@ msgstr "Cập nhật yt-dlp"
 msgid "Use cookies from"
 msgstr "Dùng cookie từ"
 
+msgid "User name"
+msgstr "Tên người dùng"
+
+msgid "User name and password"
+msgstr "Tên người dùng và mật khẩu"
+
 msgid "Verifying SHA-1"
 msgstr "Đang xác minh SHA-1"
 
@@ -510,6 +598,12 @@ msgstr "Đang chờ kết nối trống"
 
 msgid "Working…"
 msgstr "Đang xử lý…"
+
+msgid "not available"
+msgstr "không khả dụng"
+
+msgid "until Skein closes"
+msgstr "đến khi Skein đóng"
 
 msgid "yt-dlp update finished."
 msgstr "Đã cập nhật xong yt-dlp."

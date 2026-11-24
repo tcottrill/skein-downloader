@@ -31,6 +31,15 @@ msgstr "+ 影片"
 msgid "About"
 msgstr "關於"
 
+msgid "Access key"
+msgstr "存取金鑰"
+
+msgid "Access keys"
+msgstr "存取金鑰"
+
+msgid "Access token"
+msgstr "存取權杖"
+
 msgid "Active"
 msgstr "進行中"
 
@@ -44,17 +53,26 @@ msgstr "已加入 %zu 個下載。現有檔案與重複的佇列項目已保留�
 msgid "Added to downloads."
 msgstr "已加入下載。"
 
+msgid "Add…"
+msgstr "新增…"
+
 msgid "All"
 msgstr "全部"
 
 msgid "All paused  ·  "
 msgstr "全部已暫停  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "允許在未加密的連線（http 或 ftp）上使用"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "已在下載清單中。請從主視窗繼續下載。"
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "開放原始碼的檔案與影片下載管理工具。\n目前仍在開發中。"
+
+msgid "Another server"
+msgstr "其他伺服器"
 
 msgid "Assembling"
 msgstr "正在合併"
@@ -88,6 +106,9 @@ msgstr "無法加入檔案"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "找不到 Windows PowerShell。"
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "登入資訊的變更會立即儲存。「確定」與「取消」僅適用於上方的兩項設定。"
 
 msgid "Check highlighted"
 msgstr "勾選反白項目"
@@ -154,6 +175,27 @@ msgstr "正在下載"
 msgid "Downloads at once"
 msgstr "同時下載數"
 
+msgid "Edit…"
+msgstr "編輯…"
+
+msgid "Enter a server name such as example.org."
+msgstr "請輸入伺服器名稱，例如 example.org。"
+
+msgid "Enter the access key."
+msgstr "請輸入存取金鑰。"
+
+msgid "Enter the access token."
+msgstr "請輸入存取權杖。"
+
+msgid "Enter the password."
+msgstr "請輸入密碼。"
+
+msgid "Enter the secret key."
+msgstr "請輸入私密金鑰。"
+
+msgid "Enter the user name."
+msgstr "請輸入使用者名稱。"
+
 msgid "Failed"
 msgstr "失敗"
 
@@ -196,8 +238,14 @@ msgstr "正在安裝已驗證的影片工具…"
 msgid "Invalid file selection."
 msgstr "檔案選取無效。"
 
+msgid "Kind"
+msgstr "類型"
+
 msgid "Language"
 msgstr "語言"
+
+msgid "Leave empty to keep the saved one"
+msgstr "留空則保留已儲存的內容"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "允許 yt-dlp 從瀏覽器讀取此網站的 Cookie，以通過年齡驗證或其他限制。操作會使用您在瀏覽器中的登入狀態。"
@@ -237,6 +285,9 @@ msgstr "移到佇列頂端"
 msgid "Name"
 msgstr "名稱"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "此處沒有可用的認證存放區：登入資訊僅保留到 Skein 關閉為止。"
+
 msgid "Open folder"
 msgstr "開啟資料夾"
 
@@ -245,6 +296,9 @@ msgstr "操作已取消。您可以重試。"
 
 msgid "Partial download retained"
 msgstr "已保留部分下載"
+
+msgid "Password"
+msgstr "密碼"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "請在上方貼上網址。加入下載前，請選取一個、全部或指定檔案。"
@@ -303,11 +357,18 @@ msgstr "從清單移除(&M)\tDel"
 msgid "Re&try"
 msgstr "重試(&T)"
 
+msgid "Remember on this computer"
+msgstr "在此電腦上記住"
+
 msgid "Remove"
 msgstr "移除"
 
 msgid "Remove All"
 msgstr "全部移除"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "要移除 %s 的登入資訊嗎？"
 
 msgid "Resume all"
 msgstr "全部繼續"
@@ -330,6 +391,9 @@ msgstr "儲存位置"
 
 msgid "Search downloads"
 msgstr "搜尋下載"
+
+msgid "Secret key"
+msgstr "私密金鑰"
 
 msgid "Select all"
 msgstr "全部選取"
@@ -354,6 +418,18 @@ msgstr "伺服器速度"
 
 msgid "Settings"
 msgstr "設定"
+
+msgid "Sign in with"
+msgstr "登入方式"
+
+msgid "Sign-in"
+msgstr "登入"
+
+msgid "Sign-ins"
+msgstr "登入"
+
+msgid "Site"
+msgstr "網站"
 
 msgid "Site access"
 msgstr "網站存取"
@@ -424,6 +500,12 @@ msgstr "新語言將在下次啟動 Skein Downloader 時套用。"
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "新佈景主題將在下次啟動 Skein Downloader 時套用。"
 
+msgid "The password can be read by anyone on the network path."
+msgstr "網路路徑上的任何人都可以讀取該密碼。"
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "無法將登入資訊儲存到認證存放區。它會保留到 Skein 關閉為止。"
+
 msgid "Theme"
 msgstr "佈景主題"
 
@@ -472,6 +554,12 @@ msgstr "更新 yt-dlp"
 msgid "Use cookies from"
 msgstr "使用 Cookie 來源"
 
+msgid "User name"
+msgstr "使用者名稱"
+
+msgid "User name and password"
+msgstr "使用者名稱與密碼"
+
 msgid "Verifying SHA-1"
 msgstr "正在驗證 SHA-1"
 
@@ -510,6 +598,12 @@ msgstr "正在等待空閒連線"
 
 msgid "Working…"
 msgstr "正在處理…"
+
+msgid "not available"
+msgstr "無法使用"
+
+msgid "until Skein closes"
+msgstr "直到 Skein 關閉"
 
 msgid "yt-dlp update finished."
 msgstr "yt-dlp 更新完成。"

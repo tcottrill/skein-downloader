@@ -31,6 +31,15 @@ msgstr ""
 msgid "About"
 msgstr ""
 
+msgid "Access key"
+msgstr ""
+
+msgid "Access keys"
+msgstr ""
+
+msgid "Access token"
+msgstr ""
+
 msgid "Active"
 msgstr ""
 
@@ -44,16 +53,25 @@ msgstr ""
 msgid "Added to downloads."
 msgstr ""
 
+msgid "Add…"
+msgstr ""
+
 msgid "All"
 msgstr ""
 
 msgid "All paused  ·  "
 msgstr ""
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr ""
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr ""
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
+msgstr ""
+
+msgid "Another server"
 msgstr ""
 
 msgid "Assembling"
@@ -87,6 +105,9 @@ msgid "Cannot add files"
 msgstr ""
 
 msgid "Cannot locate Windows PowerShell."
+msgstr ""
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
 msgstr ""
 
 msgid "Check highlighted"
@@ -154,6 +175,27 @@ msgstr ""
 msgid "Downloads at once"
 msgstr ""
 
+msgid "Edit…"
+msgstr ""
+
+msgid "Enter a server name such as example.org."
+msgstr ""
+
+msgid "Enter the access key."
+msgstr ""
+
+msgid "Enter the access token."
+msgstr ""
+
+msgid "Enter the password."
+msgstr ""
+
+msgid "Enter the secret key."
+msgstr ""
+
+msgid "Enter the user name."
+msgstr ""
+
 msgid "Failed"
 msgstr ""
 
@@ -196,7 +238,13 @@ msgstr ""
 msgid "Invalid file selection."
 msgstr ""
 
+msgid "Kind"
+msgstr ""
+
 msgid "Language"
+msgstr ""
+
+msgid "Leave empty to keep the saved one"
 msgstr ""
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
@@ -237,6 +285,9 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr ""
+
 msgid "Open folder"
 msgstr ""
 
@@ -244,6 +295,9 @@ msgid "Operation cancelled. You can retry."
 msgstr ""
 
 msgid "Partial download retained"
+msgstr ""
+
+msgid "Password"
 msgstr ""
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
@@ -303,10 +357,17 @@ msgstr ""
 msgid "Re&try"
 msgstr ""
 
+msgid "Remember on this computer"
+msgstr ""
+
 msgid "Remove"
 msgstr ""
 
 msgid "Remove All"
+msgstr ""
+
+#, c-format
+msgid "Remove the sign-in for %s?"
 msgstr ""
 
 msgid "Resume all"
@@ -331,6 +392,9 @@ msgstr ""
 msgid "Search downloads"
 msgstr ""
 
+msgid "Secret key"
+msgstr ""
+
 msgid "Select all"
 msgstr ""
 
@@ -353,6 +417,18 @@ msgid "Server speeds"
 msgstr ""
 
 msgid "Settings"
+msgstr ""
+
+msgid "Sign in with"
+msgstr ""
+
+msgid "Sign-in"
+msgstr ""
+
+msgid "Sign-ins"
+msgstr ""
+
+msgid "Site"
 msgstr ""
 
 msgid "Site access"
@@ -424,6 +500,12 @@ msgstr ""
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr ""
 
+msgid "The password can be read by anyone on the network path."
+msgstr ""
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr ""
+
 msgid "Theme"
 msgstr ""
 
@@ -472,6 +554,12 @@ msgstr ""
 msgid "Use cookies from"
 msgstr ""
 
+msgid "User name"
+msgstr ""
+
+msgid "User name and password"
+msgstr ""
+
 msgid "Verifying SHA-1"
 msgstr ""
 
@@ -509,6 +597,12 @@ msgid "Waiting for a free connection"
 msgstr ""
 
 msgid "Working…"
+msgstr ""
+
+msgid "not available"
+msgstr ""
+
+msgid "until Skein closes"
 msgstr ""
 
 msgid "yt-dlp update finished."

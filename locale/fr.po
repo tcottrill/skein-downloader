@@ -31,6 +31,15 @@ msgstr "+ Vidéo"
 msgid "About"
 msgstr "À propos"
 
+msgid "Access key"
+msgstr "Clé d’accès"
+
+msgid "Access keys"
+msgstr "Clés d’accès"
+
+msgid "Access token"
+msgstr "Jeton d’accès"
+
 msgid "Active"
 msgstr "En cours"
 
@@ -44,17 +53,26 @@ msgstr "%zu téléchargements ajoutés. Les fichiers existants et les doublons d
 msgid "Added to downloads."
 msgstr "Ajouté aux téléchargements."
 
+msgid "Add…"
+msgstr "Ajouter…"
+
 msgid "All"
 msgstr "Tous"
 
 msgid "All paused  ·  "
 msgstr "Tout est suspendu  ·  "
 
+msgid "Allow on an unencrypted connection (http or ftp)"
+msgstr "Autoriser sur une connexion non chiffrée (http ou ftp)"
+
 msgid "Already in downloads. Resume it from the main window."
 msgstr "Déjà dans les téléchargements. Reprenez-le depuis la fenêtre principale."
 
 msgid "An open-source download manager for files and video.\nStill a work in progress."
 msgstr "Un gestionnaire de téléchargement de fichiers et de vidéos libre.\nToujours en cours de développement."
+
+msgid "Another server"
+msgstr "Autre serveur"
 
 msgid "Assembling"
 msgstr "Assemblage"
@@ -88,6 +106,9 @@ msgstr "Impossible d’ajouter des fichiers"
 
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell est introuvable."
+
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgstr "Les modifications des connexions sont enregistrées immédiatement. OK et Annuler concernent les deux paramètres ci-dessus."
 
 msgid "Check highlighted"
 msgstr "Cocher la sélection"
@@ -154,6 +175,27 @@ msgstr "Téléchargement"
 msgid "Downloads at once"
 msgstr "Téléchargements simultanés"
 
+msgid "Edit…"
+msgstr "Modifier…"
+
+msgid "Enter a server name such as example.org."
+msgstr "Saisissez un nom de serveur tel que example.org."
+
+msgid "Enter the access key."
+msgstr "Saisissez la clé d’accès."
+
+msgid "Enter the access token."
+msgstr "Saisissez le jeton d’accès."
+
+msgid "Enter the password."
+msgstr "Saisissez le mot de passe."
+
+msgid "Enter the secret key."
+msgstr "Saisissez la clé secrète."
+
+msgid "Enter the user name."
+msgstr "Saisissez le nom d’utilisateur."
+
 msgid "Failed"
 msgstr "Échec"
 
@@ -196,8 +238,14 @@ msgstr "Installation des outils vidéo vérifiés…"
 msgid "Invalid file selection."
 msgstr "Sélection de fichiers non valide."
 
+msgid "Kind"
+msgstr "Type"
+
 msgid "Language"
 msgstr "Langue"
+
+msgid "Leave empty to keep the saved one"
+msgstr "Laisser vide pour conserver celui enregistré"
 
 msgid "Lets yt-dlp read this site's cookies from your browser, for age checks or other gates. It acts with your browser's sign-in."
 msgstr "Permet à yt-dlp de lire les cookies de ce site dans le navigateur pour les contrôles d’âge et autres restrictions. Il utilise votre connexion du navigateur."
@@ -237,6 +285,9 @@ msgstr "Placer en tête de la file d’attente"
 msgid "Name"
 msgstr "Nom"
 
+msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr "Aucun gestionnaire d’identifiants n’est disponible ici : les connexions ne sont conservées que jusqu’à la fermeture de Skein."
+
 msgid "Open folder"
 msgstr "Ouvrir le dossier"
 
@@ -245,6 +296,9 @@ msgstr "Opération annulée. Vous pouvez réessayer."
 
 msgid "Partial download retained"
 msgstr "Téléchargement partiel conservé"
+
+msgid "Password"
+msgstr "Mot de passe"
 
 msgid "Paste a URL above. Select one, all, or specific files before adding downloads."
 msgstr "Collez une URL ci-dessus. Sélectionnez un ou plusieurs fichiers avant d’ajouter les téléchargements."
@@ -303,11 +357,18 @@ msgstr "Re&tirer de la liste\tDel"
 msgid "Re&try"
 msgstr "Ré&essayer"
 
+msgid "Remember on this computer"
+msgstr "Mémoriser sur cet ordinateur"
+
 msgid "Remove"
 msgstr "Retirer"
 
 msgid "Remove All"
 msgstr "Tout retirer"
+
+#, c-format
+msgid "Remove the sign-in for %s?"
+msgstr "Retirer la connexion pour %s ?"
 
 msgid "Resume all"
 msgstr "Tout reprendre"
@@ -330,6 +391,9 @@ msgstr "Enregistrer dans"
 
 msgid "Search downloads"
 msgstr "Rechercher un téléchargement"
+
+msgid "Secret key"
+msgstr "Clé secrète"
 
 msgid "Select all"
 msgstr "Tout sélectionner"
@@ -354,6 +418,18 @@ msgstr "Vitesse des serveurs"
 
 msgid "Settings"
 msgstr "Paramètres"
+
+msgid "Sign in with"
+msgstr "Se connecter avec"
+
+msgid "Sign-in"
+msgstr "Connexion"
+
+msgid "Sign-ins"
+msgstr "Connexions"
+
+msgid "Site"
+msgstr "Site"
 
 msgid "Site access"
 msgstr "Accès au site"
@@ -424,6 +500,12 @@ msgstr "La nouvelle langue sera appliquée au prochain démarrage de Skein Downl
 msgid "The new theme applies the next time Skein Downloader starts."
 msgstr "Le nouveau thème sera appliqué au prochain démarrage de Skein Downloader."
 
+msgid "The password can be read by anyone on the network path."
+msgstr "Le mot de passe peut être lu par n’importe qui sur le chemin réseau."
+
+msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
+msgstr "La connexion n’a pas pu être enregistrée dans le gestionnaire d’identifiants. Elle sera conservée jusqu’à la fermeture de Skein."
+
 msgid "Theme"
 msgstr "Thème"
 
@@ -472,6 +554,12 @@ msgstr "Mettre à jour yt-dlp"
 msgid "Use cookies from"
 msgstr "Utiliser les cookies de"
 
+msgid "User name"
+msgstr "Nom d’utilisateur"
+
+msgid "User name and password"
+msgstr "Nom d’utilisateur et mot de passe"
+
 msgid "Verifying SHA-1"
 msgstr "Vérification SHA-1"
 
@@ -510,6 +598,12 @@ msgstr "En attente d'une connexion libre"
 
 msgid "Working…"
 msgstr "En cours…"
+
+msgid "not available"
+msgstr "indisponible"
+
+msgid "until Skein closes"
+msgstr "jusqu’à la fermeture de Skein"
 
 msgid "yt-dlp update finished."
 msgstr "Mise à jour de yt-dlp terminée."

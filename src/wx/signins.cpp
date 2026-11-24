@@ -65,6 +65,11 @@ void storeDelete(const archive::SignIn&) {
 }
 #endif
 
+// Host names are case-insensitive: one entry for Example.org and example.org.
+std::string normalHost(const std::string& host) {
+    return archive::lower(archive::trim(host));
+}
+
 std::vector<Entry>::iterator find(const std::string& host, unsigned port) {
     return std::find_if(table.begin(), table.end(), [&](const Entry& e) {
         return e.row.value.host == host && e.row.value.port == port;
@@ -101,7 +106,9 @@ std::vector<SavedSignIn> signIns() {
     return rows;
 }
 
-bool saveSignIn(const archive::SignIn& value, bool remember) {
+bool saveSignIn(const archive::SignIn& given, bool remember) {
+    archive::SignIn value = given;
+    value.host = normalHost(value.host);
     auto existing = find(value.host, value.port);
     Entry entry;
     entry.row.value = value;
@@ -138,7 +145,7 @@ bool saveSignIn(const archive::SignIn& value, bool remember) {
 }
 
 void removeSignIn(const std::string& host, unsigned port) {
-    auto it = find(host, port);
+    auto it = find(normalHost(host), port);
     if (it == table.end()) return;
     if (it->row.remembered && storeUsable()) storeDelete(it->row.value);
     wipe(it->secret);
@@ -154,6 +161,7 @@ void loadSignIns() {
     // Only now may the store be touched: an empty list never asks the system to unlock anything.
     const bool usable = !parsed.entries.empty() && storeUsable();
     for (auto& s : parsed.entries) {
+        s.host = normalHost(s.host);
         if (find(s.host, s.port) != table.end()) continue;
         Entry entry;
         entry.row.value = s;
