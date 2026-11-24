@@ -1,7 +1,33 @@
 #include "ui.h"
 #include <wx/menu.h>
 #include "util/sys_log.h"
+#include <unordered_set>
 namespace lite {
+namespace {
+// The file list in virtual mode, like the main window's JobList: the control asks only for the
+// rows it draws, so filtering, sorting and checking cost the same with 40,000 files as with 40.
+// The check boxes come from the picker's own data too; the control keeps none.
+class FileList : public wxListCtrl {
+    std::function<wxString(long, long)> text;
+    std::function<bool(long)> isChecked;
+    mutable wxItemAttr even, odd;
+
+public:
+    FileList(wxWindow* parent, std::function<wxString(long, long)> cellText, std::function<bool(long)> checkedRow)
+        : wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_VIRTUAL), text(std::move(cellText)), isChecked(std::move(checkedRow)) {}
+
+protected:
+    wxString OnGetItemText(long item, long column) const override { return text(item, column); }
+    int OnGetItemImage(long) const override { return -1; }
+    bool OnGetItemIsChecked(long item) const override { return isChecked(item); }
+    // Alternate rows: the window colour, then the button-face colour, as in the main window.
+    wxItemAttr* OnGetItemAttr(long item) const override {
+        auto& attr = item % 2 ? odd : even;
+        attr.SetBackgroundColour(wxSystemSettings::GetColour(item % 2 ? wxSYS_COLOUR_BTNFACE : wxSYS_COLOUR_WINDOW));
+        return &attr;
+    }
+};
+}
 class FilePicker : public wxDialog {
     downloads::Queue& queue;
     wxTextCtrl *url, *filter, *folder;
@@ -17,7 +43,7 @@ class FilePicker : public wxDialog {
     std::future<std::vector<archive::ServerSpeed>> measuring;
     std::shared_ptr<std::atomic_bool> stop = std::make_shared<std::atomic_bool>(false);
     wxTimer timer;
-    bool closing = false, rebuilding = false;
+    bool closing = false;
     int sortColumn = -1;
     bool ascending = true;
     friend void runBenchmark(MainWindow&, downloads::Queue&, size_t); // benchmark only
@@ -70,57 +96,80 @@ class FilePicker : public wxDialog {
             }
         status->SetLabel(wxString::Format(_(L"%zu selected / %zu files / "), n, item.files.size()) + w(archive::formatBytes(bytes)) + (unknown ? _(L" + unknown sizes") : wxString()));
     }
+    // Runs on every keystroke in the link and folder boxes, so it saves only these small values;
+    // the checked files are saved by saveSelection().
     void preferences() {
         save("folder", folder->GetValue());
         save("connections", wxString::Format("%d", connections->GetSelection()));
         if (!item.files.empty() && archive::isArchiveItem(item) && servers->GetSelection() >= 0) save("server", w(routes[size_t(servers->GetSelection())]));
-        if (!item.files.empty()) {
-            nlohmann::json names = nlohmann::json::array();
-            for (size_t i = 0; i < checked.size(); ++i)
-                if (checked[i]) names.push_back(item.files[i].name);
-            save("fileItem", w(item.id));
-            save("fileSelection", w(names.dump()));
+    }
+    // The checked files' names, restored when the same item is loaded again (see tick()).
+    void saveSelection() {
+        if (item.files.empty()) return;
+        nlohmann::json names = nlohmann::json::array();
+        for (size_t i = 0; i < checked.size(); ++i)
+            if (checked[i]) names.push_back(item.files[i].name);
+        save("fileItem", w(item.id));
+        save("fileSelection", w(names.dump()));
+    }
+    // The list's cells, read by the control for the rows it draws.
+    wxString cell(long row, long column) const {
+        if (row < 0 || size_t(row) >= rows.size()) return {};
+        auto i = rows[size_t(row)];
+        auto& f = item.files[i];
+        switch (column) {
+        case 0: return w(f.name);
+        case 1: return f.sizeKnown ? w(archive::formatBytes(f.size)) : _(L"Unknown");
+        case 2: return w(f.format);
+        case 3: return checked[i] ? _(L"Selected") : wxString();
+        default: return {};
         }
     }
+    bool rowChecked(long row) const { return row >= 0 && size_t(row) < rows.size() && checked[rows[size_t(row)]]; }
     void refresh() {
-        // Keep highlighted rows across filtering.
-        std::set<size_t> highlighted;
+        // Keep highlighted rows across filtering and sorting: the control keeps them by row, so they
+        // move to the rows the same files have now.
+        std::vector<char> highlighted(item.files.size(), 0);
+        bool anyHighlighted = false;
         for (long r = -1; (r = list->GetNextItem(r, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1;)
-            if (size_t(r) < rows.size()) highlighted.insert(rows[size_t(r)]);
-        rebuilding = true;
-        list->Freeze();
-        list->DeleteAllItems();
+            if (size_t(r) < rows.size() && rows[size_t(r)] < highlighted.size()) highlighted[rows[size_t(r)]] = anyHighlighted = true;
         rows.clear();
         auto query = filter->GetValue().Lower();
-        std::vector<size_t> shown;
         for (size_t i = 0; i < item.files.size(); ++i)
-            if (w(item.files[i].name).Lower().Contains(query)) shown.push_back(i);
-        order(shown);
-        for (auto i : shown) {
-            auto& f = item.files[i];
-            long r = list->InsertItem(list->GetItemCount(), w(f.name));
-            list->SetItem(r, 1, f.sizeKnown ? w(archive::formatBytes(f.size)) : _(L"Unknown"));
-            list->SetItem(r, 2, w(f.format));
-            list->SetItem(r, 3, checked[i] ? _(L"Selected") : wxString());
-            list->SetItemBackgroundColour(r, r % 2 ? wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE) : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-            rows.push_back(i);
-            list->CheckItem(r, checked[i]);
-            if (highlighted.contains(i)) list->SetItemState(r, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
-        }
-        list->Thaw();
-        rebuilding = false;
+            if (query.empty() || w(item.files[i].name).Lower().Contains(query)) rows.push_back(i);
+        order(rows);
+        if (anyHighlighted) list->SetItemState(-1, 0, wxLIST_STATE_SELECTED);
+        list->SetItemCount(long(rows.size()));
+        if (anyHighlighted)
+            for (size_t r = 0; r < rows.size(); ++r)
+                if (highlighted[rows[r]]) list->SetItemState(long(r), wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+        // Only the rows on screen are drawn again.
+        list->Refresh();
         summary();
     }
     void select(bool value, bool highlighted) {
-        rebuilding = true;
-        for (size_t i = 0; i < rows.size(); ++i)
-            if (!highlighted || (list->GetItemState(long(i), wxLIST_STATE_SELECTED) & wxLIST_STATE_SELECTED)) {
-                checked[rows[i]] = value;
-                list->CheckItem(long(i), value);
-                list->SetItem(long(i), 3, value ? _(L"Selected") : wxString());
-            }
-        rebuilding = false;
+        if (highlighted) {
+            for (long r = -1; (r = list->GetNextItem(r, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1;)
+                if (size_t(r) < rows.size()) checked[rows[size_t(r)]] = value;
+        } else
+            for (auto i : rows) checked[i] = value;
+        list->Refresh();
         summary();
+    }
+    // Space checks or unchecks the focused row and the highlighted rows with it. Handled here on both
+    // platforms: in virtual mode neither the native list (wxMSW) nor wx's generic list (GTK) does it.
+    void toggleFocused() {
+        long focused = list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_FOCUSED);
+        if (focused < 0) focused = list->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+        if (focused < 0 || size_t(focused) >= rows.size()) return;
+        const bool value = !checked[rows[size_t(focused)]];
+        checked[rows[size_t(focused)]] = value;
+        if (list->GetItemState(focused, wxLIST_STATE_SELECTED) & wxLIST_STATE_SELECTED)
+            select(value, true);
+        else {
+            list->RefreshItem(focused);
+            summary();
+        }
     }
     void refreshServers() {
         // Mirrors are listed by host name; speeds follow an em dash.
@@ -152,6 +201,7 @@ class FilePicker : public wxDialog {
                 return;
             }
         preferences();
+        saveSelection();
         LOG_INFO("Loading files from %s", link.c_str());
         status->SetLabel(_(L"Loading files…"));
         auto flag = stop;
@@ -165,7 +215,11 @@ class FilePicker : public wxDialog {
                 checked.assign(item.files.size(), false);
                 auto names = nlohmann::json::parse(u(pref("fileSelection", "[]")), nullptr, false);
                 bool restore = item.selectedFile.empty() && pref("fileItem") == w(item.id) && names.is_array();
-                for (size_t i = 0; i < checked.size(); ++i) checked[i] = item.files[i].name == item.selectedFile || (restore ? std::find(names.begin(), names.end(), item.files[i].name) != names.end() : item.selectedFile.empty() && item.checkAll);
+                std::unordered_set<std::string> saved;
+                if (restore)
+                    for (auto& name : names)
+                        if (name.is_string()) saved.insert(name.get<std::string>());
+                for (size_t i = 0; i < checked.size(); ++i) checked[i] = item.files[i].name == item.selectedFile || (restore ? saved.contains(item.files[i].name) : item.selectedFile.empty() && item.checkAll);
                 speeds.clear();
                 refreshServers();
                 servers->Enable(archive::isArchiveItem(item));
@@ -195,6 +249,7 @@ class FilePicker : public wxDialog {
             auto jobs = fileJobs(item, checked, archive::pathFromUtf8(u(folder->GetValue())), counts[connections->GetSelection()], routes[size_t(servers->GetSelection())]);
             auto n = queue.addBatch(std::move(jobs));
             preferences();
+            saveSelection();
             status->SetLabel(wxString::Format(_(L"Added %zu downloads. Existing files and duplicate queue entries were kept."), n));
         } catch (const std::exception& e) {
             LOG_ERROR("Cannot add files: %s", e.what());
@@ -266,7 +321,14 @@ public:
             select(false, false);
         });
         box->Add(row, 0, wxEXPAND | wxBOTTOM, gap);
-        list = new wxListCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT);
+        list = new FileList(
+                this,
+                [this](long row, long column) {
+                    return cell(row, column);
+                },
+                [this](long row) {
+                    return rowChecked(row);
+                });
         list->EnableCheckBoxes();
         list->InsertColumn(0, _(L"Name"));
         list->InsertColumn(1, _(L"Size"));
@@ -361,15 +423,23 @@ public:
         servers->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
             preferences();
         });
+        // A click on a check box: in virtual mode both wxMSW and the generic list report the new state
+        // with these events and leave storing and drawing it to the program.
         auto check = [this](wxListEvent& e) {
-            if (!rebuilding && e.GetIndex() >= 0 && size_t(e.GetIndex()) < rows.size()) {
-                checked[rows[size_t(e.GetIndex())]] = list->IsItemChecked(e.GetIndex());
-                list->SetItem(e.GetIndex(), 3, list->IsItemChecked(e.GetIndex()) ? _(L"Selected") : wxString());
+            if (e.GetIndex() >= 0 && size_t(e.GetIndex()) < rows.size()) {
+                checked[rows[size_t(e.GetIndex())]] = e.GetEventType() == wxEVT_LIST_ITEM_CHECKED;
+                list->RefreshItem(e.GetIndex());
                 summary();
             }
         };
         list->Bind(wxEVT_LIST_ITEM_CHECKED, check);
         list->Bind(wxEVT_LIST_ITEM_UNCHECKED, check);
+        list->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& e) {
+            if (e.GetKeyCode() == WXK_SPACE && !e.HasAnyModifiers())
+                toggleFocused();
+            else
+                e.Skip();
+        });
         list->Bind(wxEVT_LIST_COL_CLICK, [this](wxListEvent& e) {
             sortBy(e.GetColumn());
         });
@@ -391,6 +461,7 @@ public:
         });
         Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& e) {
             preferences();
+            saveSelection();
             *stop = true;
             if (busy() && e.CanVeto()) {
                 closing = true;
