@@ -241,6 +241,26 @@ int main() {
                 }
                 if (!waiting || job.retryIn < 1) throw std::runtime_error("A Retry-After of 2 s was not honored over a 10 ms schedule");
             }
+            { // e2. A huge Retry-After is capped at one hour.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw archive::NetworkError("x", true, 7200);
+                };
+                downloads::Queue queue(begin("e2"), retryRunner);
+                queue.setRetryWaits({10ms}, 12);
+                queue.add("e2", "Archive", "e2", nullptr);
+                queue.start();
+                if (!waitRuns(1, 10s)) throw std::runtime_error("The job did not start");
+                bool waiting = false;
+                downloads::Job job;
+                for (int i = 0; i < 2000 && !waiting; ++i) {
+                    job = queue.snapshot().at(0);
+                    waiting = job.retryIn != 0;
+                    if (!waiting) std::this_thread::sleep_for(2ms);
+                }
+                if (!waiting || job.state != downloads::State::Queued || job.retryIn <= 3590 || job.retryIn > 3600)
+                    throw std::runtime_error("A Retry-After of 7200 s was not capped at one hour");
+                queue.pause(job.id);
+            }
             { // f. Progress resets the count.
                 behavior = [&](int run, const downloads::Job&, const downloads::Report& report) {
                     report(uint64_t(run), 0, "", "");

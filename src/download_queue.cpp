@@ -282,6 +282,9 @@ void Queue::work() {
                 // detail, and not started again before the wait is over.
                 auto wait = retryWaits_.empty() ? std::chrono::milliseconds(0) : retryWaits_[std::min<size_t>(entry->retries, retryWaits_.size() - 1)];
                 wait = std::max(wait, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(retryAfter)));
+                // A server's huge Retry-After must not park the job for days.
+                constexpr std::chrono::milliseconds maxRetryWait = std::chrono::hours(1);
+                wait = std::min(wait, maxRetryWait);
                 ++entry->retries;
                 entry->job.state = State::Queued;
                 entry->notBefore = std::chrono::steady_clock::now() + wait;
