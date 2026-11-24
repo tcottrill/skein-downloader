@@ -249,6 +249,10 @@ MainWindow::MainWindow(downloads::Queue& q)
     tools->Add(kofi, 0, wxALIGN_CENTER_VERTICAL | wxTOP | wxBOTTOM, FromDIP(4));
     // A wrap sizer drops a spacer that ends a row, so About and the gap after it share a box.
     auto end = new wxBoxSizer(wxHORIZONTAL);
+    action(_(L"Settings"), [this] {
+        showSettings(this, queue);
+    },
+           end);
     action(_(L"About"), [this] {
         showAbout(this);
     },
@@ -836,6 +840,15 @@ void MainWindow::smokeCheck() {
     if (tabs->GetSize().x < FromDIP(150) || tabs->GetSize().y < FromDIP(16)) throw std::runtime_error("View tabs are not fully visible");
     showFiles(this, queue);
     showVideo(this, queue);
+    {
+        // The settings round trip, without the modal dialog.
+        const auto before = pref("maxDownloads");
+        save("maxDownloads", "2");
+        applySettings(queue);
+        if (pref("maxDownloads") != "2") throw std::runtime_error("Settings were not saved");
+        save("maxDownloads", before.empty() ? wxString("4") : before);
+        applySettings(queue);
+    }
     queue.removeAll();
     std::ofstream(dataPath / "smoke-passed.txt") << "Native controls, six columns, view buttons, queue selection/filter, file checkboxes and shutdown passed.\n";
     CallAfter([this] {

@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 namespace archive {
-// The most connections that transfer file data at once to one server, across all downloads.
+// The maximum number of connections that transfer file data at once to one server, across all downloads.
 // Clamped to 1..16 (default 16); takes effect at once, also for connections that are waiting.
 // Process-wide; it is not saved here.
 void setHostLimit(unsigned connections);

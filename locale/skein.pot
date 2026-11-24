@@ -116,6 +116,9 @@ msgstr ""
 msgid "Connections per file"
 msgstr ""
 
+msgid "Connections per server"
+msgstr ""
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr ""
 
@@ -138,6 +141,9 @@ msgstr ""
 msgid "Downloading"
 msgstr ""
 
+msgid "Downloads at once"
+msgstr ""
+
 msgid "Failed"
 msgstr ""
 
@@ -157,6 +163,9 @@ msgid "Finished"
 msgstr ""
 
 msgid "History"
+msgstr ""
+
+msgid "How many downloads run at the same time."
 msgstr ""
 
 msgid "Install / repair tools"
@@ -328,6 +337,9 @@ msgstr ""
 msgid "Server speeds"
 msgstr ""
 
+msgid "Settings"
+msgstr ""
+
 msgid "Site access"
 msgstr ""
 
@@ -386,6 +398,9 @@ msgid "Test speeds"
 msgstr ""
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
+msgstr ""
+
+msgid "The maximum number of connections to one server, shared by all downloads."
 msgstr ""
 
 msgid "The new language applies the next time Skein Downloader starts."

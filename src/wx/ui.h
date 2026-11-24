@@ -78,6 +78,11 @@ inline bool ready(std::future<void>& f) {
 void appIcons(wxTopLevelWindow*);
 // Name, version, copyright and license (app.cpp).
 void showAbout(wxWindow*);
+// Reads "maxDownloads" (1-4, default 4) and "hostConnections" (1-16, default 16) from the
+// settings and gives them to the queue and the engine; anything invalid gives the default.
+void applySettings(downloads::Queue&);
+// Modal dialog for those two settings; OK saves them and applies them at once.
+void showSettings(wxWindow*, downloads::Queue&);
 // Dedicated toolbar selector with circular flag icons in its native popup menu.
 wxButton* languageButton(wxWindow*);
 // With load, a given link is loaded at once (the main window's Load); otherwise it is only filled in.

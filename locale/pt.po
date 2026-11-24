@@ -116,6 +116,9 @@ msgstr "A ligar"
 msgid "Connections per file"
 msgstr "Ligações por ficheiro"
 
+msgid "Connections per server"
+msgstr "Ligações por servidor"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Os cookies permitem que este site utilize a sessão iniciada no seu navegador. Use-os apenas em sites de confiança. O Firefox funciona melhor: no Windows, o Chrome e o Edge bloqueiam frequentemente outras aplicações de ler os seus cookies. Feche o navegador antes de transferir."
 
@@ -138,6 +141,9 @@ msgstr "Pasta de transferências"
 msgid "Downloading"
 msgstr "A transferir"
 
+msgid "Downloads at once"
+msgstr "Transferências em simultâneo"
+
 msgid "Failed"
 msgstr "Falhou"
 
@@ -158,6 +164,9 @@ msgstr "Terminado"
 
 msgid "History"
 msgstr "Histórico"
+
+msgid "How many downloads run at the same time."
+msgstr "Quantas transferências são executadas ao mesmo tempo."
 
 msgid "Install / repair tools"
 msgstr "Instalar / reparar ferramentas"
@@ -328,6 +337,9 @@ msgstr "Servidor"
 msgid "Server speeds"
 msgstr "Velocidades dos servidores"
 
+msgid "Settings"
+msgstr "Definições"
+
 msgid "Site access"
 msgstr "Acesso ao site"
 
@@ -387,6 +399,9 @@ msgstr "Testar velocidades"
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "A testar as velocidades dos servidores… até 256 KiB por origem. Nenhum ficheiro é guardado."
+
+msgid "The maximum number of connections to one server, shared by all downloads."
+msgstr "O número máximo de ligações a um servidor, partilhado por todas as transferências."
 
 msgid "The new language applies the next time Skein Downloader starts."
 msgstr "O novo idioma será aplicado na próxima vez que o Skein Downloader for iniciado."
@@ -476,7 +491,7 @@ msgid "Video tools ready."
 msgstr "Ferramentas de vídeo prontas."
 
 msgid "Waiting for a free connection"
-msgstr "Aguardando uma ligação livre"
+msgstr "A aguardar uma ligação livre"
 
 msgid "Working…"
 msgstr "A trabalhar…"

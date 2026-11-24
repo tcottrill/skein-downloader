@@ -296,6 +296,7 @@ public:
                 LOG_INFO("Theme %s%s", lite::u(theme).c_str(), result == AppearanceResult::Ok ? "" : " (not supported here)");
             }
             queue = std::make_unique<downloads::Queue>(lite::dataPath / "history.json", downloads::runJob);
+            lite::applySettings(*queue);
             queue->start();
             auto main = new lite::MainWindow(*queue);
             SetTopWindow(main);

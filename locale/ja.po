@@ -116,6 +116,9 @@ msgstr "接続中"
 msgid "Connections per file"
 msgstr "ファイルごとの接続数"
 
+msgid "Connections per server"
+msgstr "サーバーごとの接続数"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookie を使うと、サイトにブラウザーのログイン状態が渡されます。信頼できるサイトでのみ使用してください。Firefox を推奨します。Windows の Chrome と Edge は他のアプリによる Cookie の読み取りを制限することがあります。ダウンロード前にブラウザーを閉じてください。"
 
@@ -138,6 +141,9 @@ msgstr "ダウンロード先フォルダー"
 msgid "Downloading"
 msgstr "ダウンロード中"
 
+msgid "Downloads at once"
+msgstr "同時ダウンロード数"
+
 msgid "Failed"
 msgstr "失敗"
 
@@ -158,6 +164,9 @@ msgstr "完了"
 
 msgid "History"
 msgstr "履歴"
+
+msgid "How many downloads run at the same time."
+msgstr "同時に実行するダウンロードの数です。"
 
 msgid "Install / repair tools"
 msgstr "ツールをインストール / 修復"
@@ -328,6 +337,9 @@ msgstr "サーバー"
 msgid "Server speeds"
 msgstr "サーバー速度"
 
+msgid "Settings"
+msgstr "設定"
+
 msgid "Site access"
 msgstr "サイトへのアクセス"
 
@@ -387,6 +399,9 @@ msgstr "速度をテスト"
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "サーバー速度をテスト中…各ソース最大 256 KiB。ファイルは保存しません。"
+
+msgid "The maximum number of connections to one server, shared by all downloads."
+msgstr "1つのサーバーへの接続数の上限です。すべてのダウンロードで共有されます。"
 
 msgid "The new language applies the next time Skein Downloader starts."
 msgstr "新しい言語は Skein Downloader の次回起動時に適用されます。"

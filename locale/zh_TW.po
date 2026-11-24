@@ -116,6 +116,9 @@ msgstr "正在連線"
 msgid "Connections per file"
 msgstr "每個檔案的連線數"
 
+msgid "Connections per server"
+msgstr "每個伺服器的連線數"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookie 會讓此網站使用您在瀏覽器中的登入狀態。請僅用於您信任的網站。建議使用 Firefox：Windows 上的 Chrome 和 Edge 經常阻止其他應用程式讀取 Cookie。下載前請關閉瀏覽器。"
 
@@ -138,6 +141,9 @@ msgstr "下載資料夾"
 msgid "Downloading"
 msgstr "正在下載"
 
+msgid "Downloads at once"
+msgstr "同時下載數"
+
 msgid "Failed"
 msgstr "失敗"
 
@@ -158,6 +164,9 @@ msgstr "已結束"
 
 msgid "History"
 msgstr "紀錄"
+
+msgid "How many downloads run at the same time."
+msgstr "同時進行的下載數量。"
 
 msgid "Install / repair tools"
 msgstr "安裝 / 修復工具"
@@ -328,6 +337,9 @@ msgstr "伺服器"
 msgid "Server speeds"
 msgstr "伺服器速度"
 
+msgid "Settings"
+msgstr "設定"
+
 msgid "Site access"
 msgstr "網站存取"
 
@@ -387,6 +399,9 @@ msgstr "測試速度"
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "正在測試伺服器速度… 每個來源最多使用 256 KiB。不會儲存檔案。"
+
+msgid "The maximum number of connections to one server, shared by all downloads."
+msgstr "對單一伺服器的最大連線數上限，所有下載共用。"
 
 msgid "The new language applies the next time Skein Downloader starts."
 msgstr "新語言將在下次啟動 Skein Downloader 時套用。"

@@ -116,6 +116,9 @@ msgstr "Đang kết nối"
 msgid "Connections per file"
 msgstr "Số kết nối mỗi tệp"
 
+msgid "Connections per server"
+msgstr "Số kết nối mỗi máy chủ"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookie cho phép trang web sử dụng phiên đăng nhập trong trình duyệt của bạn. Chỉ dùng với trang web đáng tin cậy. Firefox hoạt động tốt nhất: Chrome và Edge trên Windows thường chặn ứng dụng khác đọc cookie. Hãy đóng trình duyệt trước khi tải."
 
@@ -138,6 +141,9 @@ msgstr "Thư mục tải xuống"
 msgid "Downloading"
 msgstr "Đang tải"
 
+msgid "Downloads at once"
+msgstr "Số lượt tải cùng lúc"
+
 msgid "Failed"
 msgstr "Thất bại"
 
@@ -158,6 +164,9 @@ msgstr "Đã xong"
 
 msgid "History"
 msgstr "Lịch sử"
+
+msgid "How many downloads run at the same time."
+msgstr "Số lượt tải chạy cùng một lúc."
 
 msgid "Install / repair tools"
 msgstr "Cài đặt / sửa chữa công cụ"
@@ -328,6 +337,9 @@ msgstr "Máy chủ"
 msgid "Server speeds"
 msgstr "Tốc độ máy chủ"
 
+msgid "Settings"
+msgstr "Cài đặt"
+
 msgid "Site access"
 msgstr "Truy cập trang web"
 
@@ -387,6 +399,9 @@ msgstr "Kiểm tra tốc độ"
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Đang kiểm tra tốc độ máy chủ… tối đa 256 KiB mỗi nguồn. Không lưu tệp nào."
+
+msgid "The maximum number of connections to one server, shared by all downloads."
+msgstr "Số kết nối tối đa tới một máy chủ, dùng chung cho mọi lượt tải."
 
 msgid "The new language applies the next time Skein Downloader starts."
 msgstr "Ngôn ngữ mới sẽ được áp dụng khi khởi động Skein Downloader lần tới."

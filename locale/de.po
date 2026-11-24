@@ -116,6 +116,9 @@ msgstr "Verbindung wird hergestellt"
 msgid "Connections per file"
 msgstr "Verbindungen pro Datei"
 
+msgid "Connections per server"
+msgstr "Verbindungen pro Server"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookies verwenden Ihre Browser-Anmeldung für diese Website. Nur bei vertrauenswürdigen Websites verwenden. Firefox funktioniert am besten: Chrome und Edge unter Windows verhindern oft, dass andere Apps ihre Cookies lesen. Vor dem Download den Browser schließen."
 
@@ -138,6 +141,9 @@ msgstr "Downloadordner"
 msgid "Downloading"
 msgstr "Wird heruntergeladen"
 
+msgid "Downloads at once"
+msgstr "Gleichzeitige Downloads"
+
 msgid "Failed"
 msgstr "Fehlgeschlagen"
 
@@ -158,6 +164,9 @@ msgstr "Fertig"
 
 msgid "History"
 msgstr "Verlauf"
+
+msgid "How many downloads run at the same time."
+msgstr "Wie viele Downloads gleichzeitig laufen."
 
 msgid "Install / repair tools"
 msgstr "Werkzeuge installieren / reparieren"
@@ -328,6 +337,9 @@ msgstr "Server"
 msgid "Server speeds"
 msgstr "Servergeschwindigkeiten"
 
+msgid "Settings"
+msgstr "Einstellungen"
+
 msgid "Site access"
 msgstr "Website-Zugriff"
 
@@ -387,6 +399,9 @@ msgstr "Geschwindigkeiten testen"
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "Servergeschwindigkeiten werden getestet… bis zu 256 KiB pro Quelle. Es wird keine Datei gespeichert."
+
+msgid "The maximum number of connections to one server, shared by all downloads."
+msgstr "Die maximale Anzahl von Verbindungen zu einem Server, gemeinsam für alle Downloads."
 
 msgid "The new language applies the next time Skein Downloader starts."
 msgstr "Die neue Sprache wird beim nächsten Start von Skein Downloader angewendet."

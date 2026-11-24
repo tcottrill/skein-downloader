@@ -21,7 +21,7 @@ project. It is not affiliated with or endorsed by the makers of Free Download Ma
 ## Features
 
 - **Files and video in one place** — direct links, supported file hosts, and video downloads through yt-dlp.
-- **Multiple connections** — download a file using multiple connections, with up to four downloads running at once.
+- **Multiple connections** — download a file using multiple connections. How many downloads run at once is a setting (1 to 4), as is the maximum number of connections to one server (shared by all downloads). A failed connection is retried automatically, and a download needs free disk space equal to its size.
 - **A manageable queue** — pause and resume, search downloads, and keep saved history.
 - **Pick the files you want** — browse Internet Archive collections, GitHub and GitLab releases, and Hugging Face repositories before adding downloads.
 - **Whole folders from file servers** — load a web folder listing ("Index of /…" pages from Apache, nginx and similar servers), an anonymous FTP folder, or a Wayback Machine copy of a folder, with every subfolder, then pick the files to download.
@@ -136,6 +136,9 @@ video tools bundled in the Linux packages (see [Publishing a release](BUILDING.m
   uses your system's display language, falling back to English (on Windows, also the
   code page for Japanese, Chinese, Korean, Russian and Vietnamese). A new choice applies
   the next time Skein starts.
+- **Settings:** the Settings button in the toolbar sets how many downloads run at once
+  (1 to 4, default 4) and the maximum number of connections to one server, shared by all downloads
+  (1 to 16, default 16). A change applies at once.
 
 `--video` opens the video options. `--data-dir <absolute path>` uses a separate profile.
 Only one instance may use a profile; a second launch brings the running window forward.

@@ -116,6 +116,9 @@ msgstr "कनेक्ट हो रहा है"
 msgid "Connections per file"
 msgstr "प्रति फ़ाइल कनेक्शन"
 
+msgid "Connections per server"
+msgstr "प्रति सर्वर कनेक्शन"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "कुकीज़ इस साइट को आपके ब्राउज़र का साइन-इन देती हैं। केवल भरोसेमंद साइटों के साथ उपयोग करें। Firefox सबसे अच्छा काम करता है: Windows पर Chrome और Edge अक्सर अन्य ऐप्स को कुकीज़ पढ़ने से रोकते हैं। डाउनलोड करने से पहले ब्राउज़र बंद करें।"
 
@@ -138,6 +141,9 @@ msgstr "डाउनलोड फ़ोल्डर"
 msgid "Downloading"
 msgstr "डाउनलोड हो रहा है"
 
+msgid "Downloads at once"
+msgstr "एक साथ डाउनलोड"
+
 msgid "Failed"
 msgstr "विफल"
 
@@ -158,6 +164,9 @@ msgstr "समाप्त"
 
 msgid "History"
 msgstr "इतिहास"
+
+msgid "How many downloads run at the same time."
+msgstr "एक ही समय में कितने डाउनलोड चलें।"
 
 msgid "Install / repair tools"
 msgstr "उपकरण स्थापित / मरम्मत करें"
@@ -328,6 +337,9 @@ msgstr "सर्वर"
 msgid "Server speeds"
 msgstr "सर्वर गति"
 
+msgid "Settings"
+msgstr "सेटिंग"
+
 msgid "Site access"
 msgstr "साइट पहुँच"
 
@@ -387,6 +399,9 @@ msgstr "गति जाँचें"
 
 msgid "Testing server speeds… up to 256 KiB per source. No file is saved."
 msgstr "सर्वर गति जाँची जा रही है… प्रति स्रोत अधिकतम 256 KiB। कोई फ़ाइल सहेजी नहीं जाती।"
+
+msgid "The maximum number of connections to one server, shared by all downloads."
+msgstr "एक सर्वर से कनेक्शन की अधिकतम संख्या, जो सभी डाउनलोड के बीच साझा होती है।"
 
 msgid "The new language applies the next time Skein Downloader starts."
 msgstr "नई भाषा Skein Downloader के अगली बार शुरू होने पर लागू होगी।"
