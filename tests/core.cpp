@@ -1,5 +1,6 @@
 // Link parsing, file naming, path safety and site answers (src/core.cpp, hosts.cpp, lockers.cpp),
 // without the network.
+#include "signin.h"
 #include "sites.h"
 #include <iostream>
 #include <stdexcept>
@@ -240,6 +241,39 @@ static void gitHub() {
         parseGitHubRelease(release, o);
     },
            "parseGitHubRelease: a named file must be in the release");
+
+    // With a GitHub token saved, assets are named by their API address; the file name still comes from the asset's name.
+    const std::string privateRelease = R"({"tag_name":"v1","assets":[
+        {"name":"a.zip","url":"https://api.github.com/repos/o/r/releases/assets/7","browser_download_url":"https://github.com/o/r/releases/download/v1/a.zip","size":3},
+        {"name":"b.zip","url":"https://evil.example/repos/o/r/releases/assets/8","browser_download_url":"https://github.com/o/r/releases/download/v1/b.zip"},
+        {"name":"c.zip","browser_download_url":"https://github.com/o/r/releases/download/v1/c.zip"}]})";
+    GitHubLink o2{"o", "r", "v1", ""};
+    setSignIns({});
+    auto plain = parseGitHubRelease(privateRelease, o2);
+    check(plain.files[0].url == "https://github.com/o/r/releases/download/v1/a.zip", "parseGitHubRelease: without a token an asset keeps its browser download address");
+    SignIn token;
+    token.kind = SignInKind::Token;
+    token.host = "github.com";
+    token.secret = "t";
+    setSignIns({token});
+    auto signedIn = parseGitHubRelease(privateRelease, o2);
+    setSignIns({});
+    check(signedIn.files[0].url == "https://api.github.com/repos/o/r/releases/assets/7" && signedIn.files[0].name == "a.zip" && signedIn.files[0].size == 3,
+          "parseGitHubRelease: with a token an asset is named by its API address and keeps its own name");
+    check(signedIn.files[1].url == "https://github.com/o/r/releases/download/v1/b.zip" && signedIn.files[2].url == "https://github.com/o/r/releases/download/v1/c.zip",
+          "parseGitHubRelease: an asset without a GitHub API address keeps its browser download address");
+    check(signedIn.files[3].url.starts_with("https://github.com/o/r/archive/"), "parseGitHubRelease: source archives are unchanged by a token");
+
+    check(isGitHubAssetApiUrl("https://api.github.com/repos/o/r/releases/assets/7") && isGitHubAssetApiUrl("https://API.github.com/repos/own-er/re.po/releases/assets/123456"), "isGitHubAssetApiUrl: the asset address");
+    check(!isGitHubAssetApiUrl("https://api.github.com/repos/o/r/releases/latest") && !isGitHubAssetApiUrl("https://api.github.com/repos/o/r/releases/assets/") && !isGitHubAssetApiUrl("https://api.github.com/repos/o/r/releases/assets/7x") &&
+                  !isGitHubAssetApiUrl("https://api.github.com/repos/o/r/releases/assets/7/more") && !isGitHubAssetApiUrl("https://api.github.com/repos/o/r/releases/assets/7?x=1") && !isGitHubAssetApiUrl("https://api.github.com/repos//r/releases/assets/7") &&
+                  !isGitHubAssetApiUrl("https://api.github.com/repos/o/a/b/releases/assets/7") && !isGitHubAssetApiUrl("http://api.github.com/repos/o/r/releases/assets/7") && !isGitHubAssetApiUrl("https://github.com/repos/o/r/releases/assets/7") &&
+                  !isGitHubAssetApiUrl("https://api.github.com.evil.example/repos/o/r/releases/assets/7") && !isGitHubAssetApiUrl("https://github.com/o/r/releases/download/v1/a.zip") && !isGitHubAssetApiUrl(""),
+          "isGitHubAssetApiUrl: nothing else");
+
+    // A sign-in refusal counts as the 401 it came from for the callers that explain a refusal by status.
+    check(hasHttpStatus(SignInNeeded("example.org", false, false), {401, 403}) && !hasHttpStatus(SignInNeeded("example.org", true, true), {403, 404}) && hasHttpStatus(NetworkError("x", false, 1, 404), {404}) && !hasHttpStatus(std::runtime_error("x"), {401}),
+          "hasHttpStatus: SignInNeeded is a 401");
 }
 
 static void forgesAndPackages() {

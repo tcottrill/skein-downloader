@@ -329,7 +329,26 @@ bool isGitHubLink(const std::string& input) {
         return false;
     }
 }
+bool isGitHubAssetApiUrl(const std::string& url) {
+    static const std::string prefix = "https://api.github.com/repos/";
+    if (url.size() <= prefix.size() || lower(url.substr(0, prefix.size())) != prefix) return false;
+    // <owner>/<repo>/releases/assets/<number>, and nothing after it (no query, no fragment).
+    std::vector<std::string> parts;
+    for (size_t at = prefix.size();;) {
+        auto end = url.find('/', at);
+        parts.push_back(url.substr(at, end == std::string::npos ? std::string::npos : end - at));
+        if (end == std::string::npos) break;
+        at = end + 1;
+    }
+    if (parts.size() != 5 || parts[2] != "releases" || parts[3] != "assets") return false;
+    const auto number = parts[4];
+    return !parts[0].empty() && !parts[1].empty() && parts[0].find_first_of("?#") == std::string::npos && parts[1].find_first_of("?#") == std::string::npos &&
+           !number.empty() && number.size() <= 19 && number.find_first_not_of("0123456789") == std::string::npos;
+}
 Item parseGitHubRelease(const std::string& text, const GitHubLink& link) {
+    // With a GitHub token saved, an asset is named by its API address: GitHub takes the token there, not on the
+    // browser download link.
+    const bool viaApi = hasSignIn("github.com", 0);
     auto j = nlohmann::json::parse(text);
     if (!j.is_object() || !j.contains("tag_name") || !j["tag_name"].is_string())
         throw std::runtime_error(j.is_object() && j.contains("message") && j["message"].is_string() ? "GitHub: " + j["message"].get<std::string>() : "Unexpected GitHub release data.");
@@ -347,6 +366,7 @@ Item parseGitHubRelease(const std::string& text, const GitHubLink& link) {
             File file;
             file.name = safeFilename(asset["name"].get<std::string>());
             file.url = url;
+            if (viaApi && asset.contains("url") && asset["url"].is_string() && isGitHubAssetApiUrl(asset["url"].get<std::string>())) file.url = asset["url"].get<std::string>();
             if (asset.contains("size") && asset["size"].is_number_unsigned()) {
                 file.size = asset["size"].get<uint64_t>();
                 file.sizeKnown = true;

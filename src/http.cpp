@@ -222,10 +222,13 @@ std::unique_ptr<Request> build(const Request::Url& url, const std::wstring& head
 // after a Basic challenge for a password), and each redirect is followed here, so that every hop looks
 // its own host up again and a sign-in never reaches a host it does not cover. Request::url() is the
 // final address on both paths. A 401 is SignInNeeded on both.
-std::unique_ptr<Request> open(const std::string& url, const std::wstring& headers, std::atomic_bool& stop, bool redirects = true, unsigned wait = 10, const std::string* body = nullptr) {
+std::unique_ptr<Request> open(const std::string& url, const std::wstring& requestHeaders, std::atomic_bool& stop, bool redirects = true, unsigned wait = 10, const std::string* body = nullptr) {
     std::string current = url;
     for (unsigned hops = 0;;) {
         cancelled(stop);
+        // A release asset's API address answers with the file only when asked for application/octet-stream:
+        // every request for that address (probe, ranges, speed samples) gets it, and no other address does.
+        const auto headers = isGitHubAssetApiUrl(current) ? requestHeaders + L"Accept: application/octet-stream\r\n" : requestHeaders;
         const Request::Url target(current);
         const auto host = signInHost(target.host);
         if (target.isFtp || !hasSignIn(host, target.port)) return build(target, headers, redirects, stop, body, wait, false);
@@ -426,24 +429,40 @@ Item loadHubItem(const std::string& input, std::atomic_bool& stop) {
     auto readAll = [&](Request& r) {
         return readBody(r, stop, 64 * 1024 * 1024, "Repository file list is too large (64 MiB limit).");
     };
+    // The Hub answers 401 for both missing and private repos, so a 401 is a sign-in question: with no token
+    // saved the window offers to add one, with one saved it was not accepted. A 403 with a token saved means
+    // the account has not accepted a gated repository's terms.
+    const bool hasToken = hasSignIn("huggingface.co", 0);
+    auto hubGet = [&](const std::string& address) {
+        try {
+            return get(address, L"", stop);
+        } catch (const SignInNeeded&) {
+            throw SignInNeeded("huggingface.co", hasToken, false);
+        } catch (const NetworkError& e) {
+            if (e.status == 403) {
+                if (!hasToken) throw SignInNeeded("huggingface.co", false, false);
+                throw std::runtime_error("This repository is gated: accept its terms on huggingface.co while signed in to the account this token belongs to.");
+            }
+            throw;
+        }
+    };
     // Check access first: gated repos list their files publicly but refuse every download.
     try {
-        auto info = get("https://huggingface.co/api/" + link.kind + "/" + link.repo, L"", stop);
+        auto info = hubGet("https://huggingface.co/api/" + link.kind + "/" + link.repo);
         const auto infoBody = readAll(*info);
         countRequest(stop);
-        if (hubRepoGated(infoBody))
-            throw std::runtime_error("This repository is gated: its files need you to accept its terms while signed in to Hugging Face. Signed-in downloads are not supported in this version.");
+        // With a token saved the account may well have access: the listing goes on, and a 403 there says what to do.
+        if (hubRepoGated(infoBody) && !hasToken) throw SignInNeeded("huggingface.co", false, false);
     } catch (const NetworkError& e) {
-        // The Hub answers 401 for both missing and private repos.
-        if (e.status == 401 || e.status == 404)
-            throw std::runtime_error("This Hugging Face repository was not found, or it is private (sign-in is not supported in this version).");
+        if (e.status == 404)
+            throw std::runtime_error("This Hugging Face repository was not found, or it is private.");
         throw;
     }
     Item item;
     item.id = item.title = link.repo;
     for (unsigned pages = 0; !page.empty(); ++pages) {
         if (pages == 1000) throw std::runtime_error("This repository lists too many files (over 1000 pages).");
-        auto r = get(page, L"", stop);
+        auto r = hubGet(page);
         auto pageBody = readAll(*r);
         countRequest(stop);
         auto files = parseHubTree(pageBody);
@@ -472,12 +491,17 @@ Item loadGitHubRelease(const std::string& input, std::atomic_bool& stop) {
         auto item = parseGitHubRelease(releaseBody, link);
         if (item.files.empty()) throw std::runtime_error("This release has no files.");
         return item;
+    } catch (const SignInNeeded&) {
+        throw SignInNeeded("github.com", hasSignIn("github.com", 0), false);
     } catch (const NetworkError& e) {
         if (e.status == 404)
             throw std::runtime_error(link.tag.empty() ? "This repository has no published releases, or it is private." : "Release not found. Check the tag, or the repository may be private.");
-        // Anonymous API use is limited to 60 requests an hour per network address.
-        if (e.status == 403 || e.status == 429)
+        if (e.status == 403 || e.status == 429) {
+            if (hasSignIn("github.com", 0))
+                throw std::runtime_error("GitHub refused this request for the saved token (it may lack access to this repository, or its rate limit was reached).");
+            // Anonymous API use is limited to 60 requests an hour per network address.
             throw std::runtime_error("GitHub's limit for release lookups without signing in (60 an hour) was reached. Try again later.");
+        }
         throw;
     }
 }

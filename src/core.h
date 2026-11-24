@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "signin.h"
 
 namespace archive {
 using Path = std::filesystem::path;
@@ -19,10 +20,15 @@ struct NetworkError : std::runtime_error {
     NetworkError(const std::string& message, bool again = true, unsigned seconds = 1, unsigned httpStatus = 0)
         : std::runtime_error(message), retry(again), wait(seconds), status(httpStatus) {}
 };
-// True when e is a NetworkError for one of these HTTP statuses.
+// True when e is a NetworkError for one of these HTTP statuses. A SignInNeeded is the 401 the engine
+// raises for that status, so callers that explain a refusal by status see it as 401.
 inline bool hasHttpStatus(const std::exception& e, std::initializer_list<unsigned> statuses) {
-    auto network = dynamic_cast<const NetworkError*>(&e);
-    return network && std::find(statuses.begin(), statuses.end(), network->status) != statuses.end();
+    unsigned status = 0;
+    if (auto network = dynamic_cast<const NetworkError*>(&e))
+        status = network->status;
+    else if (dynamic_cast<const SignInNeeded*>(&e))
+        status = 401;
+    return status && std::find(statuses.begin(), statuses.end(), status) != statuses.end();
 }
 // A link that opens a web page rather than a file (from loadDirectLink).
 struct WebPageError : std::runtime_error {
@@ -75,6 +81,9 @@ bool isGitHubLink(const std::string& input);
 GitHubLink parseGitHubLink(const std::string& input);
 // The release's assets plus its two source-code archives, each with its own URL.
 Item parseGitHubRelease(const std::string& json, const GitHubLink& link);
+// True for exactly https://api.github.com/repos/<owner>/<repo>/releases/assets/<number>: the address that
+// serves a release asset's bytes when asked for application/octet-stream.
+bool isGitHubAssetApiUrl(const std::string& url);
 Item loadGitHubRelease(const std::string& input, std::atomic_bool& stop);
 struct Link {
     std::string id, file;
