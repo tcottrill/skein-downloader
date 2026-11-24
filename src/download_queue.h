@@ -55,6 +55,7 @@ class Queue {
     std::string error_, maintenance_;
     std::vector<std::chrono::milliseconds> retryWaits_{std::chrono::seconds(5), std::chrono::seconds(15), std::chrono::seconds(60), std::chrono::seconds(300)};
     unsigned maxRetries_ = 12;
+    unsigned limit_ = 4; // downloads running at once, 1 to 4
     // History is written by its own thread, outside mutex_: saveLocked() only marks it changed.
     // A write that takes long (a large history, a slow disk) then blocks neither the window nor
     // the downloads, and changes made meanwhile are saved together in the next write.
@@ -78,6 +79,9 @@ public:
     // Waits before each automatic retry of a job that failed for a temporary network reason (the
     // last one repeats) and how many retries in a row without progress are allowed.
     void setRetryWaits(std::vector<std::chrono::milliseconds> waits, unsigned maxRetries);
+    // How many downloads may run at once, clamped to 1 to 4 (default 4). Callable at any time from
+    // any thread; lowering it never stops a running job, new ones just wait until fewer are running.
+    void setLimit(unsigned jobs);
     void shutdown();
     void pause(uint64_t id);
     void resume(uint64_t id);

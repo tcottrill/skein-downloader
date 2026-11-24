@@ -4,6 +4,7 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 
@@ -284,6 +285,89 @@ int main() {
                     throw std::runtime_error("A plain exception did not fail the job");
                 std::this_thread::sleep_for(100ms);
                 if (runCount() != 1) throw std::runtime_error("A plain exception was retried");
+            }
+        }
+
+        // Downloads-at-once limit: the runner blocks each job until the test releases it by id.
+        {
+            std::mutex limitMutex;
+            std::condition_variable limitChanged;
+            std::vector<uint64_t> limitStarted;
+            std::unordered_set<uint64_t> released;
+            auto limitRunner = [&](const downloads::Job& job, std::atomic_bool& stop, const downloads::Report&) {
+                std::unique_lock lock(limitMutex);
+                limitStarted.push_back(job.id);
+                limitChanged.notify_all();
+                while (!stop && !released.contains(job.id)) limitChanged.wait_for(lock, 10ms);
+                if (stop) throw std::runtime_error("Paused");
+            };
+            auto startedCount = [&] {
+                std::lock_guard lock(limitMutex);
+                return limitStarted.size();
+            };
+            auto waitStarted = [&](size_t count, std::chrono::milliseconds limit) {
+                std::unique_lock lock(limitMutex);
+                return limitChanged.wait_for(lock, limit, [&] {
+                    return limitStarted.size() >= count;
+                });
+            };
+            auto release = [&](uint64_t id) {
+                std::lock_guard lock(limitMutex);
+                released.insert(id);
+                limitChanged.notify_all();
+            };
+            auto running = [](downloads::Queue& queue) {
+                size_t count = 0;
+                for (const auto& job : queue.snapshot()) count += job.state == downloads::State::Active;
+                return count;
+            };
+            auto waitRunning = [&](downloads::Queue& queue, size_t count, std::chrono::milliseconds limit) {
+                const auto end = std::chrono::steady_clock::now() + limit;
+                while (running(queue) != count && std::chrono::steady_clock::now() < end) std::this_thread::sleep_for(2ms);
+                return running(queue) == count;
+            };
+            { // a to c. A limit set before start, raised, then lowered while full.
+                downloads::Queue queue(folder / "limit-1.json", limitRunner);
+                for (int i = 1; i <= 4; ++i) queue.add(std::to_string(i), "Archive", std::to_string(i), nullptr);
+                queue.setLimit(2);
+                queue.start();
+                std::this_thread::sleep_for(300ms);
+                if (startedCount() != 2) throw std::runtime_error("A limit of 2 did not hold the number of started jobs at 2");
+                queue.setLimit(3);
+                if (!waitStarted(3, 1s)) throw std::runtime_error("Raising the limit to 3 did not start a third job");
+                std::this_thread::sleep_for(100ms);
+                if (startedCount() != 3) throw std::runtime_error("A limit of 3 started more than 3 jobs");
+                queue.setLimit(1);
+                release(1);
+                if (!waitRunning(queue, 2, 1s)) throw std::runtime_error("Releasing a job did not leave 2 running");
+                std::this_thread::sleep_for(200ms);
+                if (startedCount() != 3 || running(queue) != 2) throw std::runtime_error("Lowering the limit to 1 still started a job while 2 were running");
+                release(2);
+                if (!waitRunning(queue, 1, 1s)) throw std::runtime_error("Releasing a second job did not leave 1 running");
+                std::this_thread::sleep_for(200ms);
+                if (startedCount() != 3 || running(queue) != 1) throw std::runtime_error("Lowering the limit to 1 still started a job while 1 was running");
+                release(3);
+                if (!waitStarted(4, 1s)) throw std::runtime_error("Releasing the last running job did not start the fourth");
+            }
+            { // d. Out-of-range limits are clamped to 1 and 4.
+                limitStarted.clear();
+                released.clear();
+                downloads::Queue queue(folder / "limit-2.json", limitRunner);
+                for (int i = 1; i <= 6; ++i) queue.add(std::to_string(i), "Archive", std::to_string(i), nullptr);
+                queue.setLimit(0);
+                queue.start();
+                std::this_thread::sleep_for(300ms);
+                if (startedCount() != 1) throw std::runtime_error("A limit of 0 did not behave as 1");
+                queue.setLimit(9);
+                if (!waitStarted(4, 1s)) throw std::runtime_error("A limit of 9 did not allow 4 jobs");
+                std::this_thread::sleep_for(300ms);
+                if (startedCount() != 4) throw std::runtime_error("A limit of 9 did not behave as 4");
+            }
+            { // setLimit is safe after shutdown.
+                downloads::Queue queue(folder / "limit-3.json", limitRunner);
+                queue.start();
+                queue.shutdown();
+                queue.setLimit(2);
             }
         }
     } catch (const std::exception& e) {

@@ -188,6 +188,11 @@ void Queue::setRetryWaits(std::vector<std::chrono::milliseconds> waits, unsigned
     retryWaits_ = std::move(waits);
     maxRetries_ = maxRetries;
 }
+void Queue::setLimit(unsigned jobs) {
+    std::lock_guard lock(mutex_);
+    limit_ = std::clamp(jobs, 1u, 4u);
+    cv_.notify_all();
+}
 void Queue::work() {
     for (;;) {
         std::shared_ptr<Entry> entry;
@@ -198,7 +203,11 @@ void Queue::work() {
                 if (closing_) return;
                 const auto now = std::chrono::steady_clock::now();
                 std::optional<std::chrono::steady_clock::time_point> earliest; // of the jobs still waiting to retry
-                if (!pausedAll_)
+                const auto busy = (size_t)std::count_if(jobs_.begin(), jobs_.end(), [](const auto& e) {
+                    return e->running;
+                });
+                // At the limit nothing is taken; every job end and setLimit() notify cv_.
+                if (!pausedAll_ && busy < limit_)
                     for (auto& e : jobs_) {
                         if (e->job.state != State::Queued || e->running || e->removing || e->job.kind == maintenance_) continue;
                         if (e->notBefore > now) {
