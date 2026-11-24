@@ -79,9 +79,9 @@ std::unique_ptr<Request> get(const std::string& url, const std::wstring& headers
         }
         catch (const NetworkError& e) {
             if (!e.retry || attempt == 3) { LOG_ERROR("Request failed: %s: %s", logUrl(url).c_str(), e.what()); throw; }
-            const auto wait = std::max(e.wait, 1u << attempt);
-            LOG_WARN("Request failed (attempt %u of 4), retrying in %us: %s: %s", attempt + 1, wait, logUrl(url).c_str(), e.what());
-            delay(wait, stop);
+            const auto pause = std::max(e.wait, 1u << attempt);
+            LOG_WARN("Request failed (attempt %u of 4), retrying in %us: %s: %s", attempt + 1, pause, logUrl(url).c_str(), e.what());
+            delay(pause, stop);
         }
     }
 }
