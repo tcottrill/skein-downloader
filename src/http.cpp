@@ -1,5 +1,6 @@
 #include "core.h"
 #include "sites.h"
+#include "staging.h"
 #include "json.hpp"
 #ifdef _WIN32
 #include <windows.h>
@@ -550,6 +551,19 @@ void download(const std::string& url, const File& file, const Path& destination,
                 offsets[i] = 0;
             }
             done += offsets[i];
+        }
+    }
+    if (known) {
+        // Assembly copies the whole file next to the parts, so both must fit at once.
+        const uint64_t needed = (size - std::min<uint64_t>(done.load(), size)) + size;
+        std::error_code spaceError;
+        const auto space = std::filesystem::space(destination.parent_path(), spaceError);
+        if (!spaceError) {
+            auto message = freeSpaceError(needed, space.available);
+            if (!message.empty()) {
+                LOG_ERROR("%s (%s)", message.c_str(), pathUtf8(destination).c_str());
+                throw std::runtime_error(message);
+            }
         }
     }
     std::atomic_uint active = 0;
