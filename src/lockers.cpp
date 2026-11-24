@@ -13,10 +13,6 @@ std::string text(const json& j, const char* key) { return j.is_object() && j.con
 json parse(const std::string& body, const char* site) {
     try { return json::parse(body); } catch (const json::exception&) { throw std::runtime_error(std::string("Unexpected data from ") + site + "."); }
 }
-bool startsWithStatus(const std::exception& e, std::initializer_list<const char*> codes) {
-    std::string message = e.what();
-    return std::any_of(codes.begin(), codes.end(), [&](const char* code) { return message.starts_with(std::string("HTTP ") + code); });
-}
 std::string base64Decode(const std::string& in) {
     std::string out; unsigned value = 0; int bits = 0;
     for (unsigned char c : in) {
@@ -135,7 +131,7 @@ Item loadMediaFire(const MediaFireLink& link, std::atomic_bool& stop) {
 std::string resolveMediaFire(const std::string& page, std::atomic_bool& stop) {
     Response r;
     try { r = fetch(page, stop); }
-    catch (const std::exception& e) { if (startsWithStatus(e, {"403", "404", "410"})) throw std::runtime_error("This MediaFire file was removed or is private."); throw; }
+    catch (const std::exception& e) { if (hasHttpStatus(e, {403, 404, 410})) throw std::runtime_error("This MediaFire file was removed or is private."); throw; }
     // A file that needs no page answers with the file itself.
     if (r.file) return r.url;
     auto link = mediafireDownloadLink(r.body);
@@ -158,8 +154,8 @@ std::string driveError(const std::string& body) {
 Response driveFetch(const std::string& id, std::atomic_bool& stop) {
     try { return fetch(driveDownloadUrl(id), stop); }
     catch (const std::exception& e) {
-        if (startsWithStatus(e, {"401", "403", "404"})) throw std::runtime_error("This Google Drive file is private or was removed (sign-in is not supported in this version).");
-        if (startsWithStatus(e, {"429"})) throw std::runtime_error(driveError("Too many users"));
+        if (hasHttpStatus(e, {401, 403, 404})) throw std::runtime_error("This Google Drive file is private or was removed (sign-in is not supported in this version).");
+        if (hasHttpStatus(e, {429})) throw std::runtime_error(driveError("Too many users"));
         throw;
     }
 }
@@ -194,7 +190,7 @@ bool isSharePoint(const UrlParts& u) {
 json oneDriveItem(const std::string& url, std::atomic_bool& stop) {
     try { return parse(fetch(url, stop, "Accept: application/json\r\n").body, "OneDrive"); }
     catch (const std::exception& e) {
-        if (startsWithStatus(e, {"400", "401", "403", "404", "500"}))
+        if (hasHttpStatus(e, {400, 401, 403, 404, 500}))
             throw std::runtime_error("OneDrive did not allow this link to be read without signing in. Check that it is shared with \"Anyone with the link\", or open it in a browser and copy the Download link.");
         throw;
     }
@@ -265,7 +261,7 @@ json weTransferCall(const WeTransferLink& link, const std::string& action, json 
     if (!link.recipient.empty()) body["recipient_id"] = link.recipient;
     try { return parse(post("https://wetransfer.com/api/v4/transfers/" + link.id + "/" + action, body.dump(), stop, headers).body, "WeTransfer"); }
     catch (const std::exception& e) {
-        if (startsWithStatus(e, {"401", "403", "404", "410", "422"})) throw std::runtime_error("This WeTransfer transfer has expired, was deleted, or needs a password (not supported in this version).");
+        if (hasHttpStatus(e, {401, 403, 404, 410, 422})) throw std::runtime_error("This WeTransfer transfer has expired, was deleted, or needs a password (not supported in this version).");
         throw;
     }
 }
@@ -372,7 +368,7 @@ Item loadLockerItem(const std::string& input, std::atomic_bool& stop) {
         // Short links redirect to the transfer page.
         Response page;
         try { page = fetch("https://we.tl/" + u.path[0], stop); }
-        catch (const std::exception& e) { if (startsWithStatus(e, {"404", "410"})) throw std::runtime_error("This WeTransfer link has expired or was deleted."); throw; }
+        catch (const std::exception& e) { if (hasHttpStatus(e, {404, 410})) throw std::runtime_error("This WeTransfer link has expired or was deleted."); throw; }
         UrlParts target;
         if (!splitUrl(page.url, target) || !parseWeTransfer(target, transfer)) throw std::runtime_error("This WeTransfer link has expired or was deleted.");
         return loadWeTransfer(transfer, stop);

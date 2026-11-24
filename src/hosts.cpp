@@ -39,10 +39,6 @@ Response fetchData(const std::string& url, std::atomic_bool& stop, const std::st
     if (r.file) throw std::runtime_error("The site answered with a file where its file list was expected.");
     return r;
 }
-bool startsWithStatus(const std::exception& e, std::initializer_list<const char*> codes) {
-    std::string message = e.what();
-    return std::any_of(codes.begin(), codes.end(), [&](const char* code) { return message.starts_with(std::string("HTTP ") + code); });
-}
 }
 bool splitUrl(const std::string& input, UrlParts& out) {
     auto s = trim(input);
@@ -286,7 +282,7 @@ Item loadHostItem(const std::string& input, std::atomic_bool& stop) {
         try { return loadDirectLink(direct, stop); }
         catch (const std::exception& e) {
             // A missing or private share answers with Dropbox's web page instead of a file.
-            if (startsWithStatus(e, {"404", "409", "410"}) || std::string(e.what()).starts_with("This link opens a web page"))
+            if (hasHttpStatus(e, {404, 409, 410}) || dynamic_cast<const WebPageError*>(&e))
                 throw std::runtime_error("This Dropbox link was removed, has expired, or is not shared publicly.");
             throw;
         }
@@ -294,7 +290,7 @@ Item loadHostItem(const std::string& input, std::atomic_bool& stop) {
     ZenodoLink zenodo;
     if (parseZenodoLink(input, zenodo)) {
         try { return parseZenodoRecord(fetchData("https://zenodo.org/api/records/" + zenodo.id, stop).body, zenodo); }
-        catch (const std::exception& e) { if (startsWithStatus(e, {"404", "410"})) throw std::runtime_error("Zenodo record not found, or it was removed."); throw; }
+        catch (const std::exception& e) { if (hasHttpStatus(e, {404, 410})) throw std::runtime_error("Zenodo record not found, or it was removed."); throw; }
     }
     PackageLink package;
     if (parsePackageLink(input, package)) {
@@ -305,7 +301,7 @@ Item loadHostItem(const std::string& input, std::atomic_bool& stop) {
                 return parseNpmVersion(fetchData("https://registry.npmjs.org/" + encode(package.name) + "/" + (package.version.empty() ? "latest" : encode(package.version)), stop).body);
             return parseCrateVersion(fetchData("https://crates.io/api/v1/crates/" + encode(package.name) + (package.version.empty() ? "" : "/" + encode(package.version)), stop).body, package);
         } catch (const std::exception& e) {
-            if (startsWithStatus(e, {"404"})) throw std::runtime_error(package.version.empty() ? "Package not found." : "Package or version not found.");
+            if (hasHttpStatus(e, {404})) throw std::runtime_error(package.version.empty() ? "Package not found." : "Package or version not found.");
             throw;
         }
     }
@@ -319,7 +315,7 @@ Item loadHostItem(const std::string& input, std::atomic_bool& stop) {
         if (item.files.empty()) throw std::runtime_error("This release has no files.");
         return item;
     } catch (const std::exception& e) {
-        if (startsWithStatus(e, {"401", "403", "404"}))
+        if (hasHttpStatus(e, {401, 403, 404}))
             throw std::runtime_error(link.tag.empty() ? "This project has no published releases, or it is private." : "Release not found. Check the tag, or the project may be private.");
         throw;
     }

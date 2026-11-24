@@ -5,6 +5,20 @@
 #include <fstream>
 #include <unordered_set>
 namespace downloads {
+const char* stateName(State state){
+    switch(state){
+    case State::Queued:return "Queued";
+    case State::Active:return "Active";
+    case State::Paused:return "Paused";
+    case State::Failed:return "Failed";
+    case State::Complete:return "Complete";
+    }
+    return "Paused";
+}
+State stateFromName(const std::string& name){
+    for(auto state:{State::Queued,State::Active,State::Paused,State::Failed,State::Complete})if(name==stateName(state))return state;
+    return State::Paused;
+}
 std::string pathKey(const archive::Path& path){
     auto normal=path.lexically_normal();
 #ifdef _WIN32
@@ -23,9 +37,9 @@ Queue::Queue(archive::Path path,Runner runner):path_(std::move(path)),runner_(st
         for(auto& j:data){
             auto e=std::make_shared<Entry>();auto& v=e->job;
             v.id=j.at("id").get<uint64_t>();v.name=j.at("name");v.kind=j.at("kind");v.key=j.at("key");v.input=j.at("input");
-            v.state=j.value("state","Paused");v.done=j.value("done",uint64_t(0));v.total=j.value("total",uint64_t(0));v.output=j.value("output","");v.detail=j.value("detail","");
-            if(v.state!="Complete"&&v.state!="Failed")v.state="Paused";
-            v.historyOnly=v.state=="Complete"&&j.value("historyOnly",false);
+            v.state=stateFromName(j.value("state","Paused"));v.done=j.value("done",uint64_t(0));v.total=j.value("total",uint64_t(0));v.output=j.value("output","");v.detail=j.value("detail","");
+            if(v.state!=State::Complete&&v.state!=State::Failed)v.state=State::Paused;
+            v.historyOnly=v.state==State::Complete&&j.value("historyOnly",false);
             next_=std::max(next_,v.id+1);jobs_.push_back(e);
         }
     }catch(const std::exception& e){jobs_.clear();historyReadable_=false;error_=std::string("History could not be read; original preserved. New downloads cannot be saved: ")+e.what();}
@@ -33,7 +47,7 @@ Queue::Queue(archive::Path path,Runner runner):path_(std::move(path)),runner_(st
 Queue::~Queue(){shutdown();}
 nlohmann::json Queue::historyLocked()const{
     nlohmann::json data=nlohmann::json::array();
-    for(auto& e:jobs_){if(e->removing)continue;auto& j=e->job;data.push_back({{"id",j.id},{"name",j.name},{"kind",j.kind},{"key",j.key},{"input",j.input},{"state",j.state},{"done",j.done},{"total",j.total},{"detail",j.detail},{"output",j.output},{"historyOnly",j.historyOnly}});}
+    for(auto& e:jobs_){if(e->removing)continue;auto& j=e->job;data.push_back({{"id",j.id},{"name",j.name},{"kind",j.kind},{"key",j.key},{"input",j.input},{"state",stateName(j.state)},{"done",j.done},{"total",j.total},{"detail",j.detail},{"output",j.output},{"historyOnly",j.historyOnly}});}
     return data;
 }
 // Touches only the file, so it runs without mutex_; one writer at a time (the saver thread, or
@@ -75,7 +89,7 @@ size_t Queue::addBatch(std::vector<Job> jobs){
     std::unordered_set<std::string> keys;for(auto& entry:jobs_)keys.insert(entry->job.key);
     size_t count=0;for(auto& job:jobs){
         if(!keys.insert(job.key).second)continue;
-        auto entry=std::make_shared<Entry>();entry->job=std::move(job);entry->job.id=next_++;entry->job.state=pausedAll_?"Paused":"Queued";
+        auto entry=std::make_shared<Entry>();entry->job=std::move(job);entry->job.id=next_++;entry->job.state=pausedAll_?State::Paused:State::Queued;
         entry->job.done=entry->job.total=0;entry->job.historyOnly=false;entry->job.detail.clear();entry->job.output.clear();jobs_.push_back(entry);++count;
     }
     if(count){saveLocked();cv_.notify_all();}return count;
@@ -86,10 +100,10 @@ void Queue::work(){
         std::shared_ptr<Entry> entry;Job input;
         {
             std::unique_lock lock(mutex_);
-            cv_.wait(lock,[&]{if(closing_)return true;if(pausedAll_)return false;for(auto& e:jobs_)if(e->job.state=="Queued"&&!e->running&&!e->removing&&e->job.kind!=maintenance_)return true;return false;});
+            cv_.wait(lock,[&]{if(closing_)return true;if(pausedAll_)return false;for(auto& e:jobs_)if(e->job.state==State::Queued&&!e->running&&!e->removing&&e->job.kind!=maintenance_)return true;return false;});
             if(closing_)return;
-            for(auto& e:jobs_)if(e->job.state=="Queued"&&!e->running&&!e->removing&&e->job.kind!=maintenance_){entry=e;break;}
-            entry->running=true;entry->stop=false;entry->job.state="Active";entry->job.detail="Connecting";input=entry->job;saveLocked();
+            for(auto& e:jobs_)if(e->job.state==State::Queued&&!e->running&&!e->removing&&e->job.kind!=maintenance_){entry=e;break;}
+            entry->running=true;entry->stop=false;entry->job.state=State::Active;entry->job.detail="Connecting";input=entry->job;saveLocked();
         }
         std::string failure;bool completed=false;
         try{runner_(input,entry->stop,[this,entry](uint64_t done,uint64_t total,const std::string& detail,const std::string& output){
@@ -99,25 +113,25 @@ void Queue::work(){
             std::lock_guard lock(mutex_);entry->running=false;
             // A runner that returns has finished the download, even when a pause arrived at the last
             // moment; a stopped runner throws. Marking a saved file Paused would make Resume fail.
-            entry->job.state=completed?"Complete":entry->stop?"Paused":"Failed";
+            entry->job.state=completed?State::Complete:entry->stop?State::Paused:State::Failed;
             entry->job.detail=completed?"Finished":entry->stop?"Partial download retained":failure;
             if(completed){if(!entry->job.total)entry->job.total=entry->job.done;entry->job.done=entry->job.total;}
             if(entry->removing){if(completed){entry->removing=false;entry->job.historyOnly=true;}else std::erase(jobs_,entry);}
-            else if(!completed&&entry->resumeRequested&&!closing_&&!pausedAll_){entry->job.state="Queued";entry->job.detail.clear();}
+            else if(!completed&&entry->resumeRequested&&!closing_&&!pausedAll_){entry->job.state=State::Queued;entry->job.detail.clear();}
             entry->resumeRequested=false;
             saveLocked();cv_.notify_all();
         }
     }
 }
 void Queue::shutdown(){
-    {std::lock_guard lock(mutex_);if(closing_)return;closing_=true;for(auto& e:jobs_){e->stop=true;if(!e->running&&e->job.state=="Queued")e->job.state="Paused";}cv_.notify_all();}
+    {std::lock_guard lock(mutex_);if(closing_)return;closing_=true;for(auto& e:jobs_){e->stop=true;if(!e->running&&e->job.state==State::Queued)e->job.state=State::Paused;}cv_.notify_all();}
     workers_.clear();
     // The saver writes the final state, then ends; later changes are written directly.
     {std::lock_guard lock(mutex_);saveLocked();saverStop_=true;saveCv_.notify_all();}
     if(saver_.joinable())saver_.join();
 }
-void Queue::pause(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->running){e->stop=true;e->job.detail="Pausing…";}else if(e->job.state=="Queued")e->job.state="Paused";}saveLocked();}
-void Queue::resume(uint64_t id){std::lock_guard lock(mutex_);if(closing_)return;for(auto& e:jobs_)if(e->job.id==id&&!e->running&&(e->job.state=="Paused"||e->job.state=="Failed")){e->job.state="Queued";e->job.detail.clear();e->stop=false;}saveLocked();cv_.notify_all();}
+void Queue::pause(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->running){e->stop=true;e->job.detail="Pausing…";}else if(e->job.state==State::Queued)e->job.state=State::Paused;}saveLocked();}
+void Queue::resume(uint64_t id){std::lock_guard lock(mutex_);if(closing_)return;for(auto& e:jobs_)if(e->job.id==id&&!e->running&&(e->job.state==State::Paused||e->job.state==State::Failed)){e->job.state=State::Queued;e->job.detail.clear();e->stop=false;}saveLocked();cv_.notify_all();}
 void Queue::moveToTop(const std::vector<uint64_t>& ids) {
     if (ids.empty()) return;
     const std::unordered_set<uint64_t> selected(ids.begin(), ids.end());
@@ -126,7 +140,7 @@ void Queue::moveToTop(const std::vector<uint64_t>& ids) {
 
     // Keep the rows above the waiting queue in place. Workers use this same order.
     const auto firstWaiting = std::find_if(jobs_.begin(), jobs_.end(), [](const auto& entry) {
-        return !entry->removing && (entry->job.canMoveToTop() || entry->job.state == "Failed");
+        return !entry->removing && (entry->job.canMoveToTop() || entry->job.state == State::Failed);
     });
     const auto promote = [&](const auto& entry) {
         return !entry->running && !entry->removing && entry->job.canMoveToTop() && selected.contains(entry->job.id);
@@ -135,39 +149,39 @@ void Queue::moveToTop(const std::vector<uint64_t>& ids) {
     std::stable_partition(firstWaiting, jobs_.end(), promote);
     saveLocked();
 }
-void Queue::remove(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->job.state=="Complete")e->job.historyOnly=true;else{e->removing=true;e->resumeRequested=false;e->stop=true;}}std::erase_if(jobs_,[](auto& e){return e->removing&&!e->running;});saveLocked();cv_.notify_all();}
+void Queue::remove(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->job.state==State::Complete)e->job.historyOnly=true;else{e->removing=true;e->resumeRequested=false;e->stop=true;}}std::erase_if(jobs_,[](auto& e){return e->removing&&!e->running;});saveLocked();cv_.notify_all();}
 std::vector<Job> Queue::snapshot()const{std::lock_guard lock(mutex_);std::vector<Job> result;for(auto& e:jobs_)if(!e->removing)result.push_back(e->job);return result;}
 std::string Queue::error()const{std::lock_guard lock(mutex_);return error_;}
-bool Queue::beginMaintenance(const std::string& kind){std::lock_guard lock(mutex_);if(!maintenance_.empty())return false;for(auto& e:jobs_)if(e->job.kind==kind&&(e->running||e->job.state=="Queued"))return false;maintenance_=kind;return true;}
+bool Queue::beginMaintenance(const std::string& kind){std::lock_guard lock(mutex_);if(!maintenance_.empty())return false;for(auto& e:jobs_)if(e->job.kind==kind&&(e->running||e->job.state==State::Queued))return false;maintenance_=kind;return true;}
 void Queue::endMaintenance(){std::lock_guard lock(mutex_);maintenance_.clear();cv_.notify_all();}
 void Queue::pauseAll(){
     std::lock_guard lock(mutex_);pausedAll_=true;
-    for(auto& e:jobs_){e->resumeRequested=false;if(e->running){e->stop=true;e->job.detail="Pausing…";}else if(e->job.state=="Queued")e->job.state="Paused";}
+    for(auto& e:jobs_){e->resumeRequested=false;if(e->running){e->stop=true;e->job.detail="Pausing…";}else if(e->job.state==State::Queued)e->job.state=State::Paused;}
     saveLocked();
 }
 void Queue::resumeAll(){
     std::lock_guard lock(mutex_);if(closing_)return;pausedAll_=false;
-    for(auto& e:jobs_){if(e->removing)continue;if(e->running){if(e->stop)e->resumeRequested=true;}else if(e->job.state=="Paused"||e->job.state=="Failed"){e->job.state="Queued";e->job.detail.clear();}}
+    for(auto& e:jobs_){if(e->removing)continue;if(e->running){if(e->stop)e->resumeRequested=true;}else if(e->job.state==State::Paused||e->job.state==State::Failed){e->job.state=State::Queued;e->job.detail.clear();}}
     saveLocked();cv_.notify_all();
 }
 void Queue::removeAll(){
     std::lock_guard lock(mutex_);
     // Completed rows leave All but remain in History; active workers are untouched.
-    for(auto& entry:jobs_)if(entry->job.state=="Complete")entry->job.historyOnly=true;
+    for(auto& entry:jobs_)if(entry->job.state==State::Complete)entry->job.historyOnly=true;
     removeWaitingLocked();
 }
 void Queue::removeWaiting(){std::lock_guard lock(mutex_);removeWaitingLocked();}
 void Queue::removeWaitingLocked(){
-    std::erase_if(jobs_,[](const auto& entry){return !entry->running&&(entry->job.state=="Queued"||entry->job.state=="Paused"||entry->job.state=="Failed");});
+    std::erase_if(jobs_,[](const auto& entry){return !entry->running&&(entry->job.state==State::Queued||entry->job.state==State::Paused||entry->job.state==State::Failed);});
     saveLocked();
 }
 bool Queue::paused()const{std::lock_guard lock(mutex_);return pausedAll_;}
 bool Queue::downloadAgain(uint64_t id){
     std::lock_guard lock(mutex_);if(closing_)return false;
-    auto found=std::find_if(jobs_.begin(),jobs_.end(),[&](auto& e){return e->job.id==id&&!e->removing&&!e->running&&e->job.state=="Complete";});
+    auto found=std::find_if(jobs_.begin(),jobs_.end(),[&](auto& e){return e->job.id==id&&!e->removing&&!e->running&&e->job.state==State::Complete;});
     if(found==jobs_.end())return false;
     auto entry=std::make_shared<Entry>();entry->job=(*found)->job;auto& j=entry->job;
-    j.id=next_++;j.done=0;j.historyOnly=false;j.state=pausedAll_?"Paused":"Queued";j.detail.clear();j.output.clear();
+    j.id=next_++;j.done=0;j.historyOnly=false;j.state=pausedAll_?State::Paused:State::Queued;j.detail.clear();j.output.clear();
     if(j.kind=="Archive"){
         archive::Path old(archive::pathFromUtf8(j.input.at("target").get<std::string>())),target;
         for(unsigned attempt=0;;++attempt){
@@ -187,10 +201,10 @@ bool Queue::downloadAgain(uint64_t id){
 }
 void Queue::clearHistory(){
     std::lock_guard lock(mutex_);
-    std::erase_if(jobs_,[](auto& e){return !e->running&&!e->removing&&e->job.state=="Complete";});saveLocked();
+    std::erase_if(jobs_,[](auto& e){return !e->running&&!e->removing&&e->job.state==State::Complete;});saveLocked();
 }
 void Queue::removeHistory(uint64_t id){
     std::lock_guard lock(mutex_);
-    std::erase_if(jobs_,[&](auto& e){return e->job.id==id&&!e->running&&!e->removing&&e->job.state=="Complete";});saveLocked();
+    std::erase_if(jobs_,[&](auto& e){return e->job.id==id&&!e->running&&!e->removing&&e->job.state==State::Complete;});saveLocked();
 }
 }

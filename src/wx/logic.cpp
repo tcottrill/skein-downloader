@@ -5,7 +5,7 @@ namespace lite {
 bool visible(const downloads::Job& j,int mode,const std::string& query) {
  auto lower=[](std::string s){for(char& c:s)c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));return s;};
  return lower(j.name).find(lower(query))!=std::string::npos &&
-  ((mode==0&&!j.historyOnly)||(mode==1&&j.state=="Active")||(mode==2&&(j.state=="Queued"||j.state=="Paused"||j.state=="Failed"))||(mode==3&&j.state=="Complete"));
+  ((mode==0&&!j.historyOnly)||(mode==1&&j.state==downloads::State::Active)||(mode==2&&(j.state==downloads::State::Queued||j.state==downloads::State::Paused||j.state==downloads::State::Failed))||(mode==3&&j.state==downloads::State::Complete));
 }
 std::vector<downloads::Job> fileJobs(const archive::Item& item,const std::vector<bool>& checked,const archive::Path& folder,unsigned connections,const std::string& server) {
  if(!folder.is_absolute())throw std::runtime_error("Choose an absolute download folder.");

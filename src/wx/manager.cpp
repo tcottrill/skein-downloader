@@ -156,8 +156,8 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
   const auto ids=selected();if(ids.empty())return;
   bool canPause=false,canResume=false,canRetry=false,canMoveToTop=false;
   for(auto& j:shown)if(std::find(ids.begin(),ids.end(),j.id)!=ids.end()){
-   canPause|=j.state=="Active"||j.state=="Queued";canResume|=j.state=="Paused";
-   canRetry|=j.state=="Failed";canMoveToTop|=j.canMoveToTop();
+   canPause|=j.state==downloads::State::Active||j.state==downloads::State::Queued;canResume|=j.state==downloads::State::Paused;
+   canRetry|=j.state==downloads::State::Failed;canMoveToTop|=j.canMoveToTop();
   }
   enum {Pause=1,Resume,Retry,MoveToTop,OpenFolder,Remove};
   wxMenu menu;
@@ -172,7 +172,7 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
    case Resume:for(auto id:ids)queue.resume(id);refresh();break;
    // Failed downloads go back in the queue; the engine keeps any partial data it can still
    // verify (same file, size and checksum or ETag) and fetches the rest.
-   case Retry:for(auto& j:shown)if(j.state=="Failed"&&std::find(ids.begin(),ids.end(),j.id)!=ids.end()){LOG_INFO("Retrying %s",j.name.c_str());queue.resume(j.id);}refresh();break;
+   case Retry:for(auto& j:shown)if(j.state==downloads::State::Failed&&std::find(ids.begin(),ids.end(),j.id)!=ids.end()){LOG_INFO("Retrying %s",j.name.c_str());queue.resume(j.id);}refresh();break;
    case MoveToTop:queue.moveToTop(ids);refresh();break;
    case OpenFolder:openSelected();break;
    case Remove:removeSelected();break;
@@ -197,8 +197,8 @@ void MainWindow::columns(){int rest=0;for(int c=1;c<6;++c)rest+=list->GetColumnW
 std::vector<uint64_t> MainWindow::selected()const{std::vector<uint64_t> ids;long i=-1;while((i=list->GetNextItem(i,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)if(size_t(i)<shown.size())ids.push_back(shown[size_t(i)].id);return ids;}
 void MainWindow::updateRates(const std::vector<downloads::Job>& jobs){
  rates.clear();auto now=std::chrono::steady_clock::now();for(auto& j:jobs){wxString rate=w("—");
-  if(j.state=="Active"&&j.kind=="Archive"&&j.detail.starts_with("Downloading")){auto [it,inserted]=samples.try_emplace(j.id,Sample{j.done,now});auto& s=it->second;if(j.done<s.bytes)s=Sample{j.done,now};else if(!inserted){double sec=std::chrono::duration<double>(now-s.time).count();if(sec>=0.5){s.rate=w(archive::formatBytes(uint64_t(double(j.done-s.bytes)/sec)))+"/s";s.bytes=j.done;s.time=now;}}rate=s.rate;}else samples.erase(j.id);
-  if(j.state=="Active"&&j.kind=="Video"){static const std::regex speed(R"(^\s*[\d.]+%\s*\|\s*([\d.]+\s*[KMGT]?i?B/s)\s*\|)");std::smatch match;if(std::regex_search(j.detail,match,speed))rate=w(match[1].str());}
+  if(j.state==downloads::State::Active&&j.kind=="Archive"&&j.detail.starts_with("Downloading")){auto [it,inserted]=samples.try_emplace(j.id,Sample{j.done,now});auto& s=it->second;if(j.done<s.bytes)s=Sample{j.done,now};else if(!inserted){double sec=std::chrono::duration<double>(now-s.time).count();if(sec>=0.5){s.rate=w(archive::formatBytes(uint64_t(double(j.done-s.bytes)/sec)))+"/s";s.bytes=j.done;s.time=now;}}rate=s.rate;}else samples.erase(j.id);
+  if(j.state==downloads::State::Active&&j.kind=="Video"){static const std::regex speed(R"(^\s*[\d.]+%\s*\|\s*([\d.]+\s*[KMGT]?i?B/s)\s*\|)");std::smatch match;if(std::regex_search(j.detail,match,speed))rate=w(match[1].str());}
   rates[j.id]=rate;
  }std::erase_if(samples,[this](const auto& pair){return !rates.contains(pair.first);});
 }
@@ -214,11 +214,11 @@ void MainWindow::progressCells(){
     list->ProcessWindowEvent(event);
    });
   }
-  auto cell=bars[used++];auto& j=shown[size_t(r)];int percent=j.state=="Complete"?100:j.total?int(std::min(100.0,100.0*double(j.done)/double(j.total))):-1;
+  auto cell=bars[used++];auto& j=shown[size_t(r)];int percent=j.state==downloads::State::Complete?100:j.total?int(std::min(100.0,100.0*double(j.done)/double(j.total))):-1;
   cell->SetClientData(reinterpret_cast<void*>(intptr_t(r+1)));
   // The bar is inset by 8 px horizontally and 10 px vertically inside the cell.
   cell->SetSize(rect.x+FromDIP(8),rect.y+FromDIP(10),std::max(1,rect.width-FromDIP(16)),std::max(1,rect.height-FromDIP(20)));cell->SetBackgroundColour(list->GetItemBackgroundColour(r));
-  cell->set(percent,percent<0?(j.state=="Active"?_(L"Working…"):w("—")):percent==100&&j.state=="Active"?_(L"Processing…"):wxString::Format("%d%%",percent));cell->SetToolTip(translated(j.detail)+"\n"+w(j.output));cell->Show();
+  cell->set(percent,percent<0?(j.state==downloads::State::Active?_(L"Working…"):w("—")):percent==100&&j.state==downloads::State::Active?_(L"Processing…"):wxString::Format("%d%%",percent));cell->SetToolTip(translated(j.detail)+"\n"+w(j.output));cell->Show();
  }
  for(size_t i=used;i<bars.size();++i)bars[i]->Hide();
 }
@@ -245,17 +245,17 @@ void MainWindow::logLayout(){
 }
 void MainWindow::refresh(){
  if(stopping)return;auto ids=selected();auto jobs=queue.snapshot();updateRates(jobs);
- for(auto& j:jobs){auto& seen=loggedStates[j.id];if(seen!=j.state){if(j.state=="Failed")LOG_ERROR("%s %s: %s -> Failed: %s",j.kind.c_str(),j.name.c_str(),seen.empty()?"new":seen.c_str(),j.detail.c_str());else LOG_INFO("%s %s: %s -> %s",j.kind.c_str(),j.name.c_str(),seen.empty()?"new":seen.c_str(),j.state.c_str());seen=j.state;}}
+ for(auto& j:jobs){auto& seen=loggedStates[j.id];const std::string state=downloads::stateName(j.state);if(seen!=state){if(j.state==downloads::State::Failed)LOG_ERROR("%s %s: %s -> Failed: %s",j.kind.c_str(),j.name.c_str(),seen.empty()?"new":seen.c_str(),j.detail.c_str());else LOG_INFO("%s %s: %s -> %s",j.kind.c_str(),j.name.c_str(),seen.empty()?"new":seen.c_str(),state.c_str());seen=state;}}
  if(queue.error()!=loggedError){loggedError=queue.error();if(!loggedError.empty())LOG_ERROR("Queue: %s",loggedError.c_str());}std::vector<downloads::Job> next;auto query=search->GetValue().Lower();for(auto& j:jobs)if(visible(j,mode,"")&&w(j.name).Lower().Contains(query))next.push_back(j);
  bool rebuild=next.size()!=shown.size();if(!rebuild)for(size_t i=0;i<next.size();++i)if(next[i].id!=shown[i].id){rebuild=true;break;}
  list->Freeze();if(rebuild)list->DeleteAllItems();shown=next;
- for(size_t i=0;i<next.size();++i){auto& j=next[i];if(rebuild)list->InsertItem(long(i),w(j.name));wxString values[]={w(j.name),j.kind=="Archive"?_(L"File"):_(L"Video"),j.kind=="Video"?w("—"):j.total?w(archive::formatBytes(j.total)):_(L"Unknown"),"",translated(j.state),rates[j.id]};
+ for(size_t i=0;i<next.size();++i){auto& j=next[i];if(rebuild)list->InsertItem(long(i),w(j.name));wxString values[]={w(j.name),j.kind=="Archive"?_(L"File"):_(L"Video"),j.kind=="Video"?w("—"):j.total?w(archive::formatBytes(j.total)):_(L"Unknown"),"",translated(downloads::stateName(j.state)),rates[j.id]};
   for(int c=0;c<6;++c)if(rebuild||list->GetItemText(long(i),c)!=values[c])list->SetItem(long(i),c,values[c]);
   if(rebuild){list->SetItemBackgroundColour(long(i),i%2?wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE):wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));if(std::find(ids.begin(),ids.end(),j.id)!=ids.end())list->SetItemState(long(i),wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}
  }
  list->Thaw();auto current=selected();selectedDetail=_(L"Paste a URL above. Select one, all, or specific files before adding downloads.");for(const auto& j:shown)if(!current.empty()&&j.id==current.front()){selectedDetail=w(j.name)+"\n"+translated(j.detail)+w(j.output.empty()?"":" · "+j.output);break;}detail->SetLabel(selectedDetail);detail->Wrap(std::max(1,detail->GetClientSize().x));
  // Hide the spacer too so the empty row collapses.
- bool history=mode==3;historyRow->ShowItems(history);again->Enable(!current.empty());int active=0,waiting=0,done=0,listed=0;for(auto& j:jobs){active+=j.state=="Active";waiting+=j.state=="Queued"||j.state=="Paused"||j.state=="Failed";done+=j.state=="Complete";listed+=!j.historyOnly;}
+ bool history=mode==3;historyRow->ShowItems(history);again->Enable(!current.empty());int active=0,waiting=0,done=0,listed=0;for(auto& j:jobs){active+=j.state==downloads::State::Active;waiting+=j.state==downloads::State::Queued||j.state==downloads::State::Paused||j.state==downloads::State::Failed;done+=j.state==downloads::State::Complete;listed+=!j.historyOnly;}
  clear->Enable(done>0);int counts[]={listed,active,waiting,done};const wxString names[]={_(L"All"),_(L"Active"),_(L"Queue"),_(L"History")};for(int i=0;i<4;++i){auto label=wxString::Format("%s (%d)",names[i],counts[i]);if(tabs->GetPageText(size_t(i))!=label){tabs->SetPageText(size_t(i),label);fitTabs();}}
  footer->SetLabel(queue.error().empty()?(queue.paused()?_(L"All paused  ·  "):wxString())+wxString::Format(_(L"%d / 4 downloading  ·  %d waiting  ·  %d completed"),active,waiting,done):translated(queue.error()));footer->Wrap(std::max(1,footer->GetClientSize().x));detail->GetParent()->Layout();progressCells();
 }

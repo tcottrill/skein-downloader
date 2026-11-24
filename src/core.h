@@ -4,11 +4,27 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <initializer_list>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace archive {
 using Path = std::filesystem::path;
+// A request that failed. status is the server's HTTP status (404, 503, ...), or 0 when no answer
+// arrived; retry and wait say whether trying again may help and after how many seconds.
+struct NetworkError : std::runtime_error {
+    bool retry; unsigned wait, status;
+    NetworkError(const std::string& message, bool again = true, unsigned seconds = 1, unsigned httpStatus = 0)
+        : std::runtime_error(message), retry(again), wait(seconds), status(httpStatus) {}
+};
+// True when e is a NetworkError for one of these HTTP statuses.
+inline bool hasHttpStatus(const std::exception& e, std::initializer_list<unsigned> statuses) {
+    auto network = dynamic_cast<const NetworkError*>(&e);
+    return network && std::find(statuses.begin(), statuses.end(), network->status) != statuses.end();
+}
+// A link that opens a web page rather than a file (from loadDirectLink).
+struct WebPageError : std::runtime_error { using std::runtime_error::runtime_error; };
 Path pathFromUtf8(const std::string& value);
 std::string pathUtf8(const Path& value);
 // url is set when each file has its own download link (GitHub release assets).

@@ -6,12 +6,18 @@
 #include <mutex>
 #include <thread>
 namespace downloads {
+enum class State { Queued, Active, Paused, Failed, Complete };
+// The English name saved in the history file, logged, and translated for display.
+const char* stateName(State);
+// The state for a saved name; an unknown name reads as Paused.
+State stateFromName(const std::string&);
 struct Job {
     uint64_t id=0,done=0,total=0;
-    std::string name,kind,key,state="Queued",detail,output;
+    std::string name,kind,key,detail,output;
+    State state=State::Queued;
     nlohmann::json input;
     bool historyOnly=false;
-    bool canMoveToTop() const { return state=="Queued" || state=="Paused"; }
+    bool canMoveToTop() const { return state==State::Queued || state==State::Paused; }
 };
 // Duplicate-detection key for a destination path; case-insensitive on Windows,
 // matching keys saved by earlier versions.

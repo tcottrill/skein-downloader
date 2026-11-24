@@ -46,7 +46,7 @@ int main() {
             const auto jobs = queue.snapshot();
             std::vector<uint64_t> order;
             for (const auto& job : jobs) order.push_back(job.id);
-            if (order != std::vector<uint64_t>{1, 2, 3, 4, 7, 8, 5, 6} || jobs[4].state != "Paused" || jobs[1].state != "Active") {
+            if (order != std::vector<uint64_t>{1, 2, 3, 4, 7, 8, 5, 6} || jobs[4].state != downloads::State::Paused || jobs[1].state != downloads::State::Active) {
                 throw std::runtime_error("Moving the selection did not preserve its order or job states");
             }
             queue.flush(); // history is written by its own thread
@@ -91,13 +91,13 @@ int main() {
             for (int i = 0; i < 10000 && !finishing; ++i) std::this_thread::sleep_for(1ms);
             const auto id = queue.snapshot().at(0).id;
             queue.pause(id);
-            std::string state;
+            auto state = downloads::State::Active;
             for (int i = 0; i < 10000; ++i) {
                 state = queue.snapshot().at(0).state;
-                if (state != "Active") break;
+                if (state != downloads::State::Active) break;
                 std::this_thread::sleep_for(1ms);
             }
-            if (state != "Complete") throw std::runtime_error("A finished job was marked " + state + " after a late pause");
+            if (state != downloads::State::Complete) throw std::runtime_error(std::string("A finished job was marked ") + downloads::stateName(state) + " after a late pause");
             queue.shutdown();
             std::ifstream file(lateHistory);
             if (nlohmann::json::parse(file).at(0).at("state") != "Complete")

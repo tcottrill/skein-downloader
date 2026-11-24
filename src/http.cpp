@@ -24,16 +24,12 @@
 #include <thread>
 namespace archive {
 namespace {
-struct NetworkError : std::runtime_error {
-    bool retry; unsigned wait;
-    NetworkError(std::string message, bool again = true, unsigned seconds = 1) : std::runtime_error(message), retry(again), wait(seconds) {}
-};
 // Shared by both transports for any response other than 200/206.
 NetworkError statusError(unsigned long status, unsigned retryAfter) {
     std::string message = "HTTP " + std::to_string(status);
     if (status == 401 || status == 403) message += ": file requires access permission or sign-in (not supported in this version).";
     if (status == 404) message += ": file not found.";
-    return NetworkError(message, status == 429 || status == 408 || status >= 500, retryAfter);
+    return NetworkError(message, status == 429 || status == 408 || status >= 500, retryAfter, (unsigned)status);
 }
 void cancelled(const std::atomic_bool& stop) { if (stop) throw std::runtime_error("Paused"); }
 void delay(unsigned seconds, const std::atomic_bool& stop) {
@@ -156,7 +152,7 @@ Item loadDirectLink(const std::string& url, std::atomic_bool& stop) {
     if (name.empty()) name = filenameFromUrl(url);
     const auto lowerName = lower(name);
     if (type == "text/html" && !lowerName.ends_with(".html") && !lowerName.ends_with(".htm"))
-        throw std::runtime_error("This link opens a web page, not a file. Copy the file's direct download link instead.");
+        throw WebPageError("This link opens a web page, not a file. Copy the file's direct download link instead.");
     file.name = safeFilename(name); file.format = type;
     Item item; item.title = file.name; item.selectedFile = file.name; item.sourceUrl = url; item.files.push_back(std::move(file));
     return item;
@@ -199,7 +195,7 @@ Item loadHubItem(const std::string& input, std::atomic_bool& stop) {
             throw std::runtime_error("This repository is gated: its files need you to accept its terms while signed in to Hugging Face. Signed-in downloads are not supported in this version.");
     } catch (const NetworkError& e) {
         // The Hub answers 401 for both missing and private repos.
-        if (std::string(e.what()).starts_with("HTTP 401") || std::string(e.what()).starts_with("HTTP 404"))
+        if (e.status == 401 || e.status == 404)
             throw std::runtime_error("This Hugging Face repository was not found, or it is private (sign-in is not supported in this version).");
         throw;
     }
@@ -230,11 +226,10 @@ Item loadGitHubRelease(const std::string& input, std::atomic_bool& stop) {
         if (item.files.empty()) throw std::runtime_error("This release has no files.");
         return item;
     } catch (const NetworkError& e) {
-        std::string message = e.what();
-        if (message.starts_with("HTTP 404"))
+        if (e.status == 404)
             throw std::runtime_error(link.tag.empty() ? "This repository has no published releases, or it is private." : "Release not found. Check the tag, or the repository may be private.");
         // Anonymous API use is limited to 60 requests an hour per network address.
-        if (message.starts_with("HTTP 403") || message.starts_with("HTTP 429"))
+        if (e.status == 403 || e.status == 429)
             throw std::runtime_error("GitHub's limit for release lookups without signing in (60 an hour) was reached. Try again later.");
         throw;
     }
@@ -249,11 +244,8 @@ Item loadItem(const std::string& input, std::atomic_bool& stop) {
     if (isWaybackLink(input) || lower(url.substr(0, 6)) == "ftp://") return loadFolderItem(input, stop);
     if (!isArchiveLink(input) && isHttpUrl(input)) {
         try { return loadDirectLink(url, stop); }
-        catch (const std::exception& e) {
-            // A web page can be a folder listing ("Index of /files/"), whose files are listed instead.
-            if (!std::string(e.what()).starts_with("This link opens a web page")) throw;
-            return loadFolderItem(url, stop);
-        }
+        // A web page can be a folder listing ("Index of /files/"), whose files are listed instead.
+        catch (const WebPageError&) { return loadFolderItem(url, stop); }
     }
     auto link = parseLink(input);
     auto r = get("https://archive.org/metadata/" + encode(link.id), L"", stop);
