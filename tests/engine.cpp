@@ -4,7 +4,9 @@
 #include "signin.h"
 #include "sites.h"
 #include "staging.h"
+#include "util/sys_log.h"
 #include "json.hpp"
+#include <cctype>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -636,6 +638,93 @@ void nothingUnasked(const std::string& base) {
     expect(stats(base)["auth"].empty(), "No sign-in is sent to a server that never asked for one.");
 }
 
+std::string base64Of(const std::string& text) {
+    static const char* digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    for (size_t i = 0; i < text.size(); i += 3) {
+        const size_t left = text.size() - i;
+        const uint32_t n = (uint8_t(text[i]) << 16) | (left > 1 ? uint8_t(text[i + 1]) << 8 : 0) | (left > 2 ? uint8_t(text[i + 2]) : 0);
+        out += digits[(n >> 18) & 63];
+        out += digits[(n >> 12) & 63];
+        out += left > 1 ? digits[(n >> 6) & 63] : '=';
+        out += left > 2 ? digits[n & 63] : '=';
+    }
+    return out;
+}
+
+std::string percentEncoded(const std::string& text) {
+    static const char* hex = "0123456789ABCDEF";
+    std::string out;
+    for (const unsigned char c : text) {
+        if (std::isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~')
+            out += char(c);
+        else {
+            out += '%';
+            out += hex[c >> 4];
+            out += hex[c & 15];
+        }
+    }
+    return out;
+}
+
+// Every file under folder (except skip) that contains one of the needles, as "file: needle".
+std::vector<std::string> filesHolding(const archive::Path& folder, const archive::Path& skip, const std::vector<std::string>& needles) {
+    std::vector<std::string> hits;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(folder)) {
+        if (!entry.is_regular_file() || entry.path() == skip) continue;
+        const auto text = readFile(entry.path());
+        for (const auto& needle : needles)
+            if (text.find(needle) != std::string::npos) hits.push_back(archive::pathUtf8(entry.path().filename()) + ": " + needle);
+    }
+    return hits;
+}
+
+// The forms a secret could take in a file: as it is, URL-encoded, and Base64 of it alone and with a user name in front.
+std::vector<std::string> secretForms(const std::string& user, const std::string& secret) {
+    std::vector<std::string> forms = {secret, percentEncoded(secret), base64Of(secret), base64Of(user + ":" + secret), base64Of(user + ":" + percentEncoded(secret))};
+    if (user.empty()) forms.resize(3);
+    forms.erase(std::unique(forms.begin(), forms.end()), forms.end());
+    return forms;
+}
+
+// A signed-in download that is paused and then finished leaves its secret nowhere on disk: not in the staging folder,
+// not in the log (read after the pause and again after the finish), not beside the file.
+void noSecretOnDisk(const std::string& base) {
+    struct Case {
+        const char* mode;
+        archive::SignIn signIn;
+        std::string user, secret;
+    };
+    const Case cases[] = {{"bearer-secret", tokenFor("127.0.0.1", "tok-SECRET-123"), "", "tok-SECRET-123"},
+                          {"basic-secret", passwordFor("127.0.0.1", "user", "pass-SECRET-456"), "user", "pass-SECRET-456"}};
+    Log::setConsoleOutputEnabled(false);
+    for (const auto& c : cases) {
+        SignIns table({c.signIn});
+        TempFolder folder(std::string("no-secret-") + c.mode);
+        reset(base);
+        const auto target = folder.path / "file.bin";
+        const auto url = urlFor(base, c.mode, 10 * MiB);
+        const auto forms = secretForms(c.user, c.secret);
+        expect(Log::open(archive::pathUtf8(folder.path / "paused.log")), "The log opens in the test folder.");
+        run(url, target, 4, 3 * MiB);
+        Log::close();
+        auto staging = target;
+        staging += L".archive-parts";
+        expect(std::filesystem::exists(staging), std::string("A paused download in mode ") + c.mode + " leaves its staging folder.");
+        auto hits = filesHolding(staging, {}, forms);
+        expect(hits.empty(), "The staging folder of a paused " + std::string(c.mode) + " download holds no secret, but " + (hits.empty() ? "" : hits[0]) + ".");
+        hits = filesHolding(folder.path, {}, forms);
+        expect(hits.empty(), "Nothing in the folder of a paused " + std::string(c.mode) + " download holds a secret, but " + (hits.empty() ? "" : hits[0]) + ".");
+        expect(readFile(folder.path / "paused.log").find("Probe") != std::string::npos, "The log of the paused download has its probe line, so the search of it means something.");
+        expect(Log::open(archive::pathUtf8(folder.path / "finished.log")), "The log opens again for the resumed download.");
+        run(url, target, 4);
+        Log::close();
+        expect(readFile(target) == expectedBytes(10 * MiB), std::string("The resumed ") + c.mode + " download has the right content.");
+        hits = filesHolding(folder.path, target, forms);
+        expect(hits.empty(), "After a " + std::string(c.mode) + " download finishes, no file beside it holds a secret, but " + (hits.empty() ? "" : hits[0]) + ".");
+    }
+}
+
 void loaderSignsIn(const std::string& base) {
     SignIns table({passwordFor("127.0.0.1", "user", "pass")});
     std::atomic_bool stop = false;
@@ -677,6 +766,7 @@ int main(int argc, char** argv) {
         forbidden(base);
         nothingUnasked(base);
         loaderSignsIn(base);
+        noSecretOnDisk(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;

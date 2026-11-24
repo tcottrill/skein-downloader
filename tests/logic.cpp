@@ -1,5 +1,6 @@
 // The file picker's job builder (src/wx/logic.cpp) without a window: results, the progress count and stopping.
 #include "logic.h"
+#include "platform/ftp.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -66,6 +67,19 @@ int main() {
         check(paused, "stop throws Paused");
         stop = false;
         check(lite::fileJobs(item, checked, root, 2, "standard", &progress, &stop).size() == 2, "a stop flag that is not set changes nothing");
+
+        // A file loaded from an FTP link that carried a password: the item the loaders make has the address without it,
+        // and nothing of it reaches the job input that history.json stores.
+        {
+            archive::Item ftpItem = sample(1);
+            ftpItem.sourceUrl = archive::ftp::withoutUserInfo("ftp://bob:pw-SECRET-789@example.org/a.zip");
+            ftpItem.files[0].url = archive::ftp::withoutUserInfo("ftp://bob:pw-SECRET-789@example.org/a.zip");
+            check(ftpItem.sourceUrl == "ftp://example.org/a.zip", "the loaders' cleaning leaves the FTP address without user information");
+            auto ftpJobs = lite::fileJobs(ftpItem, {true}, root, 2, "standard");
+            check(ftpJobs.size() == 1, "an FTP item makes a job");
+            const auto text = ftpJobs[0].input.dump();
+            check(text.find("pw-SECRET-789") == std::string::npos && text.find("bob") == std::string::npos, "a job's stored input holds no FTP password or user");
+        }
 
         // Names are validated for every file, also after the first.
         item.files[3].name = "../escape.zip";

@@ -116,6 +116,11 @@ int main() {
         check(ftp::withoutUserInfo("ftp://a@b:p@ss@h/x") == "ftp://h/x", "The last @ ends the user information");
         check(ftp::withoutUserInfo("http://u:p@example.org/") == "http://u:p@example.org/", "Only FTP addresses are changed");
         check(logUrl("ftp://bob:secret@example.org/pub/") == "ftp://example.org/pub/", "The log never shows an FTP password");
+        check(logUrl("https://user:pw-SECRET-000@example.org/x") == "https://example.org/x", "The log never shows a password in an https address");
+        check(logUrl("http://user:pw-SECRET-000@example.org:8080/x?token=1#f") == "http://example.org:8080/x?...", "The log never shows a password in an http address, and still hides the query");
+        check(logUrl("HTTPS://user@example.org/x") == "HTTPS://example.org/x", "The log never shows a user name in an https address");
+        check(logUrl("https://example.org/a@b?x=1") == "https://example.org/a@b?...", "An @ in the path of an https address is kept");
+        check(logUrl("https://example.org/x?mail=a@b.org") == "https://example.org/x?...", "An @ in the query of an https address changes nothing");
         check(isFileSiteLink("ftp://ftp.gnu.org/gnu/hello/"), "FTP links open the file picker");
         auto listed = ftp::parseList(
                 "total 12\r\n"

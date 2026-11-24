@@ -13,6 +13,7 @@ Byte i of version v of a file is (i * 31 + 7 + v) & 0xFF. Modes:
   ignore-ifrange  like changed, but never looks at If-Range: always 206 for a Range
   basic    needs Authorization: Basic for user / pass, else 401 with a Basic challenge; then like etag
   bearer   needs Authorization: Bearer tok, else 401 with a Bearer challenge; then like etag
+  basic-secret / bearer-secret  like basic / bearer, for user / pass-SECRET-456 and Bearer tok-SECRET-123
   redirect-out   needs Bearer tok; 302 to mode etag on the other host name (127.0.0.1 <-> localhost)
   redirect-back  302 to mode bearer on the same host name
   redirect-loop  302 to itself (a relative Location)
@@ -110,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
             STATS.reset()
             self.send_text(200, "ok", "text/plain")
             return
-        match = re.fullmatch(r"/(etag|norange|nolength|modified|weak|rangeprobe|changed|ignore-ifrange|basic|bearer"
+        match = re.fullmatch(r"/(etag|norange|nolength|modified|weak|rangeprobe|changed|ignore-ifrange|basic|bearer|basic-secret|bearer-secret"
                              r"|redirect-out|redirect-back|redirect-loop|forbidden)/(\d+)/file\.bin", self.path)
         if not match:
             self.send_text(404, "not found", "text/plain")
@@ -130,11 +131,13 @@ class Handler(BaseHTTPRequestHandler):
         if mode == "forbidden":
             self.send_text(403, "forbidden", "text/plain")
             return
-        if mode in ("basic", "bearer", "redirect-out"):
-            wanted = "Basic " + base64.b64encode(b"user:pass").decode() if mode == "basic" else "Bearer tok"
+        if mode in ("basic", "bearer", "basic-secret", "bearer-secret", "redirect-out"):
+            wanted = {"basic": "Basic " + base64.b64encode(b"user:pass").decode(),
+                      "basic-secret": "Basic " + base64.b64encode(b"user:pass-SECRET-456").decode(),
+                      "bearer-secret": "Bearer tok-SECRET-123"}.get(mode, "Bearer tok")
             if authorization != wanted:
                 self.send_response(401)
-                self.send_header("WWW-Authenticate", 'Basic realm="test"' if mode == "basic" else "Bearer")
+                self.send_header("WWW-Authenticate", 'Basic realm="test"' if mode.startswith("basic") else "Bearer")
                 self.send_header("Content-Type", "text/plain")
                 self.send_header("Content-Length", "12")
                 self.end_headers()
@@ -153,7 +156,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
-        if mode in ("basic", "bearer"):
+        if mode in ("basic", "bearer", "basic-secret", "bearer-secret"):
             mode = "etag"
         with STATS.lock:
             # The changed modes switch to version 2 once 3 ranged requests were answered since /reset.

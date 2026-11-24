@@ -114,7 +114,15 @@ bool isHttpUrl(const std::string& input) {
     return std::regex_match(trim(input), url);
 }
 std::string logUrl(const std::string& input) {
-    const auto url = ftp::withoutUserInfo(input); // an FTP address may carry a password
+    auto url = ftp::withoutUserInfo(input); // an FTP address may carry a password
+    // So may an http or https one (user:password@host): the engine does not sign in that way, but the link must never be logged with it.
+    const auto scheme = url.find("://");
+    if (scheme != std::string::npos && (lower(url.substr(0, scheme)) == "http" || lower(url.substr(0, scheme)) == "https")) {
+        const auto start = scheme + 3;
+        const auto hostEnd = url.find_first_of("/?#", start);
+        const auto at = url.rfind('@', hostEnd == std::string::npos ? std::string::npos : hostEnd - 1);
+        if (at != std::string::npos && at >= start) url.erase(start, at + 1 - start);
+    }
     const auto end = url.find_first_of("?#");
     return end == std::string::npos ? url : url.substr(0, end) + "?...";
 }
