@@ -207,6 +207,9 @@ msgstr "MP4 (iPhone 호환)"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: iPhone 재생을 위한 H.264 동영상과 AAC 오디오입니다. 호환되지 않는 코덱으로 대체하지 않습니다.\n해상도 제한은 그대로 적용되며, 호환되는 스트림이 없으면 오류가 표시됩니다."
 
+msgid "Move to top of queue"
+msgstr "대기열 맨 위로 이동"
+
 msgid "Name"
 msgstr "이름"
 

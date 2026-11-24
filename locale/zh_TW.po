@@ -207,6 +207,9 @@ msgstr "MP4（相容於 iPhone）"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4：使用 H.264 影像與 AAC 音訊，以供 iPhone 播放。不會改用不相容的編碼。\n仍會套用解析度上限；若無相容串流，將回報錯誤。"
 
+msgid "Move to top of queue"
+msgstr "移到佇列頂端"
+
 msgid "Name"
 msgstr "名稱"
 

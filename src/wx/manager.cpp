@@ -148,18 +148,23 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
  // Right-click a download for the actions that apply to it, on its own or with the other
  // selected rows (a click outside the selection selects just that row first).
  list->Bind(wxEVT_LIST_ITEM_RIGHT_CLICK,[this,removeSelected,openSelected](wxListEvent& e){
+  if(e.GetIndex()<0||size_t(e.GetIndex())>=shown.size())return;
   if(!list->GetItemState(e.GetIndex(),wxLIST_STATE_SELECTED)){
    for(long i=-1;(i=list->GetNextItem(i,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1;)list->SetItemState(i,0,wxLIST_STATE_SELECTED);
    list->SetItemState(e.GetIndex(),wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED,wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
   }
   const auto ids=selected();if(ids.empty())return;
-  bool canPause=false,canResume=false,canRetry=false;
-  for(auto& j:shown)if(std::find(ids.begin(),ids.end(),j.id)!=ids.end()){canPause|=j.state=="Active"||j.state=="Queued";canResume|=j.state=="Paused";canRetry|=j.state=="Failed";}
-  enum {Pause=1,Resume,Retry,OpenFolder,Remove};
+  bool canPause=false,canResume=false,canRetry=false,canMoveToTop=false;
+  for(auto& j:shown)if(std::find(ids.begin(),ids.end(),j.id)!=ids.end()){
+   canPause|=j.state=="Active"||j.state=="Queued";canResume|=j.state=="Paused";
+   canRetry|=j.state=="Failed";canMoveToTop|=j.canMoveToTop();
+  }
+  enum {Pause=1,Resume,Retry,MoveToTop,OpenFolder,Remove};
   wxMenu menu;
   // Access keys: P, R, T, O and M (Resume, Retry and Remove all start with R).
   menu.Append(Pause,_(L"&Pause"))->Enable(canPause);menu.Append(Resume,_(L"&Resume"))->Enable(canResume);
   menu.Append(Retry,_(L"Re&try"))->Enable(canRetry);menu.AppendSeparator();
+  if(canMoveToTop){menu.Append(MoveToTop,_(L"Move to top of queue"));menu.AppendSeparator();}
   menu.Append(OpenFolder,_(L"&Open folder"));menu.AppendSeparator();
   menu.Append(Remove,mode==3?_(L"Re&move from history\tDel"):_(L"Re&move from list\tDel"));
   switch(list->GetPopupMenuSelectionFromUser(menu,e.GetPoint())){
@@ -168,6 +173,7 @@ MainWindow::MainWindow(downloads::Queue& q):wxFrame(nullptr,wxID_ANY,"Skein Down
    // Failed downloads go back in the queue; the engine keeps any partial data it can still
    // verify (same file, size and checksum or ETag) and fetches the rest.
    case Retry:for(auto& j:shown)if(j.state=="Failed"&&std::find(ids.begin(),ids.end(),j.id)!=ids.end()){LOG_INFO("Retrying %s",j.name.c_str());queue.resume(j.id);}refresh();break;
+   case MoveToTop:queue.moveToTop(ids);refresh();break;
    case OpenFolder:openSelected();break;
    case Remove:removeSelected();break;
   }
@@ -199,7 +205,15 @@ void MainWindow::updateRates(const std::vector<downloads::Job>& jobs){
 void MainWindow::progressCells(){
  size_t used=0;int top=list->GetTopItem();int last=std::min(int(shown.size()),top+list->GetCountPerPage()+2);int clientHeight=list->GetClientSize().y;
  for(int r=std::max(0,top);r<last;++r){wxRect rect;if(!list->GetSubItemRect(r,3,rect)||rect.y<FromDIP(20)||rect.GetBottom()>clientHeight)continue;
-  if(used==bars.size()){auto control=new ProgressBar(list);bars.push_back(control);control->Bind(wxEVT_LEFT_DOWN,[this,control](wxMouseEvent& event){long row=long(reinterpret_cast<intptr_t>(control->GetClientData()))-1;if(row<0)return;bool wasSelected=(list->GetItemState(row,wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)!=0;long anchor=selectionAnchor;if(!event.ControlDown()){long selected=-1;while((selected=list->GetNextItem(selected,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)list->SetItemState(selected,0,wxLIST_STATE_SELECTED);}if(event.ShiftDown()&&anchor>=0&&anchor<long(shown.size())){for(long i=std::min(row,anchor);i<=std::max(row,anchor);++i)list->SetItemState(i,wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}else{list->SetItemState(row,event.ControlDown()&&wasSelected?0:wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);selectionAnchor=row;}list->SetItemState(row,wxLIST_STATE_FOCUSED,wxLIST_STATE_FOCUSED);list->SetFocus();});}
+  if(used==bars.size()){auto control=new ProgressBar(list);bars.push_back(control);control->Bind(wxEVT_LEFT_DOWN,[this,control](wxMouseEvent& event){long row=long(reinterpret_cast<intptr_t>(control->GetClientData()))-1;if(row<0)return;bool wasSelected=(list->GetItemState(row,wxLIST_STATE_SELECTED)&wxLIST_STATE_SELECTED)!=0;long anchor=selectionAnchor;if(!event.ControlDown()){long selected=-1;while((selected=list->GetNextItem(selected,wxLIST_NEXT_ALL,wxLIST_STATE_SELECTED))!=-1)list->SetItemState(selected,0,wxLIST_STATE_SELECTED);}if(event.ShiftDown()&&anchor>=0&&anchor<long(shown.size())){for(long i=std::min(row,anchor);i<=std::max(row,anchor);++i)list->SetItemState(i,wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);}else{list->SetItemState(row,event.ControlDown()&&wasSelected?0:wxLIST_STATE_SELECTED,wxLIST_STATE_SELECTED);selectionAnchor=row;}list->SetItemState(row,wxLIST_STATE_FOCUSED,wxLIST_STATE_FOCUSED);list->SetFocus();});
+   control->Bind(wxEVT_RIGHT_UP,[this,control](wxMouseEvent& mouse){
+    wxListEvent event(wxEVT_LIST_ITEM_RIGHT_CLICK,list->GetId());
+    event.SetEventObject(list);
+    event.SetIndex(long(reinterpret_cast<intptr_t>(control->GetClientData()))-1);
+    event.SetPoint(list->ScreenToClient(control->ClientToScreen(mouse.GetPosition())));
+    list->ProcessWindowEvent(event);
+   });
+  }
   auto cell=bars[used++];auto& j=shown[size_t(r)];int percent=j.state=="Complete"?100:j.total?int(std::min(100.0,100.0*double(j.done)/double(j.total))):-1;
   cell->SetClientData(reinterpret_cast<void*>(intptr_t(r+1)));
   // Qt insets the bar by 8 px horizontally and 10 px vertically inside the cell.

@@ -11,6 +11,7 @@ struct Job {
     std::string name,kind,key,state="Queued",detail,output;
     nlohmann::json input;
     bool historyOnly=false;
+    bool canMoveToTop() const { return state=="Queued" || state=="Paused"; }
 };
 // Duplicate-detection key for a destination path; case-insensitive on Windows,
 // matching keys saved by earlier versions.
@@ -28,6 +29,7 @@ public:
     bool add(std::string name,std::string kind,std::string key,nlohmann::json input);
     size_t addBatch(std::vector<Job> jobs);
     void start();void shutdown();void pause(uint64_t id);void resume(uint64_t id);void remove(uint64_t id);
+    void moveToTop(const std::vector<uint64_t>& ids);
     std::vector<Job> snapshot()const;std::string error()const;
     bool beginMaintenance(const std::string& kind);void endMaintenance();
     void pauseAll();void resumeAll();void removeAll();void removeWaiting();bool paused()const;

@@ -87,6 +87,23 @@ void Queue::shutdown(){
 }
 void Queue::pause(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->running){e->stop=true;e->job.detail="Pausing…";}else if(e->job.state=="Queued")e->job.state="Paused";}saveLocked();}
 void Queue::resume(uint64_t id){std::lock_guard lock(mutex_);if(closing_)return;for(auto& e:jobs_)if(e->job.id==id&&!e->running&&(e->job.state=="Paused"||e->job.state=="Failed")){e->job.state="Queued";e->job.detail.clear();e->stop=false;}saveLocked();cv_.notify_all();}
+void Queue::moveToTop(const std::vector<uint64_t>& ids) {
+    if (ids.empty()) return;
+    const std::unordered_set<uint64_t> selected(ids.begin(), ids.end());
+    std::lock_guard lock(mutex_);
+    if (closing_) return;
+
+    // Keep the rows above the waiting queue in place. Workers use this same order.
+    const auto firstWaiting = std::find_if(jobs_.begin(), jobs_.end(), [](const auto& entry) {
+        return !entry->removing && (entry->job.canMoveToTop() || entry->job.state == "Failed");
+    });
+    const auto promote = [&](const auto& entry) {
+        return !entry->running && !entry->removing && entry->job.canMoveToTop() && selected.contains(entry->job.id);
+    };
+    if (std::is_partitioned(firstWaiting, jobs_.end(), promote)) return;
+    std::stable_partition(firstWaiting, jobs_.end(), promote);
+    saveLocked();
+}
 void Queue::remove(uint64_t id){std::lock_guard lock(mutex_);for(auto& e:jobs_)if(e->job.id==id){if(e->job.state=="Complete")e->job.historyOnly=true;else{e->removing=true;e->resumeRequested=false;e->stop=true;}}std::erase_if(jobs_,[](auto& e){return e->removing&&!e->running;});saveLocked();cv_.notify_all();}
 std::vector<Job> Queue::snapshot()const{std::lock_guard lock(mutex_);std::vector<Job> result;for(auto& e:jobs_)if(!e->removing)result.push_back(e->job);return result;}
 std::string Queue::error()const{std::lock_guard lock(mutex_);return error_;}

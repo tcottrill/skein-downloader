@@ -207,6 +207,9 @@ msgstr "MP4 (compatibile con iPhone)"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: video H.264 e audio AAC per iPhone. Nessun ripiego su codec incompatibili.\nIl limite di risoluzione resta valido; l’assenza di flussi compatibili produrrà un errore."
 
+msgid "Move to top of queue"
+msgstr "Sposta in cima alla coda"
+
 msgid "Name"
 msgstr "Nome"
 
