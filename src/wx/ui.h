@@ -117,20 +117,31 @@ class MainWindow : public wxFrame {
     std::map<uint64_t, wxString> rates;
     wxString selectedDetail;
     long selectionAnchor = -1;
-    std::map<uint64_t, std::string> loggedStates;
+    // The state last logged for each job (see logState).
+    std::unordered_map<uint64_t, downloads::State> loggedStates;
     std::string loggedError;
-    // The list is virtual: it asks cell() for the rows on screen. shown is rebuilt from a full
-    // snapshot only when the queue's generation, the search text or the view tab changed; between
-    // those, only the jobs the queue reports as changing are updated (rowOf finds their rows).
-    std::optional<uint64_t> shownGeneration;
+    // The list is virtual: it asks cellText() for the rows on screen. shown is rebuilt from the
+    // queue's rows() at once when the user changed something (the queue's edit generation, the
+    // search text or the view tab), and at most once a second when only workers started or ended
+    // jobs (its generation). Between rebuilds, the jobs the queue reports as changing, and those
+    // that just stopped changing, are updated in their rows (rowOf finds them).
+    std::optional<uint64_t> shownGeneration, shownEdits;
+    std::chrono::steady_clock::time_point lastRebuild;
+    std::vector<uint64_t> changingIds;
     wxString shownQuery;
     int shownMode = -1;
     std::unordered_map<uint64_t, size_t> rowOf;
-    int activeCount = 0, waitingCount = 0, doneCount = 0;
+    downloads::Queue::Counts counts;
     bool refreshQueued = false;
     wxString cellText(const downloads::Job&, long column) const;
-    void rebuild(uint64_t generation, const wxString& query);
+    void rebuild(uint64_t generation, uint64_t edits, const wxString& query);
+    // Logs a job's state when it differs from the one logged last for it ("new" if none).
+    void logState(const downloads::Job&);
+    // Puts a job's new values in its row (if it is shown) and redraws the row when a cell differs.
+    void updateRow(downloads::Job&&, const std::map<uint64_t, wxString>& oldRates);
+    // refresh() runs update() and adds its time to the benchmark counters.
     void refresh();
+    void update();
     void route();
     void fitTabs();
     void rowHeight();
@@ -148,6 +159,10 @@ public:
     void logLayout();
     // Benchmark-only hooks (--bench-files, see runBenchmark in file_picker.cpp).
     void benchRefresh() { refresh(); }
+    // Time spent in refresh() (total and longest, ms) and the number of full rebuilds since the
+    // counters were last set to zero.
+    double benchBusy = 0, benchLongest = 0;
+    int benchRebuilds = 0;
     void benchTimer(bool on) {
         if (on)
             timer.Start(250);

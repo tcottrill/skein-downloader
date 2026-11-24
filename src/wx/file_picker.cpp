@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <wx/menu.h>
 #include "util/sys_log.h"
+#include <deque>
 #include <unordered_set>
 namespace lite {
 namespace {
@@ -727,6 +728,45 @@ void runBenchmark(MainWindow& main, downloads::Queue& queue, size_t n) {
         report("queue_history_build_and_save", millis(start));
         std::error_code ec;
         report("history_bytes", std::to_string(std::filesystem::file_size(dataPath / "history.json", ec)));
+    }
+    {
+        // Job turnover without a network: for 5 s, 8 times a second a "worker" ends the oldest of four running
+        // jobs and starts the next one (Queue::benchSetState), while the window's own 250 ms timer runs and the
+        // event loop is pumped as the running program does it. Busy is the share of those 5 s the GUI thread spent
+        // in MainWindow::refresh; rebuilds counts its full rebuilds.
+        std::vector<uint64_t> ids;
+        for (auto& j : queue.snapshot())
+            if (ids.size() < 64) ids.push_back(j.id);
+        std::deque<uint64_t> running;
+        size_t started = 0;
+        main.benchBusy = main.benchLongest = 0;
+        main.benchRebuilds = 0;
+        main.benchTimer(true);
+        const auto start = Clock::now();
+        auto due = start;
+        while (Clock::now() < start + std::chrono::seconds(5)) {
+            if (Clock::now() >= due && started < ids.size()) {
+                if (running.size() == 4) {
+                    queue.benchSetState(running.front(), downloads::State::Complete);
+                    running.pop_front();
+                }
+                queue.benchSetState(ids[started], downloads::State::Active);
+                running.push_back(ids[started++]);
+                due += std::chrono::milliseconds(125);
+            }
+            wxYield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        const double elapsed = std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+        main.benchTimer(false);
+        for (auto id : running) queue.benchSetState(id, downloads::State::Paused);
+        char text[32];
+        snprintf(text, sizeof text, "%.1f", 100.0 * main.benchBusy / elapsed);
+        report("main_turnover_busy_percent", text);
+        snprintf(text, sizeof text, "%.3f", main.benchLongest);
+        report("main_turnover_longest_ms", text);
+        report("main_turnover_rebuilds", std::to_string(main.benchRebuilds));
+        report("main_turnover_starts", std::to_string(started));
     }
     {
         // Cancel: press Add, wait until the dialog shows the Cancel button, press it, and see that nothing was added.

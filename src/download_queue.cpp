@@ -63,6 +63,8 @@ Queue::Queue(archive::Path path, Runner runner)
             next_ = std::max(next_, v.id + 1);
             jobs_.push_back(e);
         }
+        std::lock_guard lock(mutex_);
+        changedLocked(); // the counts of the jobs read back
     } catch (const std::exception& e) {
         jobs_.clear();
         historyReadable_ = false;
@@ -73,14 +75,29 @@ Queue::~Queue() {
     shutdown();
 }
 namespace {
-nlohmann::json historyEntry(const Job& j) {
-    return {{"id", j.id}, {"name", j.name}, {"kind", j.kind}, {"key", j.key}, {"input", j.input}, {"state", stateName(j.state)}, {"done", j.done}, {"total", j.total}, {"detail", j.detail}, {"output", j.output}, {"historyOnly", j.historyOnly}};
+nlohmann::json historyEntry(const Job& j, const nlohmann::json& input) {
+    return {{"id", j.id}, {"name", j.name}, {"kind", j.kind}, {"key", j.key}, {"input", input}, {"state", stateName(j.state)}, {"done", j.done}, {"total", j.total}, {"detail", j.detail}, {"output", j.output}, {"historyOnly", j.historyOnly}};
+}
+// A job without its input (most of a copy's cost), and without its key unless asked for.
+Job withoutInput(const Job& from, bool key) {
+    Job row;
+    row.id = from.id;
+    row.done = from.done;
+    row.total = from.total;
+    row.name = from.name;
+    row.kind = from.kind;
+    if (key) row.key = from.key;
+    row.detail = from.detail;
+    row.output = from.output;
+    row.state = from.state;
+    row.historyOnly = from.historyOnly;
+    return row;
 }
 }
 nlohmann::json Queue::historyLocked() const {
     nlohmann::json data = nlohmann::json::array();
     for (auto& e : jobs_)
-        if (!e->removing) data.push_back(historyEntry(e->job));
+        if (!e->removing) data.push_back(historyEntry(e->job, e->job.input));
     return data;
 }
 // Touches only the file, so it runs without mutex_; one writer at a time (the saver thread, or
@@ -145,19 +162,28 @@ void Queue::saveLoop() {
         lastWriteStart_ = std::chrono::steady_clock::now();
         // Only the copy of the jobs is made under the lock. Building the JSON from it takes twice
         // as long (about 250 ms for 40,000 jobs), and under the lock it stalled the window's every
-        // call to the queue; writing and flushing the file is slower still.
+        // call to the queue; writing and flushing the file is slower still. The copy leaves out each
+        // job's input, which costs most (about 120 ms for 40,000 jobs): an entry's input is never
+        // written once the entry is in jobs_, so it is read outside the lock through the entry,
+        // which the copy keeps alive.
         std::vector<Job> jobs;
+        std::vector<std::shared_ptr<const Entry>> entries;
         jobs.reserve(jobs_.size());
+        entries.reserve(jobs_.size());
         for (auto& e : jobs_)
-            if (!e->removing) jobs.push_back(e->job);
+            if (!e->removing) {
+                jobs.push_back(withoutInput(e->job, true));
+                entries.push_back(e);
+            }
         dirty_ = false;
         saving_ = true;
         lock.unlock();
         std::string failure;
         try {
             nlohmann::json data = nlohmann::json::array();
-            for (auto& j : jobs) data.push_back(historyEntry(j));
+            for (size_t i = 0; i < jobs.size(); ++i) data.push_back(historyEntry(jobs[i], entries[i]->job.input));
             jobs.clear();
+            entries.clear();
             storeHistory(data);
         } catch (const std::exception& e) {
             failure = std::string("History not saved: ") + e.what();
@@ -266,7 +292,7 @@ void Queue::work() {
             entry->job.state = State::Active;
             entry->job.detail = "Connecting";
             input = entry->job;
-            changedLocked();
+            changedLocked(false);
             saveLocked();
         }
         std::string failure;
@@ -327,7 +353,7 @@ void Queue::work() {
                 entry->notBefore = std::chrono::steady_clock::now() + wait;
             }
             entry->resumeRequested = false;
-            changedLocked();
+            changedLocked(false);
             saveLocked();
             cv_.notify_all();
         }
@@ -435,15 +461,57 @@ std::vector<Job> Queue::snapshot() const {
     return result;
 }
 // Called by every change generation() covers; walks the list only then, never per window tick.
-void Queue::changedLocked() {
+void Queue::changedLocked(bool edit) {
     ++generation_;
+    if (edit) ++editGeneration_;
     active_.clear();
-    for (auto& e : jobs_)
-        if (!e->removing && (e->running || (e->job.state == State::Queued && e->notBefore != std::chrono::steady_clock::time_point{}))) active_.push_back(e);
+    counts_ = {};
+    for (auto& e : jobs_) {
+        if (e->removing) continue;
+        const auto state = e->job.state;
+        if (e->running || (state == State::Queued && e->notBefore != std::chrono::steady_clock::time_point{})) active_.push_back(e);
+        counts_.listed += !e->job.historyOnly;
+        counts_.active += state == State::Active;
+        counts_.waiting += state == State::Queued || state == State::Paused || state == State::Failed;
+        counts_.done += state == State::Complete;
+    }
 }
 uint64_t Queue::generation() const {
     std::lock_guard lock(mutex_);
     return generation_;
+}
+uint64_t Queue::editGeneration() const {
+    std::lock_guard lock(mutex_);
+    return editGeneration_;
+}
+Queue::Counts Queue::counts() const {
+    std::lock_guard lock(mutex_);
+    return counts_;
+}
+std::vector<Job> Queue::rows() const {
+    std::lock_guard lock(mutex_);
+    std::vector<Job> result;
+    result.reserve(jobs_.size());
+    const auto now = std::chrono::steady_clock::now();
+    for (auto& e : jobs_) {
+        if (e->removing) continue;
+        auto& row = result.emplace_back(withoutInput(e->job, false));
+        if (row.state == State::Queued && e->notBefore > now)
+            row.retryIn = uint64_t(std::chrono::ceil<std::chrono::seconds>(e->notBefore - now).count());
+    }
+    return result;
+}
+std::optional<Job> Queue::job(uint64_t id) const {
+    std::lock_guard lock(mutex_);
+    for (auto& e : jobs_)
+        if (!e->removing && e->job.id == id) {
+            Job result = e->job;
+            const auto now = std::chrono::steady_clock::now();
+            if (result.state == State::Queued && e->notBefore > now)
+                result.retryIn = uint64_t(std::chrono::ceil<std::chrono::seconds>(e->notBefore - now).count());
+            return result;
+        }
+    return std::nullopt;
 }
 std::vector<Job> Queue::changing() const {
     std::lock_guard lock(mutex_);
@@ -581,6 +649,19 @@ void Queue::clearHistory() {
         return !e->running && !e->removing && e->job.state == State::Complete;
     });
     changedLocked();
+    saveLocked();
+}
+void Queue::benchSetState(uint64_t id, State state) {
+    std::lock_guard lock(mutex_);
+    for (auto& e : jobs_)
+        if (e->job.id == id) {
+            e->running = state == State::Active;
+            e->job.state = state;
+            e->job.detail = state == State::Active ? "Downloading" : state == State::Complete ? "Finished"
+                                                                                              : "";
+            if (state == State::Complete) e->job.done = e->job.total = 1000;
+        }
+    changedLocked(false);
     saveLocked();
 }
 void Queue::removeHistory(uint64_t id) {

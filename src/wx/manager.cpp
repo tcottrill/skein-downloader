@@ -249,8 +249,11 @@ MainWindow::MainWindow(downloads::Queue& q)
     });
     auto openSelected = [this] {
         auto ids = selected();
-        for (auto& j : shown)
-            if (!ids.empty() && j.id == ids.front()) {
+        for (auto& row : shown)
+            if (!ids.empty() && row.id == ids.front()) {
+                // The rows carry no input (see Queue::rows); the queue has the full job.
+                const auto full = queue.job(row.id);
+                const auto& j = full ? *full : row;
                 auto s = j.output.empty() ? j.input.value("target", j.input.value("folder", std::string())) : j.output;
                 if (s.empty()) return;
                 auto path = archive::pathFromUtf8(s);
@@ -730,37 +733,57 @@ wxString MainWindow::cellText(const downloads::Job& j, long column) const {
     }
     return {}; // the Progress column is drawn by a ProgressBar
 }
-// The full update: a new snapshot, state logging, the filter and the tab counts. Run only when the
-// queue's generation, the search text or the view tab changed.
-void MainWindow::rebuild(uint64_t generation, const wxString& query) {
+void MainWindow::logState(const downloads::Job& j) {
+    const auto found = loggedStates.find(j.id);
+    const bool fresh = found == loggedStates.end();
+    if (!fresh && found->second == j.state) return;
+    const char* from = fresh ? "new" : downloads::stateName(found->second);
+    if (j.state == downloads::State::Failed)
+        LOG_ERROR("%s %s: %s -> Failed: %s", j.kind.c_str(), j.name.c_str(), from, j.detail.c_str());
+    else
+        LOG_INFO("%s %s: %s -> %s", j.kind.c_str(), j.name.c_str(), from, downloads::stateName(j.state));
+    loggedStates[j.id] = j.state;
+}
+// The full update: the queue's rows (without their inputs), state logging and the filter. Run at once
+// for a change the user made, and at most once a second for workers starting and ending jobs.
+void MainWindow::rebuild(uint64_t generation, uint64_t edits, const wxString& query) {
+    ++benchRebuilds;
     const auto ids = selected();
-    auto jobs = queue.snapshot();
-    activeCount = waitingCount = doneCount = 0;
-    int listed = 0;
-    for (auto& j : jobs) {
-        activeCount += j.state == downloads::State::Active;
-        waitingCount += j.state == downloads::State::Queued || j.state == downloads::State::Paused || j.state == downloads::State::Failed;
-        doneCount += j.state == downloads::State::Complete;
-        listed += !j.historyOnly;
-        auto& seen = loggedStates[j.id];
-        const std::string state = downloads::stateName(j.state);
-        if (seen != state) {
-            if (j.state == downloads::State::Failed)
-                LOG_ERROR("%s %s: %s -> Failed: %s", j.kind.c_str(), j.name.c_str(), seen.empty() ? "new" : seen.c_str(), j.detail.c_str());
-            else
-                LOG_INFO("%s %s: %s -> %s", j.kind.c_str(), j.name.c_str(), seen.empty() ? "new" : seen.c_str(), state.c_str());
-            seen = state;
+    // The generations are read before the rows: a change after them is seen again on the next tick.
+    auto jobs = queue.rows();
+    // State changes are logged per job; jobs seen for the first time (a batch just added, or the
+    // history read at start) one by one up to 20, else in one line with their count per state.
+    std::vector<const downloads::Job*> fresh;
+    for (auto& j : jobs)
+        if (loggedStates.contains(j.id))
+            logState(j);
+        else
+            fresh.push_back(&j);
+    if (fresh.size() <= 20)
+        for (auto j : fresh) logState(*j);
+    else {
+        size_t byState[5] = {};
+        for (auto j : fresh) {
+            ++byState[size_t(j->state)];
+            loggedStates.emplace(j->id, j->state);
         }
+        std::string states;
+        for (auto state : {downloads::State::Queued, downloads::State::Active, downloads::State::Paused, downloads::State::Failed, downloads::State::Complete})
+            if (byState[size_t(state)]) states += (states.empty() ? "" : ", ") + std::to_string(byState[size_t(state)]) + " " + downloads::stateName(state);
+        LOG_INFO("%zu new jobs: %s", fresh.size(), states.c_str());
     }
     std::vector<downloads::Job> next;
+    next.reserve(jobs.size());
     for (auto& j : jobs)
         if (visible(j, mode, "") && (query.empty() || w(j.name).Lower().Contains(query))) next.push_back(std::move(j));
     bool same = next.size() == shown.size();
     for (size_t i = 0; same && i < next.size(); ++i) same = next[i].id == shown[i].id;
     shown = std::move(next);
     shownGeneration = generation;
+    shownEdits = edits;
     shownQuery = query;
     shownMode = mode;
+    lastRebuild = std::chrono::steady_clock::now();
     if (!same) {
         rowOf.clear();
         rowOf.reserve(shown.size());
@@ -773,42 +796,57 @@ void MainWindow::rebuild(uint64_t generation, const wxString& query) {
     }
     // Only the rows on screen are drawn again.
     list->Refresh();
-    clear->Enable(doneCount > 0);
-    int counts[] = {listed, activeCount, waitingCount, doneCount};
-    const wxString names[] = {_(L"All"), _(L"Active"), _(L"Queue"), _(L"History")};
-    for (int i = 0; i < 4; ++i) {
-        auto label = wxString::Format("%s (%d)", names[i], counts[i]);
-        if (tabs->GetPageText(size_t(i)) != label) {
-            tabs->SetPageText(size_t(i), label);
-            fitTabs();
-        }
-    }
+}
+void MainWindow::updateRow(downloads::Job&& j, const std::map<uint64_t, wxString>& oldRates) {
+    logState(j);
+    auto row = rowOf.find(j.id);
+    if (row == rowOf.end()) return;
+    auto& old = shown[row->second];
+    auto rate = [&](const std::map<uint64_t, wxString>& from) {
+        auto found = from.find(j.id);
+        return found == from.end() ? wxString() : found->second;
+    };
+    const bool redraw = old.name != j.name || old.total != j.total || old.state != j.state || rate(oldRates) != rate(rates);
+    j.input = nullptr; // rows carry no input (see Queue::rows); "Open folder" asks the queue
+    old = std::move(j);
+    if (redraw) list->RefreshItem(long(row->second));
 }
 void MainWindow::refresh() {
+    const auto start = std::chrono::steady_clock::now();
+    update();
+    const double spent = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    benchBusy += spent;
+    benchLongest = std::max(benchLongest, spent);
+}
+void MainWindow::update() {
     if (stopping) return;
-    // The generation is read first: a change after it is seen again on the next tick.
+    // The generations are read first: a change after them is seen again on the next tick.
     const auto generation = queue.generation();
+    const auto edits = queue.editGeneration();
     auto changing = queue.changing();
     const auto oldRates = rates;
     updateRates(changing);
     const auto query = search->GetValue().Lower();
-    if (generation != shownGeneration || query != shownQuery || mode != shownMode)
-        rebuild(generation, query);
-    else
-        // Nothing structural changed: only running jobs and retry countdowns move. Their rows keep
-        // their place and filter, so they are updated where they are, and redrawn when a cell differs.
-        for (auto& j : changing) {
-            auto row = rowOf.find(j.id);
-            if (row == rowOf.end()) continue;
-            auto& old = shown[row->second];
-            auto rate = [&](const std::map<uint64_t, wxString>& from) {
-                auto found = from.find(j.id);
-                return found == from.end() ? wxString() : found->second;
-            };
-            const bool redraw = old.name != j.name || old.total != j.total || old.state != j.state || rate(oldRates) != rate(rates);
-            old = std::move(j);
-            if (redraw) list->RefreshItem(long(row->second));
-        }
+    // A change the user made (in this window or a dialog's add), the search text or the view tab is
+    // shown at once. Workers starting and ending jobs move only the generation; with many small files
+    // that happens several times a second, so those full rebuilds wait until a second has passed.
+    const bool userChange = edits != shownEdits || query != shownQuery || mode != shownMode;
+    const bool turnover = generation != shownGeneration && std::chrono::steady_clock::now() - lastRebuild >= std::chrono::seconds(1);
+    std::vector<uint64_t> nowChanging;
+    nowChanging.reserve(changing.size());
+    for (auto& j : changing) nowChanging.push_back(j.id);
+    if (userChange || turnover)
+        rebuild(generation, edits, query);
+    else {
+        // Only running jobs and retry countdowns move: they keep their place and filter, so they are
+        // updated where they are. Jobs that stopped changing since the last tick (finished, failed,
+        // paused, or started again after their wait) are read once more, so none stays shown as running.
+        for (auto id : changingIds)
+            if (std::find(nowChanging.begin(), nowChanging.end(), id) == nowChanging.end())
+                if (auto j = queue.job(id)) updateRow(std::move(*j), oldRates);
+        for (auto& j : changing) updateRow(std::move(j), oldRates);
+    }
+    changingIds = std::move(nowChanging);
     if (queue.error() != loggedError) {
         loggedError = queue.error();
         if (!loggedError.empty()) LOG_ERROR("Queue: %s", loggedError.c_str());
@@ -826,7 +864,19 @@ void MainWindow::refresh() {
     bool history = mode == 3;
     historyRow->ShowItems(history);
     again->Enable(first >= 0);
-    footer->SetLabel(queue.error().empty() ? (queue.paused() ? _(L"All paused  ·  ") : wxString()) + wxString::Format(_(L"%d / 4 downloading  ·  %d waiting  ·  %d completed"), activeCount, waitingCount, doneCount) : translated(queue.error()));
+    // The counts are the queue's own, kept as it changes: current on every tick.
+    counts = queue.counts();
+    clear->Enable(counts.done > 0);
+    const int tabCounts[] = {int(counts.listed), int(counts.active), int(counts.waiting), int(counts.done)};
+    const wxString names[] = {_(L"All"), _(L"Active"), _(L"Queue"), _(L"History")};
+    for (int i = 0; i < 4; ++i) {
+        auto label = wxString::Format("%s (%d)", names[i], tabCounts[i]);
+        if (tabs->GetPageText(size_t(i)) != label) {
+            tabs->SetPageText(size_t(i), label);
+            fitTabs();
+        }
+    }
+    footer->SetLabel(queue.error().empty() ? (queue.paused() ? _(L"All paused  ·  ") : wxString()) + wxString::Format(_(L"%d / 4 downloading  ·  %d waiting  ·  %d completed"), int(counts.active), int(counts.waiting), int(counts.done)) : translated(queue.error()));
     footer->Wrap(std::max(1, footer->GetClientSize().x));
     detail->GetParent()->Layout();
     progressCells();

@@ -518,6 +518,119 @@ int main() {
             if (!advanced()) throw std::runtime_error("Pausing a job waiting to retry did not change the generation");
             if (!queue.changing().empty()) throw std::runtime_error("changing() listed a paused or finished job");
         }
+        // For a window with many jobs: rows() is snapshot() without each job's input and key, job(id) is one
+        // full job, counts() are the view tabs' counts kept as the queue changes, and editGeneration() moves on
+        // changes made through the queue's calls but not when a worker starts or ends a job or schedules a retry.
+        {
+            enum class Next { Run,
+                              Finish,
+                              Fail };
+            std::mutex rowMutex;
+            std::map<uint64_t, Next> next;
+            auto rowRunner = [&](const downloads::Job& job, std::atomic_bool& stop, const downloads::Report& report) {
+                for (uint64_t done = 1;; ++done) {
+                    report(done, 1000000, "Downloading", "");
+                    std::unique_lock lock(rowMutex);
+                    if (stop) throw std::runtime_error("Paused");
+                    if (next[job.id] == Next::Finish) return;
+                    if (next[job.id] == Next::Fail) {
+                        next[job.id] = Next::Run;
+                        throw archive::NetworkError("x", true, 0);
+                    }
+                    lock.unlock();
+                    std::this_thread::sleep_for(1ms);
+                }
+            };
+            auto tell = [&](uint64_t id, Next what) {
+                std::lock_guard lock(rowMutex);
+                next[id] = what;
+            };
+            auto waitFor = [](const std::function<bool()>& condition) {
+                const auto end = std::chrono::steady_clock::now() + 10s;
+                while (!condition() && std::chrono::steady_clock::now() < end) std::this_thread::sleep_for(2ms);
+                return condition();
+            };
+            downloads::Queue queue(folder / "rows.json", rowRunner);
+            queue.setRetryWaits({10s}, 12);
+            queue.setLimit(1);
+            auto state = [&](uint64_t id) {
+                auto j = queue.job(id);
+                return j ? j->state : downloads::State::Paused;
+            };
+            auto countsMatch = [&] {
+                downloads::Queue::Counts expected;
+                for (auto& j : queue.snapshot()) {
+                    expected.listed += !j.historyOnly;
+                    expected.active += j.state == downloads::State::Active;
+                    expected.waiting += j.state == downloads::State::Queued || j.state == downloads::State::Paused || j.state == downloads::State::Failed;
+                    expected.done += j.state == downloads::State::Complete;
+                }
+                const auto counts = queue.counts();
+                return counts.listed == expected.listed && counts.active == expected.active && counts.waiting == expected.waiting && counts.done == expected.done;
+            };
+            auto edits = queue.editGeneration();
+            auto edited = [&] {
+                const auto now = queue.editGeneration();
+                const bool moved = now != edits;
+                edits = now;
+                return moved;
+            };
+            queue.add("a", "Archive", "key-a", {{"target", "/a"}}); // id 1
+            if (!edited()) throw std::runtime_error("Adding a job did not change the edit generation");
+            queue.add("b", "Archive", "key-b", {{"target", "/b"}}); // id 2
+            queue.add("c", "Archive", "key-c", {{"target", "/c"}}); // id 3
+            edited();
+            if (!countsMatch() || queue.counts().waiting != 3) throw std::runtime_error("The counts did not match three queued jobs");
+            {
+                const auto rows = queue.rows();
+                const auto full = queue.snapshot();
+                if (rows.size() != 3 || rows[1].id != 2 || rows[1].name != "b" || rows[1].kind != "Archive" || rows[1].state != downloads::State::Queued || !rows[1].input.is_null() || !rows[1].key.empty())
+                    throw std::runtime_error("rows() did not list the jobs without their input and key");
+                if (full[1].input.at("target") != "/b") throw std::runtime_error("snapshot() lost a job's input");
+            }
+            {
+                const auto one = queue.job(2);
+                if (!one || one->name != "b" || one->key != "key-b" || one->input.at("target") != "/b") throw std::runtime_error("job(id) did not return the full job");
+                if (queue.job(99)) throw std::runtime_error("job(id) returned a job for an unknown id");
+            }
+            queue.start();
+            if (!waitFor([&] {
+                    return state(1) == downloads::State::Active;
+                }))
+                throw std::runtime_error("The first job did not start");
+            if (edited()) throw std::runtime_error("A job starting changed the edit generation");
+            if (!countsMatch() || queue.counts().active != 1) throw std::runtime_error("The counts did not follow a job starting");
+            queue.pause(3);
+            if (!edited()) throw std::runtime_error("Pausing a job did not change the edit generation");
+            queue.resume(3);
+            if (!edited()) throw std::runtime_error("Resuming a job did not change the edit generation");
+            queue.moveToTop({3});
+            if (!edited()) throw std::runtime_error("Moving a job to the top did not change the edit generation");
+            queue.remove(2);
+            if (!edited()) throw std::runtime_error("Removing a job did not change the edit generation");
+            if (!countsMatch() || queue.counts().waiting != 1) throw std::runtime_error("The counts did not follow a removal");
+            tell(1, Next::Finish);
+            if (!waitFor([&] {
+                    return state(1) == downloads::State::Complete && state(3) == downloads::State::Active;
+                }))
+                throw std::runtime_error("The first job did not finish and hand over to the third");
+            if (edited()) throw std::runtime_error("A job finishing changed the edit generation");
+            if (!countsMatch() || queue.counts().done != 1) throw std::runtime_error("The counts did not follow a job finishing");
+            tell(3, Next::Fail);
+            if (!waitFor([&] {
+                    auto j = queue.job(3);
+                    return j && j->state == downloads::State::Queued && j->retryIn != 0;
+                }))
+                throw std::runtime_error("The third job did not wait to retry");
+            if (edited()) throw std::runtime_error("A scheduled retry changed the edit generation");
+            {
+                const auto rows = queue.rows(); // job 1 (finished), then job 3, moved above job 2 before it was removed
+                if (rows.size() != 2 || rows[1].id != 3 || rows[1].retryIn == 0) throw std::runtime_error("rows() did not fill the retry countdown");
+            }
+            queue.remove(1); // a finished job leaves All but stays in History
+            if (!edited() || !countsMatch() || queue.counts().listed != 1 || queue.counts().done != 1) throw std::runtime_error("The counts did not follow a finished job leaving the list");
+            queue.pause(3);
+        }
         // History writes start at least one save interval apart; flush() and shutdown() write at once. The
         // file is written without indentation, and files written with it (older versions) still load.
         {

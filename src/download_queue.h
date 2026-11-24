@@ -55,11 +55,23 @@ class Queue {
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     std::vector<std::shared_ptr<Entry>> jobs_;
-    // generation(): moved under mutex_ by every change it covers. active_ holds the entries that
-    // are running or waiting to retry, so changing() never walks the whole list.
-    uint64_t generation_ = 0;
+
+public:
+    // The view tabs' counts: jobs listed (not History-only), running, waiting (queued, paused or
+    // failed) and finished.
+    struct Counts {
+        size_t listed = 0, active = 0, waiting = 0, done = 0;
+    };
+
+private:
+    // generation(): moved under mutex_ by every change it covers; editGeneration_ only by changes
+    // made through the queue's calls (edit), not by the workers. active_ holds the entries that are
+    // running or waiting to retry, so changing() never walks the whole list; counts_ is kept by the
+    // same walk, which runs only when something changed.
+    uint64_t generation_ = 0, editGeneration_ = 0;
     std::vector<std::shared_ptr<Entry>> active_;
-    void changedLocked();
+    Counts counts_;
+    void changedLocked(bool edit = true);
     std::vector<std::jthread> workers_;
     uint64_t next_ = 1;
     bool closing_ = false, historyReadable_ = true, pausedAll_ = false;
@@ -115,6 +127,16 @@ public:
     // The jobs whose shown values change between generations: those running and those waiting to
     // retry (retryIn filled as by snapshot()), in queue order. Costs nothing per job that is idle.
     std::vector<Job> changing() const;
+    // Moves on changes made through the queue's calls (add, remove, pause, resume, move to top and
+    // the others), not when a worker starts or ends a job or schedules its retry. A window shows the
+    // first kind at once and may gather the second.
+    uint64_t editGeneration() const;
+    // snapshot() without each job's input and key (left empty), which are most of its cost.
+    std::vector<Job> rows() const;
+    // One full job, as snapshot() has it; none for an unknown or removed id.
+    std::optional<Job> job(uint64_t id) const;
+    // The counts as of the last change; no walk over the jobs.
+    Counts counts() const;
     std::string error() const;
     // Waits until every change made so far is in the history file (or failed to save; see error()).
     void flush();
@@ -128,5 +150,9 @@ public:
     bool downloadAgain(uint64_t id);
     void clearHistory();
     void removeHistory(uint64_t id);
+    // Benchmark only (--bench-files): sets a job's state as a worker starting it (Active) or ending
+    // it would, without running anything, so the window's handling of job turnover can be timed
+    // without a network. Use it only on a paused queue.
+    void benchSetState(uint64_t id, State state);
 };
 }
