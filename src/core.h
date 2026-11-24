@@ -48,6 +48,12 @@ using SpeedReport = std::function<void(const std::vector<ServerSpeed>&)>;
 std::vector<ServerSpeed> measureServers(const File& file, const std::vector<std::string>& urls, std::atomic_bool& stop);
 std::wstring wide(const std::string& text);
 std::string utf8(const std::wstring& text);
+// Text without leading or trailing spaces, tabs and line breaks.
+std::string trim(const std::string& text);
+// ASCII lower case (hosts, header values, file extensions).
+std::string lower(std::string text);
+// True when text is exactly length hexadecimal digits (a SHA-1 or SHA-256 in hex).
+bool isHex(const std::string& text, size_t length);
 Link parseLink(const std::string& input);
 bool isArchiveLink(const std::string& input);
 bool isHttpUrl(const std::string& input);

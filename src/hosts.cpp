@@ -10,7 +10,6 @@
 namespace archive {
 using nlohmann::json;
 namespace {
-std::string lower(std::string s) { std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)tolower(c); }); return s; }
 std::string text(const json& j, const char* key) { return j.is_object() && j.contains(key) && j[key].is_string() ? j[key].get<std::string>() : std::string(); }
 json parse(const std::string& body, const char* site) {
     try { return json::parse(body); } catch (const json::exception&) { throw std::runtime_error(std::string("Unexpected data from ") + site + "."); }
@@ -46,10 +45,10 @@ bool startsWithStatus(const std::exception& e, std::initializer_list<const char*
 }
 }
 bool splitUrl(const std::string& input, UrlParts& out) {
-    auto a = input.find_first_not_of(" \t\r\n"), b = input.find_last_not_of(" \t\r\n");
-    if (a == std::string::npos) return false;
+    auto s = trim(input);
+    if (s.empty()) return false;
     static const std::regex url(R"(https?://([^/?#\s@:]+)(?::[0-9]+)?([^?#\s]*)(?:\?([^#\s]*))?(?:#\S*)?)", std::regex::icase);
-    std::smatch m; auto s = input.substr(a, b - a + 1);
+    std::smatch m;
     if (!std::regex_match(s, m, url)) return false;
     out = {}; out.host = lower(m[1]); if (out.host.starts_with("www.")) out.host.erase(0, 4);
     out.query = m[3];

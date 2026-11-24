@@ -10,9 +10,8 @@ bool isFtpUrl(const std::string& input) {
     try { parseUrl(input); return true; } catch (const std::exception&) { return false; }
 }
 Url parseUrl(const std::string& input) {
-    auto a = input.find_first_not_of(" \t\r\n"), b = input.find_last_not_of(" \t\r\n");
     static const std::regex address(R"(ftp://([^/?#\s@:]+)(?::([0-9]{1,5}))?(/[^?#\s]*)?)", std::regex::icase);
-    std::smatch m; auto text = a == std::string::npos ? std::string() : input.substr(a, b - a + 1);
+    std::smatch m; auto text = trim(input);
     if (!std::regex_match(text, m, address))
         throw std::runtime_error(text.find('@') != std::string::npos
             ? "FTP sign-in is not supported. Only anonymous FTP links (ftp://host/path) can be loaded."

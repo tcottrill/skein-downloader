@@ -86,7 +86,7 @@ public:
   Bind(wxEVT_TIMER,[this](wxTimerEvent&){tick();});Bind(wxEVT_CLOSE_WINDOW,[this](wxCloseEvent& e){preferences();*stop=true;if(busy()&&e.CanVeto()){closing=true;Hide();e.Veto();}else Destroy();});
   timer.Start(100);summary();url->SetFocus();if(loadLink&&!link.empty())CallAfter([this]{load();});
   if(smoke){
-   item.id="smoke-files";item.files={{.name="one.zip",.format="zip",.size=42,.sizeKnown=true},{.name="two.zip",.format="zip",.size=99,.sizeKnown=true},{.name="notes.txt",.format="text",.size=7,.sizeKnown=true}};checked.assign(3,false);refresh();
+   item.id="smoke-files";auto sample=[](const char* name,const char* format,uint64_t size){archive::File f;f.name=name;f.format=format;f.size=size;f.sizeKnown=true;return f;};item.files={sample("one.zip","zip",42),sample("two.zip","zip",99),sample("notes.txt","text",7)};checked.assign(3,false);refresh();
    filter->SetValue(".zip");select(true,false);if(checked!=std::vector<bool>({true,true,false}))throw std::runtime_error("Filtered selection failed");
    filter->Clear();if(list->GetItemCount()!=3||!list->IsItemChecked(0)||list->IsItemChecked(2))throw std::runtime_error("Checks lost after filtering");
    sortBy(1);sortBy(1);if(rows!=std::vector<size_t>({1,0,2}))throw std::runtime_error("Sorting by size failed");

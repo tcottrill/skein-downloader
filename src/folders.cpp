@@ -20,11 +20,6 @@ constexpr size_t maxFolders = 2000, maxFiles = 50000, maxDepth = 32;
 const char* const notListing = "This link opens a web page, not a file or a folder listing. Copy the file's direct download link instead.";
 constexpr auto npos = std::string::npos;
 
-std::string lower(std::string s) { std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)tolower(c); }); return s; }
-std::string trim(const std::string& s) {
-    auto a = s.find_first_not_of(" \t\r\n"), b = s.find_last_not_of(" \t\r\n");
-    return a == npos ? std::string() : s.substr(a, b - a + 1);
-}
 std::string withoutFragment(const std::string& url) { return url.substr(0, url.find('#')); }
 // An http(s) URL as scheme ("http"), authority ("host:port") and the rest (path and query, starting with '/').
 bool parts(const std::string& url, std::string& scheme, std::string& authority, std::string& rest) {

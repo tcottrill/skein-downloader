@@ -81,7 +81,8 @@ bool parseMediaFire(const UrlParts& u, MediaFireLink& out) {
     if (p.size() >= 2 && (p[0] == "file" || p[0] == "file_premium" || p[0] == "download" || p[0] == "view")) out.key = p[1];
     else if (p.size() >= 2 && p[0] == "folder") { out.key = p[1]; out.folder = true; }
     else if (p.empty() && !u.query.empty()) out.key = u.query.substr(0, u.query.find('&'));
-    return std::regex_match(out.key, std::regex("[A-Za-z0-9]{6,20}"));
+    static const std::regex key("[A-Za-z0-9]{6,20}");
+    return std::regex_match(out.key, key);
 }
 std::string mediafirePage(const std::string& key) { return "https://www.mediafire.com/file/" + key + "/file"; }
 json mediafireApi(const std::string& call, std::atomic_bool& stop) {
@@ -119,9 +120,10 @@ Item loadMediaFire(const MediaFireLink& link, std::atomic_bool& stop) {
         for (auto type : {"files", "folders"}) for (int chunk = 1; chunk <= 1000; ++chunk) {
             auto response = mediafireApi("folder/get_content.php?folder_key=" + key + "&content_type=" + type + "&chunk=" + std::to_string(chunk), stop);
             auto& content = response.contains("folder_content") ? response["folder_content"] : response;
+            static const std::regex folderKey("[A-Za-z0-9]{6,20}");
             if (content.contains(type) && content[type].is_array()) for (auto& entry : content[type]) {
                 if (std::string(type) == "files") { if (!text(entry, "quickkey").empty() && !text(entry, "filename").empty()) item.files.push_back(mediafireFile(entry, path)); }
-                else if (std::regex_match(text(entry, "folderkey"), std::regex("[A-Za-z0-9]{6,20}")))
+                else if (std::regex_match(text(entry, "folderkey"), folderKey))
                     pending.push_back({text(entry, "folderkey"), (path.empty() ? "" : path + "/") + safeFilename(text(entry, "name"))});
             }
             if (text(content, "more_chunks") != "yes") break;
@@ -256,8 +258,9 @@ std::string weTransferPage(const WeTransferLink& link) {
 json weTransferCall(const WeTransferLink& link, const std::string& action, json body, std::atomic_bool& stop) {
     // Visiting the page sets the session cookie; its CSRF token goes with the API call.
     auto page = fetch(weTransferPage(link), stop);
+    static const std::regex csrfToken(R"re(name="csrf-token" content="([^"]+)")re");
     std::smatch m; std::string headers = "Content-Type: application/json\r\nAccept: application/json\r\nX-Requested-With: XMLHttpRequest\r\n";
-    if (std::regex_search(page.body, m, std::regex(R"re(name="csrf-token" content="([^"]+)")re"))) headers += "X-CSRF-Token: " + m[1].str() + "\r\n";
+    if (std::regex_search(page.body, m, csrfToken)) headers += "X-CSRF-Token: " + m[1].str() + "\r\n";
     body["security_hash"] = link.hash;
     if (!link.recipient.empty()) body["recipient_id"] = link.recipient;
     try { return parse(post("https://wetransfer.com/api/v4/transfers/" + link.id + "/" + action, body.dump(), stop, headers).body, "WeTransfer"); }
@@ -298,7 +301,8 @@ std::string mediafireDownloadLink(const std::string& html) {
     static const std::regex scrambled(R"re(data-scrambled-url="([A-Za-z0-9+/=]+)")re");
     if (std::regex_search(html, m, scrambled)) try {
         auto url = base64Decode(m[1]);
-        if (std::regex_match(url, std::regex(R"(https://download[0-9]*\.mediafire\.com/\S+)", std::regex::icase))) return url;
+        static const std::regex download(R"(https://download[0-9]*\.mediafire\.com/\S+)", std::regex::icase);
+        if (std::regex_match(url, download)) return url;
     } catch (const std::exception&) {}
     return {};
 }
@@ -309,7 +313,8 @@ std::string driveFileId(const std::string& input) {
     auto& p = u.path;
     if (p.size() >= 3 && p[0] == "file" && p[1] == "d") id = p[2];
     else if (p.size() >= 1 && (p[0] == "open" || p[0] == "uc" || p[0] == "download")) id = queryValue(u.query, "id");
-    return std::regex_match(id, std::regex("[A-Za-z0-9_-]{10,100}")) ? id : std::string();
+    static const std::regex fileId("[A-Za-z0-9_-]{10,100}");
+    return std::regex_match(id, fileId) ? id : std::string();
 }
 std::string driveConfirmUrl(const std::string& html) {
     std::smatch m;
@@ -317,7 +322,8 @@ std::string driveConfirmUrl(const std::string& html) {
     if (!std::regex_search(html, m, form)) return {};
     auto tag = m[0].str().substr(0, m[0].str().find('>')), inner = m[1].str();
     std::smatch a;
-    if (!std::regex_search(tag, a, std::regex(R"re(action="([^"]+)")re"))) return {};
+    static const std::regex formAction(R"re(action="([^"]+)")re");
+    if (!std::regex_search(tag, a, formAction)) return {};
     auto action = htmlUnescape(a[1]);
     if (!action.starts_with("https://drive.usercontent.google.com/")) return {};
     std::string query;
@@ -332,12 +338,12 @@ std::string driveConfirmUrl(const std::string& html) {
 }
 std::string driveWarningName(const std::string& html) {
     std::smatch m;
-    if (std::regex_search(html, m, std::regex(R"re(class="uc-name-size"><a [^>]*>([^<]+)</a>)re"))) return htmlUnescape(m[1]);
+    static const std::regex nameAndSize(R"re(class="uc-name-size"><a [^>]*>([^<]+)</a>)re");
+    if (std::regex_search(html, m, nameAndSize)) return htmlUnescape(m[1]);
     return {};
 }
 std::string oneDriveShareToken(const std::string& link) {
-    auto a = link.find_first_not_of(" \t\r\n"), b = link.find_last_not_of(" \t\r\n");
-    return "u!" + base64Url(a == std::string::npos ? std::string() : link.substr(a, b - a + 1));
+    return "u!" + base64Url(trim(link));
 }
 
 bool isLockerLink(const std::string& input) {
@@ -356,11 +362,11 @@ Item loadLockerItem(const std::string& input, std::atomic_bool& stop) {
     if (u.host == "drive.google.com") throw std::runtime_error("Google Drive folders are not supported in this version. Open the folder and copy the link of each file (Share > Copy link).");
     if (u.host == "docs.google.com") throw std::runtime_error("Google Docs, Sheets and Slides are not files to download. Use File > Download in the document, or share it as a file.");
     if (isSharePoint(u)) {
-        auto trimmed = input.substr(input.find_first_not_of(" \t\r\n")); trimmed = trimmed.substr(0, trimmed.find_last_not_of(" \t\r\n") + 1);
+        auto trimmed = trim(input);
         auto hash = trimmed.find('#'); if (hash != std::string::npos) trimmed.resize(hash);
         return loadDirectLink(trimmed + (trimmed.find('?') == std::string::npos ? "?" : "&") + "download=1", stop);
     }
-    if (isOneDrivePersonal(u)) return loadOneDrive(input.substr(input.find_first_not_of(" \t\r\n")), stop);
+    if (isOneDrivePersonal(u)) return loadOneDrive(trim(input), stop);
     WeTransferLink transfer;
     if (u.host == "we.tl") {
         // Short links redirect to the transfer page.

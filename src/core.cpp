@@ -53,33 +53,46 @@ std::string encode(const std::string& s, bool keepSlash) {
     }
     return out;
 }
-Link parseLink(const std::string& input) {
+std::string trim(const std::string& input) {
     auto a = input.find_first_not_of(" \t\r\n"), b = input.find_last_not_of(" \t\r\n");
-    if (a == std::string::npos) throw std::runtime_error("Paste an Archive.org link or item identifier.");
-    std::string s = input.substr(a, b-a+1);
+    return a == std::string::npos ? std::string() : input.substr(a, b-a+1);
+}
+std::string lower(std::string text) {
+    std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return (char)tolower(c); });
+    return text;
+}
+bool isHex(const std::string& text, size_t length) {
+    return text.size() == length && std::all_of(text.begin(), text.end(), [](unsigned char c) { return isxdigit(c) != 0; });
+}
+// Device names Windows reserves in every folder, with or without an extension ("con.txt").
+static bool reservedWindowsName(const std::string& name) {
+    static const std::regex reserved("CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9]", std::regex::icase);
+    return std::regex_match(name.substr(0, name.find('.')), reserved);
+}
+Link parseLink(const std::string& input) {
+    std::string s = trim(input);
+    if (s.empty()) throw std::runtime_error("Paste an Archive.org link or item identifier.");
+    static const std::regex address(R"(https?://(?:www\.)?archive\.org/(?:details|download)/([^/?#]+)([^?#]*)(?:[?#].*)?)", std::regex::icase);
+    static const std::regex identifier("[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}");
     Link link;
     if (s.find("://") != std::string::npos) {
         std::smatch match;
-        if (!std::regex_match(s, match, std::regex(R"(https?://(?:www\.)?archive\.org/(?:details|download)/([^/?#]+)([^?#]*)(?:[?#].*)?)", std::regex::icase)))
+        if (!std::regex_match(s, match, address))
             throw std::runtime_error("This is not a valid download link.");
         link.id = decode(match[1]);
         auto tail = match[2].str();
         if (tail.size() > 1) link.file = decode(tail.substr(1));
     } else link.id = s;
-    if (!std::regex_match(link.id, std::regex("[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}")))
+    if (!std::regex_match(link.id, identifier))
         throw std::runtime_error("Invalid Archive.org item identifier.");
     return link;
 }
 bool isArchiveLink(const std::string& input) {
     try { parseLink(input); return true; } catch (const std::exception&) { return false; }
 }
-static std::string trimmed(const std::string& input) {
-    auto a = input.find_first_not_of(" \t\r\n"), b = input.find_last_not_of(" \t\r\n");
-    return a == std::string::npos ? std::string() : input.substr(a, b-a+1);
-}
 bool isHttpUrl(const std::string& input) {
     static const std::regex url(R"(https?://[^/?#\s@]+(?:[/?#]\S*)?)", std::regex::icase);
-    return std::regex_match(trimmed(input), url);
+    return std::regex_match(trim(input), url);
 }
 std::string logUrl(const std::string& url) {
     const auto end = url.find_first_of("?#");
@@ -87,7 +100,7 @@ std::string logUrl(const std::string& url) {
 }
 // The last path segment of a URL, percent-decoded; empty when the path ends in '/'.
 static std::string lastSegment(const std::string& input) {
-    auto s = trimmed(input);
+    auto s = trim(input);
     auto scheme = s.find("://"); if (scheme == std::string::npos) return {};
     auto pathStart = s.find('/', scheme + 3); if (pathStart == std::string::npos) return {};
     auto path = s.substr(pathStart, s.find_first_of("?#", pathStart) - pathStart);
@@ -99,7 +112,7 @@ bool looksLikeFileUrl(const std::string& url) {
     auto name = lastSegment(url); auto dot = name.rfind('.');
     if (dot == std::string::npos) return false;
     auto extension = name.substr(dot + 1);
-    std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return (char)tolower(c); });
+    extension = lower(extension);
     static const std::vector<std::string> known = {
         "zip","7z","rar","tar","gz","tgz","bz2","xz","zst","lz","lzma","cab",
         "iso","img","bin","cue","vhd","vhdx","vmdk","qcow2","ova",
@@ -114,7 +127,7 @@ std::string filenameFromDisposition(const std::string& header) {
     // RFC 6266: filename* (charset''percent-encoded) takes priority over filename.
     static const std::regex extended(R"(filename\*\s*=\s*([A-Za-z0-9_-]+)'[^']*'([^;\s]+))", std::regex::icase);
     if (std::regex_search(header, m, extended)) {
-        auto charset = m[1].str(); std::transform(charset.begin(), charset.end(), charset.begin(), [](unsigned char c) { return (char)tolower(c); });
+        auto charset = lower(m[1].str());
         if (charset == "utf-8") try { return basename(decode(m[2])); } catch (const std::exception&) {}
     }
     static const std::regex quoted(R"re(filename\s*=\s*"((?:[^"\\]|\\.)*)")re", std::regex::icase);
@@ -138,15 +151,13 @@ std::string safeFilename(std::string name) {
     while (!name.empty() && (name.back() == '.' || name.back() == ' ')) name.pop_back();
     while (!name.empty() && name.front() == ' ') name.erase(name.begin());
     if (name.empty()) return "download";
-    auto stem = name.substr(0, name.find('.'));
-    std::transform(stem.begin(), stem.end(), stem.begin(), [](unsigned char c) { return (char)toupper(c); });
-    if (std::regex_match(stem, std::regex("CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9]"))) name = "_" + name;
+    if (reservedWindowsName(name)) name = "_" + name;
     return name;
 }
 HubLink parseHubLink(const std::string& input) {
     std::smatch match;
     static const std::regex hub(R"(https?://(?:www\.)?(?:huggingface\.co|hf\.co)/([^?#]*)(?:[?#].*)?)", std::regex::icase);
-    auto s = trimmed(input);
+    auto s = trim(input);
     if (!std::regex_match(s, match, hub)) throw std::runtime_error("Not a Hugging Face link.");
     std::vector<std::string> parts; std::istringstream in(match[1].str()); std::string part;
     while (std::getline(in, part, '/')) if (!part.empty()) parts.push_back(part);
@@ -194,7 +205,7 @@ std::vector<File> parseHubTree(const std::string& text) {
             auto& lfs = entry["lfs"];
             if (lfs.contains("oid") && lfs["oid"].is_string()) {
                 auto oid = lfs["oid"].get<std::string>(); if (oid.starts_with("sha256:")) oid = oid.substr(7);
-                if (std::regex_match(oid, std::regex("[0-9a-fA-F]{64}"))) file.sha256 = oid;
+                if (isHex(oid, 64)) file.sha256 = oid;
             }
             if (lfs.contains("size") && lfs["size"].is_number_unsigned()) { file.size = lfs["size"].get<uint64_t>(); file.sizeKnown = true; }
         }
@@ -207,7 +218,7 @@ std::vector<File> parseHubTree(const std::string& text) {
 GitHubLink parseGitHubLink(const std::string& input) {
     std::smatch match;
     static const std::regex github(R"(https?://(?:www\.)?github\.com/([^?#]*)(?:[?#].*)?)", std::regex::icase);
-    auto s = trimmed(input);
+    auto s = trim(input);
     if (!std::regex_match(s, match, github)) throw std::runtime_error("Not a GitHub link.");
     std::vector<std::string> parts; std::istringstream in(match[1].str()); std::string part;
     while (std::getline(in, part, '/')) if (!part.empty()) parts.push_back(part);
@@ -250,7 +261,7 @@ Item parseGitHubRelease(const std::string& text, const GitHubLink& link) {
         if (asset.contains("size") && asset["size"].is_number_unsigned()) { file.size = asset["size"].get<uint64_t>(); file.sizeKnown = true; }
         if (asset.contains("digest") && asset["digest"].is_string()) {
             auto digest = asset["digest"].get<std::string>();
-            if (digest.starts_with("sha256:") && std::regex_match(digest.substr(7), std::regex("[0-9a-fA-F]{64}"))) file.sha256 = digest.substr(7);
+            if (digest.starts_with("sha256:") && isHex(digest.substr(7), 64)) file.sha256 = digest.substr(7);
         }
         auto dot = file.name.rfind('.'); if (dot != std::string::npos && dot + 1 < file.name.size()) file.format = file.name.substr(dot + 1);
         item.files.push_back(std::move(file));
@@ -293,9 +304,7 @@ Path safePath(const Path& root, const std::string& name) {
             part.find_first_of("<>:\"|?*") != std::string::npos ||
             std::any_of(part.begin(), part.end(), [](unsigned char c) { return c < 32; }))
             throw std::runtime_error("Filename cannot be saved safely on Windows: " + name);
-        auto stem = part.substr(0, part.find('.'));
-        std::transform(stem.begin(), stem.end(), stem.begin(), [](unsigned char c) { return (char)toupper(c); });
-        if (std::regex_match(stem, std::regex("CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9]")))
+        if (reservedWindowsName(part))
             throw std::runtime_error("Reserved Windows filename: " + name);
         result /= pathFromUtf8(part);
     }
@@ -332,11 +341,13 @@ Item parseMetadata(const std::string& id, const std::string& text) {
         auto dir = j["dir"].get<std::string>();
         // The path must be this item's storage directory, never a URL or arbitrary path.
         std::smatch match;
-        if (std::regex_match(dir, match, std::regex(R"(/[0-9]+/items/([^/]+))")) && match[1] == id) {
+        static const std::regex storage(R"(/[0-9]+/items/([^/]+))");
+        if (std::regex_match(dir, match, storage) && match[1] == id) {
             auto add = [&](const nlohmann::json& value) {
                 if (!value.is_string()) return;
                 auto host = value.get<std::string>();
-                if (!std::regex_match(host, std::regex(R"([a-zA-Z0-9-]+\.(?:us|ca|eu)\.archive\.org)"))) return;
+                static const std::regex server(R"([a-zA-Z0-9-]+\.(?:us|ca|eu)\.archive\.org)");
+                if (!std::regex_match(host, server)) return;
                 auto base = "https://" + host + dir + "/";
                 if (std::find(item.mirrorBases.begin(), item.mirrorBases.end(), base) == item.mirrorBases.end() && item.mirrorBases.size() < 2)
                     item.mirrorBases.push_back(base);

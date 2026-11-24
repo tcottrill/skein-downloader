@@ -114,26 +114,48 @@ std::string headerUtf8(const std::wstring& value) {
     }
     return utf8(value);
 }
+namespace {
+// The whole response body, read until the server ends it; past limit bytes it fails with tooLarge.
+std::string readBody(Request& r, std::atomic_bool& stop, size_t limit, const char* tooLarge) {
+    std::string body; char buffer[65536];
+    for (;;) {
+        cancelled(stop); auto n = r.read(buffer, sizeof buffer); if (!n) break;
+        if (body.size() + n > limit) throw std::runtime_error(tooLarge);
+        body.append(buffer, n);
+    }
+    return body;
+}
+// The Content-Type's media type ("text/html"), in lower case and without parameters.
+std::string mediaType(Request& r) {
+    auto type = headerUtf8(header(r.request, WINHTTP_QUERY_CONTENT_TYPE));
+    return lower(trim(type.substr(0, type.find(';'))));
+}
+// Content-Length, when the server sent it as a plain number.
+bool contentLength(Request& r, uint64_t& out) {
+    auto length = header(r.request, WINHTTP_QUERY_CONTENT_LENGTH);
+    if (length.empty() || length.size() > 19 || length.find_first_not_of(L"0123456789") != std::wstring::npos) return false;
+    out = std::stoull(length); return true;
+}
+// The total size from a "bytes 0-0/<size>" Content-Range (the answer to a one-byte probe).
+bool probedSize(Request& r, uint64_t& out) {
+    static const std::wregex range(L"bytes 0-0/([0-9]{1,19})");
+    std::wsmatch m; auto value = header(r.request, WINHTTP_QUERY_CONTENT_RANGE);
+    if (!std::regex_match(value, m, range)) return false;
+    out = std::stoull(m[1]); return true;
+}
+}
 Item loadDirectLink(const std::string& url, std::atomic_bool& stop) {
     if (!isHttpUrl(url) && !ftp::isFtpUrl(url)) throw std::runtime_error("Paste an HTTP, HTTPS or FTP link to a file.");
     auto r = get(url, L"Range: bytes=0-0\r\n", stop);
     File file;
-    if (r->status == 206) {
-        std::wsmatch m; auto range = header(r->request, WINHTTP_QUERY_CONTENT_RANGE);
-        if (std::regex_match(range, m, std::wregex(L"bytes 0-0/([0-9]+)"))) { file.size = std::stoull(m[1]); file.sizeKnown = true; }
-    } else {
-        auto length = header(r->request, WINHTTP_QUERY_CONTENT_LENGTH);
-        if (!length.empty() && length.find_first_not_of(L"0123456789") == std::wstring::npos) { file.size = std::stoull(length); file.sizeKnown = true; }
-    }
-    auto type = headerUtf8(header(r->request, WINHTTP_QUERY_CONTENT_TYPE));
-    type = type.substr(0, type.find(';')); std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c) { return (char)tolower(c); });
-    while (!type.empty() && type.back() == ' ') type.pop_back();
+    file.sizeKnown = r->status == 206 ? probedSize(*r, file.size) : contentLength(*r, file.size);
+    auto type = mediaType(*r);
     auto name = filenameFromDisposition(headerUtf8(header(r->request, WINHTTP_QUERY_CONTENT_DISPOSITION)));
     auto finalUrl = r->url();
     if (name.empty()) name = filenameFromUrl(finalUrl.empty() ? url : finalUrl);
     if (name.empty()) name = filenameFromUrl(url);
-    auto lower = name; std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return (char)tolower(c); });
-    if (type == "text/html" && !lower.ends_with(".html") && !lower.ends_with(".htm"))
+    const auto lowerName = lower(name);
+    if (type == "text/html" && !lowerName.ends_with(".html") && !lowerName.ends_with(".htm"))
         throw std::runtime_error("This link opens a web page, not a file. Copy the file's direct download link instead.");
     file.name = safeFilename(name); file.format = type;
     Item item; item.title = file.name; item.selectedFile = file.name; item.sourceUrl = url; item.files.push_back(std::move(file));
@@ -142,20 +164,11 @@ Item loadDirectLink(const std::string& url, std::atomic_bool& stop) {
 namespace {
 Response respond(Request& r, const std::string& requested, std::atomic_bool& stop) {
     Response out; out.url = r.url(); if (out.url.empty()) out.url = requested;
-    out.type = headerUtf8(header(r.request, WINHTTP_QUERY_CONTENT_TYPE));
-    out.type = out.type.substr(0, out.type.find(';')); std::transform(out.type.begin(), out.type.end(), out.type.begin(), [](unsigned char c) { return (char)tolower(c); });
-    while (!out.type.empty() && out.type.back() == ' ') out.type.pop_back();
+    out.type = mediaType(r);
     out.disposition = headerUtf8(header(r.request, WINHTTP_QUERY_CONTENT_DISPOSITION));
-    auto length = header(r.request, WINHTTP_QUERY_CONTENT_LENGTH);
-    if (!length.empty() && length.find_first_not_of(L"0123456789") == std::wstring::npos) { out.size = std::stoull(length); out.sizeKnown = true; }
+    out.sizeKnown = contentLength(r, out.size);
     out.file = !(out.type.starts_with("text/") || out.type.find("json") != std::string::npos || out.type.find("xml") != std::string::npos);
-    if (out.file) return out;
-    char buffer[65536];
-    for (;;) {
-        cancelled(stop); auto n = r.read(buffer, sizeof buffer); if (!n) break;
-        if (out.body.size() + n > 16 * 1024 * 1024) throw std::runtime_error("The site's page is too large (16 MiB limit).");
-        out.body.append(buffer, n);
-    }
+    if (!out.file) out.body = readBody(r, stop, 16 * 1024 * 1024, "The site's page is too large (16 MiB limit).");
     return out;
 }
 }
@@ -178,15 +191,7 @@ Item loadHubItem(const std::string& input, std::atomic_bool& stop) {
     auto folder = link.file ? link.path.substr(0, link.path.rfind('/') == std::string::npos ? 0 : link.path.rfind('/')) : link.path;
     std::string page = "https://huggingface.co/api/" + link.kind + "/" + link.repo + "/tree/" + encode(link.revision)
         + (folder.empty() ? "" : "/" + encode(folder, true)) + "?recursive=true";
-    auto readAll = [&](Request& r) {
-        std::string body; char buffer[65536];
-        for (;;) {
-            cancelled(stop); auto n = r.read(buffer, sizeof buffer); if (!n) break;
-            if (body.size() + n > 64 * 1024 * 1024) throw std::runtime_error("Repository file list is too large (64 MiB limit).");
-            body.append(buffer, n);
-        }
-        return body;
-    };
+    auto readAll = [&](Request& r) { return readBody(r, stop, 64 * 1024 * 1024, "Repository file list is too large (64 MiB limit)."); };
     // Check access first: gated repos list their files publicly but refuse every download.
     try {
         auto info = get("https://huggingface.co/api/" + link.kind + "/" + link.repo, L"", stop);
@@ -221,13 +226,7 @@ Item loadGitHubRelease(const std::string& input, std::atomic_bool& stop) {
     auto api = "https://api.github.com/repos/" + link.owner + "/" + link.repo + "/releases/" + (link.tag.empty() ? std::string("latest") : "tags/" + encode(link.tag, true));
     try {
         auto r = get(api, L"Accept: application/vnd.github+json\r\nX-GitHub-Api-Version: 2022-11-28\r\n", stop);
-        std::string body; char buffer[65536];
-        for (;;) {
-            cancelled(stop); auto n = r->read(buffer, sizeof buffer); if (!n) break;
-            if (body.size() + n > 16 * 1024 * 1024) throw std::runtime_error("GitHub release data is too large (16 MiB limit).");
-            body.append(buffer, n);
-        }
-        auto item = parseGitHubRelease(body, link);
+        auto item = parseGitHubRelease(readBody(*r, stop, 16 * 1024 * 1024, "GitHub release data is too large (16 MiB limit)."), link);
         if (item.files.empty()) throw std::runtime_error("This release has no files.");
         return item;
     } catch (const NetworkError& e) {
@@ -246,12 +245,9 @@ Item loadItem(const std::string& input, std::atomic_bool& stop) {
     if (isHostLink(input)) return loadHostItem(input, stop);
     if (isLockerLink(input)) return loadLockerItem(input, stop);
     // FTP links, including ftp://user@host ones, which loadFolderItem explains it cannot sign in to.
-    auto start = input.find_first_not_of(" \t\r\n"); auto scheme = start == std::string::npos ? std::string() : input.substr(start, 6);
-    std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char c) { return (char)tolower(c); });
-    if (isWaybackLink(input) || scheme == "ftp://") return loadFolderItem(input, stop);
+    const auto url = trim(input);
+    if (isWaybackLink(input) || lower(url.substr(0, 6)) == "ftp://") return loadFolderItem(input, stop);
     if (!isArchiveLink(input) && isHttpUrl(input)) {
-        auto a = input.find_first_not_of(" \t\r\n"), b = input.find_last_not_of(" \t\r\n");
-        auto url = input.substr(a, b - a + 1);
         try { return loadDirectLink(url, stop); }
         catch (const std::exception& e) {
             // A web page can be a folder listing ("Index of /files/"), whose files are listed instead.
@@ -261,13 +257,8 @@ Item loadItem(const std::string& input, std::atomic_bool& stop) {
     }
     auto link = parseLink(input);
     auto r = get("https://archive.org/metadata/" + encode(link.id), L"", stop);
-    std::string body; char buffer[65536];
-    for (;;) {
-        cancelled(stop); auto n = r->read(buffer, sizeof buffer); if (!n) break;
-        if (body.size() + n > 64 * 1024 * 1024) throw std::runtime_error("Item metadata is too large (64 MiB limit).");
-        body.append(buffer, n);
-    }
-    auto item = parseMetadata(link.id, body); item.selectedFile = link.file; return item;
+    auto item = parseMetadata(link.id, readBody(*r, stop, 64 * 1024 * 1024, "Item metadata is too large (64 MiB limit)."));
+    item.selectedFile = link.file; return item;
 }
 std::vector<ServerSpeed> measureServers(const File& file, const std::vector<std::string>& urls, std::atomic_bool& stop) {
     if(!file.sizeKnown || !file.size)throw std::runtime_error("Choose a non-empty file with a known size to test speeds.");
@@ -326,9 +317,8 @@ void download(const std::string& url, const File& file, const Path& destination,
         }
         ranged = !wayback && probe->status == 206;
         if (ranged) {
-            std::wsmatch m; auto value = header(probe->request, WINHTTP_QUERY_CONTENT_RANGE);
-            if (!std::regex_match(value, m, std::wregex(L"bytes 0-0/([0-9]+)"))) throw std::runtime_error("Invalid server range response");
-            auto actual = std::stoull(m[1]);
+            uint64_t actual = 0;
+            if (!probedSize(*probe, actual)) throw std::runtime_error("Invalid server range response");
             if (known && actual != size) throw std::runtime_error("File size changed. Reload the item.");
             size = actual; known = true;
         } else {
@@ -347,8 +337,8 @@ void download(const std::string& url, const File& file, const Path& destination,
             known ? std::to_string(size).c_str() : "unknown", ranged ? "yes" : "no", etag.empty() ? "none" : "strong");
     }
     // Only reuse partial data when a content hash or strong server validator identifies it.
-    const bool sha1Hash = std::regex_match(file.sha1, std::regex("[0-9a-fA-F]{40}"));
-    const bool sha256Hash = std::regex_match(file.sha256, std::regex("[0-9a-fA-F]{64}"));
+    const bool sha1Hash = isHex(file.sha1, 40);
+    const bool sha256Hash = isHex(file.sha256, 64);
     bool resumable = ranged && (sha1Hash || sha256Hash || !etag.empty());
     // Without a stable identity, combining separate responses could mix file versions.
     if (!resumable) ranged = false;
@@ -565,7 +555,7 @@ void download(const std::string& url, const File& file, const Path& destination,
     if (!file.sha256.empty() || !file.sha1.empty()) {
         const bool useSha256 = !file.sha256.empty();
         notify(useSha256 ? "Verifying SHA-256" : "Verifying SHA-1"); auto expected = useSha256 ? file.sha256 : file.sha1;
-        std::transform(expected.begin(),expected.end(),expected.begin(),[](unsigned char c){return (char)tolower(c);});
+        expected = lower(expected);
         const auto actual = useSha256 ? sha256File(assembled,stop) : sha1File(assembled,stop);
         if (actual != expected) {
             LOG_ERROR("%s mismatch for %s: expected %s, got %s", useSha256 ? "SHA-256" : "SHA-1", pathUtf8(destination).c_str(), expected.c_str(), actual.c_str());

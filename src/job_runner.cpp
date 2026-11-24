@@ -23,7 +23,7 @@ std::string fileSourceUrl(const downloads::Job& job){
 void runJob(const downloads::Job& job,std::atomic_bool& stop,const downloads::Report& report){
     auto& j=job.input;
     if(job.kind=="Archive"){
-        archive::File file{.name=j.at("name"),.format=j.at("format"),.sha1=j.at("sha1"),.size=j.at("size"),.sizeKnown=j.at("sizeKnown"),.sha256=j.value("sha256","")};
+        archive::File file;file.name=j.at("name");file.format=j.at("format");file.sha1=j.at("sha1");file.size=j.at("size");file.sizeKnown=j.at("sizeKnown");file.sha256=j.value("sha256","");
         auto target=archive::pathFromUtf8(j.at("target").get<std::string>());
         // Direct links (any website) and Hugging Face repos have one source; archive.org items add mirrors.
         std::string canonical=fileSourceUrl(job),forced,identity;std::vector<std::string> mirrors;
