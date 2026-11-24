@@ -6,6 +6,8 @@
 #include <wx/dcbuffer.h>
 #include <wx/statline.h>
 #include <wx/wrapsizer.h>
+#include <wx/secretstore.h>
+#include "signins_format.h"
 #ifdef __WXMSW__
 #include <wx/msw/wrapcctl.h>
 #elif defined(__WXGTK__)
@@ -936,6 +938,96 @@ void MainWindow::close(wxCloseEvent& e) {
         queue.shutdown();
     });
 }
+// The sign-in store round trip: save, list, settings.ini free of the secret, edit, reload from the
+// store, remove, and the store empty again. Uses the credential store when it is usable (the real
+// Windows Credential Manager on Windows), so whatever happens it removes what it saved.
+static void signInSmokeCheck() {
+    const std::string host = "smoke.invalid", other = "smoke-other.invalid";
+    const std::string secret = "smoke-secret-" + std::to_string(wxGetProcessId()) + "-xyzzy";
+    const wxString listBefore = pref("signIns");
+    const bool usable = signInStoreUsable();
+    auto listed = [](const std::string& h) {
+        for (const auto& s : signIns())
+            if (s.value.host == h) return std::optional<SavedSignIn>(s);
+        return std::optional<SavedSignIn>();
+    };
+    auto engineSecret = [](const std::string& h) {
+        auto s = archive::signInFor("https", h, 443);
+        return s ? s->secret : std::string("(none)");
+    };
+    auto settingsText = [] {
+        std::ifstream in(dataPath / "settings.ini", std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    };
+    auto inStore = [](const std::string& h) {
+#if wxUSE_SECRETSTORE
+        if (!signInStoreUsable()) return false;
+        wxLogNull quiet;
+        wxString user;
+        wxSecretValue value;
+        return wxSecretStore::GetDefault().Load(w(lite::signInService(h, 0)), user, value) && value.IsOk();
+#else
+        (void)h;
+        return false;
+#endif
+    };
+    auto cleanUp = [&] {
+        removeSignIn(host, 0);
+        removeSignIn(other, 0);
+        save("signIns", listBefore);
+    };
+    try {
+        if (listed(host) || inStore(host)) throw std::runtime_error("The sign-in smoke host was already present");
+        archive::SignIn token;
+        token.kind = archive::SignInKind::Token;
+        token.host = host;
+        token.secret = secret;
+        if (saveSignIn(token, true) != usable) throw std::runtime_error("A sign-in was not written to the store exactly when the store is usable");
+        auto row = listed(host);
+        if (!row || row->remembered != usable || !row->available || !row->value.secret.empty()) throw std::runtime_error("The saved sign-in is not listed as expected");
+        if (engineSecret(host) != secret) throw std::runtime_error("The engine was not given the saved sign-in");
+        if (inStore(host) != usable) throw std::runtime_error("The credential store does not hold the sign-in as expected");
+        auto text = settingsText();
+        if (text.find(secret) != std::string::npos) throw std::runtime_error("settings.ini contains a secret");
+        if ((text.find(host) != std::string::npos) != usable) throw std::runtime_error("settings.ini lists the sign-in other than when it is remembered");
+        // Edit: other fields change, an empty secret keeps the old one.
+        token.secret.clear();
+        token.allowUnencrypted = true;
+        saveSignIn(token, usable);
+        if (engineSecret(host) != secret || !listed(host)->value.allowUnencrypted) throw std::runtime_error("Editing a sign-in without a new secret lost its secret or its change");
+        archive::SignIn nothing;
+        nothing.host = other;
+        bool threw = false;
+        try {
+            saveSignIn(nothing, false);
+        } catch (const std::runtime_error&) {
+            threw = true;
+        }
+        if (threw == false || listed(other)) throw std::runtime_error("A new sign-in without a secret was accepted");
+        // A restart: the list from settings.ini and the secret from the store.
+        loadSignIns();
+        row = listed(host);
+        if (usable) {
+            if (!row || !row->remembered || !row->available || engineSecret(host) != secret) throw std::runtime_error("The sign-in was not read back from the store");
+        } else if (row) {
+            throw std::runtime_error("A sign-in that was not remembered survived a reload");
+        }
+        // Not remembered any more: gone from the store and from settings.ini, still used until closed.
+        if (usable) {
+            saveSignIn(token, false);
+            if (inStore(host) || settingsText().find(host) != std::string::npos || engineSecret(host) != secret) throw std::runtime_error("An entry no longer remembered was not removed from the store or the list");
+            saveSignIn(token, true);
+            if (!inStore(host)) throw std::runtime_error("The sign-in was not written to the store again");
+        }
+        removeSignIn(host, 0);
+        if (listed(host) || engineSecret(host) != "(none)" || inStore(host) || settingsText().find(secret) != std::string::npos) throw std::runtime_error("A removed sign-in is still present");
+    } catch (...) {
+        cleanUp();
+        throw;
+    }
+    cleanUp();
+}
+
 void MainWindow::smokeCheck() {
     queue.pauseAll();
     queue.add("Smoke file", "Archive", "smoke", {{"target", archive::pathUtf8(dataPath / "smoke.bin")}});
@@ -967,6 +1059,7 @@ void MainWindow::smokeCheck() {
         save("maxDownloads", before.empty() ? wxString("4") : before);
         applySettings(queue);
     }
+    signInSmokeCheck();
     queue.removeAll();
     std::ofstream(dataPath / "smoke-passed.txt") << "Native controls, six columns, view buttons, queue selection/filter, file checkboxes and shutdown passed.\n";
     CallAfter([this] {

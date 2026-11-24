@@ -308,6 +308,7 @@ public:
             }
             queue = std::make_unique<downloads::Queue>(lite::dataPath / "history.json", downloads::runJob);
             lite::applySettings(*queue);
+            lite::loadSignIns();
             queue->start();
             auto main = new lite::MainWindow(*queue);
             SetTopWindow(main);

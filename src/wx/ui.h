@@ -15,6 +15,7 @@
 #include "job_runner.h"
 #include "video.h"
 #include "localization.h"
+#include "signins.h"
 #include <future>
 #include <set>
 #include <fstream>

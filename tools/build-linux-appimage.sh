@@ -101,7 +101,7 @@ if [ ! -f "$ROOTFS/.deps-wx-v2" ]; then
     apt-get update
     # xvfb and xauth run the smoke test without a display.
     PACKAGES="ca-certificates g++-12 ninja-build pkg-config python3 python3-venv file unzip xz-utils
-      libgtk-3-dev libpng-dev zlib1g-dev libcurl4-openssl-dev libssl-dev xvfb xauth"
+      libgtk-3-dev libpng-dev zlib1g-dev libcurl4-openssl-dev libssl-dev libsecret-1-dev xvfb xauth"
     apt-get install -y --no-install-recommends $PACKAGES || { settle; apt-get install -y --no-install-recommends $PACKAGES; }
     test -z "$(dpkg --audit)" || { dpkg --audit; exit 1; }
     python3 -m venv /opt/venv

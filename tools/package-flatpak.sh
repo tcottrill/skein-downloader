@@ -42,7 +42,7 @@ mkdir -p "$LICENSES"
 install -m644 "$ROOT/LICENSE" "$ROOT/packaging/licenses/"* "$LICENSES/"
 install -m644 "$ROOT/vendor/wxWidgets/docs/licence.txt" "$LICENSES/wxWidgets.txt"
 install -m644 "$ROOT/packaging/licenses/video-tools-notices.txt" "$OUT/sources/"
-flatpak build-finish --command=skein-downloader --share=network --share=ipc --socket=wayland --socket=fallback-x11 --device=dri --filesystem=xdg-download "$STAGE"
+flatpak build-finish --command=skein-downloader --share=network --share=ipc --socket=wayland --socket=fallback-x11 --device=dri --filesystem=xdg-download --talk-name=org.freedesktop.secrets "$STAGE"
 flatpak build-export "$WORK/repo" "$STAGE" preview
 flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo "$WORK/repo" "$OUT/SkeinDownloader-x86_64.flatpak" "$ID" preview
 (cd "$OUT" && sha256sum SkeinDownloader-x86_64.flatpak > SkeinDownloader-x86_64.flatpak.sha256)
