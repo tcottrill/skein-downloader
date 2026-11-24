@@ -140,7 +140,7 @@ struct Request {
     }
     // The URL after redirects.
     std::string url() {
-        if (ftpTransfer) return address;
+        if (ftpTransfer) return ftp::withoutUserInfo(address);
         DWORD length = 0;
         WinHttpQueryOption(*http, WINHTTP_OPTION_URL, nullptr, &length);
         if (!length) return {};

@@ -1,4 +1,5 @@
 #include "core.h"
+#include "platform/ftp.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <bcrypt.h>
@@ -112,7 +113,8 @@ bool isHttpUrl(const std::string& input) {
     static const std::regex url(R"(https?://[^/?#\s@]+(?:[/?#]\S*)?)", std::regex::icase);
     return std::regex_match(trim(input), url);
 }
-std::string logUrl(const std::string& url) {
+std::string logUrl(const std::string& input) {
+    const auto url = ftp::withoutUserInfo(input); // an FTP address may carry a password
     const auto end = url.find_first_of("?#");
     return end == std::string::npos ? url : url.substr(0, end) + "?...";
 }

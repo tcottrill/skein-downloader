@@ -287,7 +287,7 @@ struct Request {
     }
     // The URL after redirects.
     std::string url() {
-        if (ftpTransfer) return address;
+        if (ftpTransfer) return ftp::withoutUserInfo(address);
         char* value = nullptr;
         curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &value);
         return value ? value : "";

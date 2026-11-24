@@ -389,7 +389,7 @@ Item loadDirectLink(const std::string& url, std::atomic_bool& stop) {
     Item item;
     item.title = file.name;
     item.selectedFile = file.name;
-    item.sourceUrl = url;
+    item.sourceUrl = ftp::withoutUserInfo(url); // an FTP address may carry a password; it is never stored
     item.files.push_back(std::move(file));
     return item;
 }

@@ -2,6 +2,7 @@
 // control connection open between its requests; transfers are read pull-style, like http_curl.inc.
 #include "platform/ftp.h"
 #include "core.h"
+#include "signin.h"
 #include <curl/curl.h>
 #include <algorithm>
 #include <cstring>
@@ -41,9 +42,21 @@ CURL* handle(std::atomic_bool& stop) {
 Error failure(CURL* easy, CURLcode result, const std::string& step) {
     long reply = 0;
     curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &reply);
-    if (result == CURLE_LOGIN_DENIED) return Error("FTP: the server refused anonymous sign-in.", 530);
+    if (result == CURLE_LOGIN_DENIED) return Error("FTP: the server refused the sign-in.", 530);
     if (result == CURLE_REMOTE_FILE_NOT_FOUND || result == CURLE_REMOTE_ACCESS_DENIED || result == CURLE_FTP_COULDNT_RETR_FILE) return Error("FTP " + std::to_string(reply ? reply : 550) + ": " + curl_easy_strerror(result), reply >= 400 ? (unsigned)reply : 550);
     return Error("FTP " + step + ": " + curl_easy_strerror(result), reply >= 400 && reply < 600 ? (unsigned)reply : 0);
+}
+// A failed step. A refused login is a sign-in problem (rejected when a user and password were sent),
+// not an FTP error. No message here ever contains the login.
+[[noreturn]] void fail(CURL* easy, CURLcode result, const std::string& step, const Url& url, const Login& login) {
+    auto e = failure(easy, result, step);
+    if (e.reply == 530) throw SignInNeeded(lower(url.host), !login.anonymous, false);
+    throw e;
+}
+void useLogin(CURL* easy, const Login& login) {
+    if (login.anonymous) return; // libcurl's own anonymous login
+    curl_easy_setopt(easy, CURLOPT_USERNAME, login.user.c_str());
+    curl_easy_setopt(easy, CURLOPT_PASSWORD, login.password.c_str());
 }
 size_t collect(char* data, size_t size, size_t count, void* p) {
     static_cast<std::string*>(p)->append(data, size * count);
@@ -52,6 +65,7 @@ size_t collect(char* data, size_t size, size_t count, void* p) {
 }
 struct File::Impl {
     Url url;
+    Login login;
     std::atomic_bool& stop;
     CURL* easy = nullptr;
     CURLM* multi = nullptr;
@@ -62,7 +76,9 @@ struct File::Impl {
     bool finished = false, paused = false;
     CURLcode result = CURLE_OK;
     Impl(const std::string& address, std::atomic_bool& s)
-        : url(parseUrl(address)), stop(s), easy(handle(s)) {}
+        : url(parseUrl(address)), login(loginFor(url)), stop(s), easy(handle(s)) {
+        useLogin(easy, login);
+    }
     ~Impl() {
         if (multi) {
             curl_multi_remove_handle(multi, easy);
@@ -110,7 +126,7 @@ File::File(const std::string& url, std::atomic_bool& stop)
     curl_easy_setopt(s.easy, CURLOPT_FILETIME, 1L);
     if (auto result = curl_easy_perform(s.easy); result != CURLE_OK) {
         if (stop) throw std::runtime_error("Paused");
-        throw failure(s.easy, result, "file");
+        fail(s.easy, result, "file", s.url, s.login);
     }
     curl_off_t length = -1;
     curl_easy_getinfo(s.easy, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &length);
@@ -157,7 +173,7 @@ size_t File::read(char* data, size_t size) {
     if (s.buffer.empty()) {
         if (s.result != CURLE_OK) {
             if (s.stop) throw std::runtime_error("Paused");
-            throw failure(s.easy, s.result, "download");
+            fail(s.easy, s.result, "download", s.url, s.login);
         }
         return 0;
     }
@@ -173,10 +189,13 @@ size_t File::read(char* data, size_t size) {
 
 struct Lister::Impl {
     Url url;
+    Login login;
     std::atomic_bool& stop;
     CURL* easy;
     Impl(const std::string& address, std::atomic_bool& s)
-        : url(parseUrl(address)), stop(s), easy(handle(s)) {}
+        : url(parseUrl(address)), login(loginFor(url)), stop(s), easy(handle(s)) {
+        useLogin(easy, login);
+    }
     ~Impl() { curl_easy_cleanup(easy); }
 };
 Lister::Lister(const std::string& url, std::atomic_bool& stop)
@@ -192,7 +211,7 @@ std::vector<Entry> Lister::list(const std::string& path) {
     curl_easy_setopt(s.easy, CURLOPT_WRITEDATA, &text);
     if (auto result = curl_easy_perform(s.easy); result != CURLE_OK) {
         if (s.stop) throw std::runtime_error("Paused");
-        throw failure(s.easy, result, "listing");
+        fail(s.easy, result, "listing", s.url, s.login);
     }
     return parseList(text);
 }

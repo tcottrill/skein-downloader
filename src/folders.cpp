@@ -3,6 +3,7 @@
 // its files, subfolders included, each named by its path below the folder.
 #include "sites.h"
 #include "platform/ftp.h"
+#include "signin.h"
 #include "util/sys_log.h"
 #include <algorithm>
 #include <cstring>
@@ -344,6 +345,8 @@ Item loadFtpItem(const std::string& url, std::atomic_bool& stop) {
         // A folder linked without its final '/', or else a file (a file cannot be opened as a folder).
         try {
             entries = lister.list(address.path + "/");
+        } catch (const SignInNeeded&) {
+            throw; // a refused login is not "this is a file"
         } catch (const std::exception&) {
             if (stop) throw;
             return loadDirectLink(url, stop);

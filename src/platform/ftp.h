@@ -1,5 +1,5 @@
 #pragma once
-// FTP for folder listings and downloads (anonymous FTP only). Windows uses WinINet
+// FTP for folder listings and downloads (anonymous, or signed in with a user and password). Windows uses WinINet
 // (ftp_windows.cpp; WinHTTP has no FTP), Linux uses libcurl (ftp_linux.cpp). The rest is
 // portable (ftp.cpp). http.cpp makes an FTP file look like an HTTP response to the download
 // engine: a byte range becomes a restart offset (REST) and the size and modification time
@@ -20,14 +20,31 @@ struct Error : std::runtime_error {
     // Connection failures and 4xx replies (421 too many users, 425/426 data connection) are temporary.
     bool temporary() const { return reply == 0 || (reply >= 400 && reply < 500); }
 };
-// An ftp:// address. path is percent-decoded and starts with '/'.
+// An ftp:// address. path is percent-decoded and starts with '/'. user and password are
+// percent-decoded from ftp://user:password@host/ and empty when the address has none.
 struct Url {
     std::string host, path;
     unsigned port = 21;
+    std::string user, password;
 };
 bool isFtpUrl(const std::string& input);
-// Throws for anything but an anonymous ftp:// address (no user name or password).
+// Throws for anything but an ftp:// address (an empty user name with user information, or a
+// control character in it, is malformed).
 Url parseUrl(const std::string& input);
+// The same address with user name and password removed, everything else as given. An address
+// that is not ftp:// or has no user information is returned unchanged. Use it wherever an FTP
+// address is logged, stored or shown.
+std::string withoutUserInfo(const std::string& input);
+// How to log in: anonymous, or a user and password.
+struct Login {
+    std::string user = "anonymous", password = "anonymous@";
+    bool anonymous = true;
+};
+// The login for an address, in order: the user and password in it; else the saved sign-in for
+// the host (see signInFor; for an address with a user, only a saved one for the same user);
+// else anonymous. Throws archive::SignInNeeded(host, false, false) when the address names a
+// user and no password is available (no empty password is tried).
+Login loginFor(const Url& url);
 struct Entry {
     std::string name;
     bool folder = false;

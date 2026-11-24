@@ -1,8 +1,9 @@
-// FTP through WinINet: WinHTTP, used for everything else, has no FTP. wininet.h cannot be
+// FTP through WinINet (a refused login throws archive::SignInNeeded, not an Error): WinHTTP, used for everything else, has no FTP. wininet.h cannot be
 // included with winhttp.h, so this file stands alone behind platform/ftp.h. WinINet calls
 // block, so stop is checked between them; timeouts end a stalled server.
 #include "platform/ftp.h"
 #include "core.h"
+#include "signin.h"
 #include <windows.h>
 #include <wininet.h>
 #include <algorithm>
@@ -59,7 +60,8 @@ Error failure(const std::string& step) {
     const DWORD error = GetLastError();
     unsigned code = 0;
     auto reply = lastReply(code);
-    if (error == ERROR_INTERNET_LOGIN_FAILURE) return Error("FTP: the server refused anonymous sign-in" + (reply.empty() ? std::string(".") : " (" + reply + ")."), 530);
+    // The reply text is the server's; the login (and its password) is never part of a message.
+    if (error == ERROR_INTERNET_LOGIN_FAILURE) return Error("FTP: the server refused the sign-in" + (reply.empty() ? std::string(".") : " (" + reply + ")."), 530);
     if (error == ERROR_INTERNET_EXTENDED_ERROR && code) return Error("FTP " + reply, code);
     if (error == ERROR_INTERNET_TIMEOUT) return Error("FTP " + step + ": the server stopped answering.", 0);
     if (error == ERROR_INTERNET_NAME_NOT_RESOLVED) return Error("FTP: the server name was not found.", 0);
@@ -70,22 +72,33 @@ void cancelled(const std::atomic_bool& stop) {
 }
 struct Session {
     Handle internet, connection;
-    Session(const Url& url, std::atomic_bool& stop) {
+    std::string host;
+    bool signedIn = false; // a user name and password were sent, not anonymous
+    // A failed step. A refused login is a sign-in problem (rejected when one was sent), not an FTP error.
+    [[noreturn]] void fail(const std::string& step) const {
+        auto e = failure(step);
+        if (e.reply == 530) throw SignInNeeded(host, signedIn, false);
+        throw e;
+    }
+    Session(const Url& url, std::atomic_bool& stop)
+        : host(lower(url.host)) {
+        const auto login = loginFor(url);
+        signedIn = !login.anonymous;
         cancelled(stop);
         // A direct connection: WinINet cannot send FTP through the HTTP proxies that Windows settings name.
         internet = Handle(InternetOpenW(L"SkeinDownloader/1.0", INTERNET_OPEN_TYPE_DIRECT, nullptr, nullptr, 0));
-        if (!internet.h) throw failure("setup");
+        if (!internet.h) fail("setup");
         DWORD timeout = 30000;
         for (DWORD option : {INTERNET_OPTION_CONNECT_TIMEOUT, INTERNET_OPTION_SEND_TIMEOUT, INTERNET_OPTION_RECEIVE_TIMEOUT, INTERNET_OPTION_DATA_SEND_TIMEOUT, INTERNET_OPTION_DATA_RECEIVE_TIMEOUT})
             InternetSetOptionW(internet.h, option, &timeout, sizeof timeout);
-        connection = Handle(InternetConnectW(internet.h, wide(url.host).c_str(), (INTERNET_PORT)url.port, L"anonymous", L"anonymous@", INTERNET_SERVICE_FTP, INTERNET_FLAG_PASSIVE, 0));
-        if (!connection.h) throw failure("sign-in");
+        connection = Handle(InternetConnectW(internet.h, wide(url.host).c_str(), (INTERNET_PORT)url.port, wide(login.user).c_str(), wide(login.password).c_str(), INTERNET_SERVICE_FTP, INTERNET_FLAG_PASSIVE, 0));
+        if (!connection.h) fail("sign-in");
     }
     // A command without a data connection. False when the server refuses it; code is its reply.
     bool command(const std::string& text, std::string* reply = nullptr, unsigned* code = nullptr) {
         unsigned value = 0;
         if (!FtpCommandW(connection.h, FALSE, FTP_TRANSFER_TYPE_BINARY, wide(text).c_str(), 0, nullptr)) {
-            if (GetLastError() != ERROR_INTERNET_EXTENDED_ERROR) throw failure("command");
+            if (GetLastError() != ERROR_INTERNET_EXTENDED_ERROR) fail("command");
             auto answer = lastReply(value);
             if (reply) *reply = answer;
             if (code) *code = value;
@@ -155,15 +168,15 @@ void File::open(uint64_t offset) {
     auto& s = *impl;
     cancelled(s.stop);
     // REST must come right before RETR, which FtpOpenFile sends (after PASV, which servers allow between them).
-    if (offset && !s.session.command("REST " + std::to_string(offset))) throw failure("resume");
+    if (offset && !s.session.command("REST " + std::to_string(offset))) s.session.fail("resume");
     s.file = Handle(FtpOpenFileW(s.session.connection.h, wide(s.url.path).c_str(), GENERIC_READ, FTP_TRANSFER_TYPE_BINARY | INTERNET_FLAG_RELOAD, 0));
-    if (!s.file.h) throw failure("download");
+    if (!s.file.h) s.session.fail("download");
 }
 size_t File::read(char* data, size_t size) {
     auto& s = *impl;
     cancelled(s.stop);
     DWORD got = 0;
-    if (!InternetReadFile(s.file.h, data, (DWORD)std::min<size_t>(size, 1u << 20), &got)) throw failure("download");
+    if (!InternetReadFile(s.file.h, data, (DWORD)std::min<size_t>(size, 1u << 20), &got)) s.session.fail("download");
     return got;
 }
 
@@ -180,13 +193,13 @@ Lister::~Lister() = default;
 std::vector<Entry> Lister::list(const std::string& path) {
     auto& s = *impl;
     cancelled(s.stop);
-    if (!FtpSetCurrentDirectoryW(s.session.connection.h, wide(path).c_str())) throw failure("folder");
+    if (!FtpSetCurrentDirectoryW(s.session.connection.h, wide(path).c_str())) s.session.fail("folder");
     std::vector<Entry> out;
     WIN32_FIND_DATAW data{};
     Handle find(FtpFindFirstFileW(s.session.connection.h, nullptr, &data, INTERNET_FLAG_RELOAD, 0));
     if (!find.h) {
         if (GetLastError() == ERROR_NO_MORE_FILES) return out;
-        throw failure("listing");
+        s.session.fail("listing");
     }
     do {
         cancelled(s.stop);
@@ -204,7 +217,7 @@ std::vector<Entry> Lister::list(const std::string& path) {
         }
         out.push_back(std::move(e));
     } while (InternetFindNextFileW(find.h, &data));
-    if (GetLastError() != ERROR_NO_MORE_FILES) throw failure("listing");
+    if (GetLastError() != ERROR_NO_MORE_FILES) s.session.fail("listing");
     return out;
 }
 }

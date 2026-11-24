@@ -2,6 +2,7 @@
 // lets the download engine treat an FTP file like a server with byte ranges. See platform/ftp.h.
 #include "platform/ftp.h"
 #include "core.h"
+#include "signin.h"
 #include <algorithm>
 #include <regex>
 #include <sstream>
@@ -15,22 +16,60 @@ bool isFtpUrl(const std::string& input) {
     }
 }
 Url parseUrl(const std::string& input) {
-    static const std::regex address(R"(ftp://([^/?#\s@:]+)(?::([0-9]{1,5}))?(/[^?#\s]*)?)", std::regex::icase);
+    // ftp://[user[:password]@]host[:port][/path]; the user information is percent-encoded.
+    static const std::regex address(R"(ftp://(?:([^/?#\s@:]*)(?::([^/?#\s@]*))?@)?([^/?#\s@:]+)(?::([0-9]{1,5}))?(/[^?#\s]*)?)", std::regex::icase);
     std::smatch m;
     auto text = trim(input);
-    if (!std::regex_match(text, m, address))
-        throw std::runtime_error(text.find('@') != std::string::npos
-                                         ? "FTP sign-in is not supported. Only anonymous FTP links (ftp://host/path) can be loaded."
-                                         : "Not an FTP link.");
+    if (!std::regex_match(text, m, address)) throw std::runtime_error("Not an FTP link.");
     Url url;
-    url.host = m[1];
-    if (m[2].matched) {
-        url.port = (unsigned)std::stoul(m[2]);
+    if (m[1].matched) {
+        if (m[1].length() == 0) throw std::runtime_error("The FTP link has a password but no user name.");
+        url.user = decode(m[1]);
+        if (m[2].matched) url.password = decode(m[2]);
+        for (const auto* part : {&url.user, &url.password})
+            for (unsigned char c : *part)
+                if (c < 0x20 || c == 0x7f) throw std::runtime_error("Invalid FTP user name or password.");
+    }
+    url.host = m[3];
+    if (m[4].matched) {
+        url.port = (unsigned)std::stoul(m[4]);
         if (!url.port || url.port > 65535) throw std::runtime_error("Invalid FTP port.");
     }
-    url.path = m[3].matched ? decode(m[3]) : "/";
+    url.path = m[5].matched ? decode(m[5]) : "/";
     if (url.path.find_first_of("\r\n") != std::string::npos) throw std::runtime_error("Invalid FTP path.");
     return url;
+}
+std::string withoutUserInfo(const std::string& input) {
+    if (lower(input.substr(0, 6)) != "ftp://") return input;
+    const auto start = 6;
+    const auto end = input.find_first_of("/?#", start);
+    const auto at = input.rfind('@', end == std::string::npos ? std::string::npos : end - 1);
+    if (at == std::string::npos || at < start) return input;
+    return input.substr(0, start) + input.substr(at + 1);
+}
+Login loginFor(const Url& url) {
+    Login login;
+    if (url.user.empty()) {
+        // No user in the address: the saved password for the host, else anonymous.
+        if (auto saved = signInFor("ftp", url.host, url.port); saved && saved->kind == SignInKind::Password) {
+            login.user = saved->user;
+            login.password = saved->secret;
+            login.anonymous = false;
+        }
+        return login;
+    }
+    login.user = url.user;
+    login.anonymous = false;
+    if (!url.password.empty()) {
+        login.password = url.password;
+        return login;
+    }
+    // A user without a password: only the saved sign-in of that same user will do.
+    if (auto saved = signInFor("ftp", url.host, url.port); saved && saved->kind == SignInKind::Password && saved->user == url.user) {
+        login.password = saved->secret;
+        return login;
+    }
+    throw SignInNeeded(lower(url.host), false, false);
 }
 std::vector<Entry> parseList(const std::string& text) {
     static const std::vector<std::string> months = {"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"};

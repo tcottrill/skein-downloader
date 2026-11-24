@@ -1,6 +1,7 @@
 // Folder listings and Wayback Machine links (src/folders.cpp), without the network.
 #include "sites.h"
 #include "platform/ftp.h"
+#include "signin.h"
 #include <iostream>
 #include <stdexcept>
 
@@ -89,7 +90,32 @@ int main() {
         auto ftpUrl = ftp::parseUrl("ftp://ftp.example.org:2121/pub/My%20Files/");
         check(ftpUrl.host == "ftp.example.org" && ftpUrl.port == 2121 && ftpUrl.path == "/pub/My Files/", "FTP address");
         check(ftp::parseUrl("FTP://ftp.example.org").path == "/" && ftp::parseUrl("ftp://h/x").port == 21, "FTP defaults");
-        check(!ftp::isFtpUrl("ftp://user:secret@ftp.example.org/") && !ftp::isFtpUrl("http://example.org/"), "Only anonymous FTP links");
+        check(ftp::isFtpUrl("ftp://user:secret@ftp.example.org/") && !ftp::isFtpUrl("http://example.org/"), "FTP links may name a user");
+        check(ftpUrl.user.empty() && ftpUrl.password.empty(), "No user information in an anonymous address");
+        auto bob = ftp::parseUrl("ftp://bob@example.org/pub/");
+        check(bob.user == "bob" && bob.password.empty() && bob.host == "example.org" && bob.port == 21 && bob.path == "/pub/", "FTP address with a user");
+        auto bobPass = ftp::parseUrl("ftp://bob:p%40ss@example.org:2121/x");
+        check(bobPass.user == "bob" && bobPass.password == "p@ss" && bobPass.port == 2121 && bobPass.path == "/x", "FTP address with a user and password");
+        auto odd = ftp::parseUrl("ftp://a%40b%3Ac%2Fd:p%3Aw%2F%40@h/x");
+        check(odd.user == "a@b:c/d" && odd.password == "p:w/@" && odd.host == "h", "Percent-encoded user information round-trips");
+        auto bare = ftp::parseUrl("ftp://bob:@h");
+        check(bare.user == "bob" && bare.password.empty() && bare.path == "/", "An empty password is none");
+        for (const char* bad : {"ftp://:secret@h/", "ftp://@h/", "ftp://:@h/", "ftp://b%0Ad@h/", "ftp://b:p%0D@h/", "ftp://b:%zz@h/"}) {
+            bool threw = false;
+            try {
+                ftp::parseUrl(bad);
+            } catch (const std::exception&) {
+                threw = true;
+            }
+            check(threw, "Malformed FTP user information is refused");
+        }
+        check(ftp::withoutUserInfo("ftp://bob@example.org/pub/") == "ftp://example.org/pub/", "User removed");
+        check(ftp::withoutUserInfo("ftp://bob:p%40ss@example.org:2121/x") == "ftp://example.org:2121/x", "User and password removed");
+        check(ftp::withoutUserInfo("FTP://Bob:p%40ss@Example.ORG:2121/A%20b/?x#y") == "FTP://Example.ORG:2121/A%20b/?x#y", "Everything else is kept as given");
+        check(ftp::withoutUserInfo("ftp://example.org/a@b/") == "ftp://example.org/a@b/" && ftp::withoutUserInfo("ftp://example.org") == "ftp://example.org", "Nothing to remove");
+        check(ftp::withoutUserInfo("ftp://a@b:p@ss@h/x") == "ftp://h/x", "The last @ ends the user information");
+        check(ftp::withoutUserInfo("http://u:p@example.org/") == "http://u:p@example.org/", "Only FTP addresses are changed");
+        check(logUrl("ftp://bob:secret@example.org/pub/") == "ftp://example.org/pub/", "The log never shows an FTP password");
         check(isFileSiteLink("ftp://ftp.gnu.org/gnu/hello/"), "FTP links open the file picker");
         auto listed = ftp::parseList(
                 "total 12\r\n"
@@ -120,6 +146,48 @@ int main() {
             pastEnd = e.reply == 416;
         }
         check(pastEnd, "Range past the end");
+        // Which login an FTP address uses, without a network.
+        SignIn saved;
+        saved.host = "ftp.example.org";
+        saved.user = "alice";
+        saved.secret = "s3cret";
+        saved.allowUnencrypted = true;
+        SignIn unsafe = saved;
+        unsafe.host = "locked.example.org";
+        unsafe.allowUnencrypted = false;
+        SignIn token;
+        token.kind = SignInKind::Token;
+        token.host = "tokens.example.org";
+        token.secret = "t";
+        token.allowUnencrypted = true;
+        setSignIns({saved, unsafe, token});
+        auto neededFor = [](const std::string& address, bool& rejected) {
+            try {
+                ftp::loginFor(ftp::parseUrl(address));
+            } catch (const SignInNeeded& e) {
+                rejected = e.rejected;
+                return e.host;
+            }
+            return std::string();
+        };
+        bool rejected = true;
+        auto login = ftp::loginFor(ftp::parseUrl("ftp://other.example.org/x"));
+        check(login.anonymous && login.user == "anonymous" && !login.password.empty(), "No sign-in: anonymous, as before");
+        login = ftp::loginFor(ftp::parseUrl("ftp://FTP.example.org/x"));
+        check(!login.anonymous && login.user == "alice" && login.password == "s3cret", "A saved password is used without a user in the address");
+        login = ftp::loginFor(ftp::parseUrl("ftp://alice@ftp.example.org/x"));
+        check(!login.anonymous && login.user == "alice" && login.password == "s3cret", "The saved password is used when the user names match");
+        login = ftp::loginFor(ftp::parseUrl("ftp://bob:own@ftp.example.org/x"));
+        check(!login.anonymous && login.user == "bob" && login.password == "own", "A password in the address wins over the saved one");
+        check(neededFor("ftp://bob@ftp.example.org/x", rejected) == "ftp.example.org" && !rejected, "Another user without a password: sign-in needed");
+        check(neededFor("ftp://bob@other.example.org/x", rejected) == "other.example.org" && !rejected, "A user without a password or a saved sign-in: sign-in needed, no empty password");
+        login = ftp::loginFor(ftp::parseUrl("ftp://locked.example.org/x"));
+        check(login.anonymous, "A saved password that may not be sent unencrypted is not used");
+        check(neededFor("ftp://alice@locked.example.org/x", rejected) == "locked.example.org", "...so a named user has nothing to log in with");
+        login = ftp::loginFor(ftp::parseUrl("ftp://tokens.example.org/x"));
+        check(login.anonymous, "A token is never an FTP password");
+        setSignIns({});
+        check(ftp::loginFor(ftp::parseUrl("ftp://alice:pw@127.0.0.1/x")).password == "pw", "A password in the address needs no saved sign-in");
         std::cout << "folder tests passed\n";
         return 0;
     } catch (const std::exception& e) {
