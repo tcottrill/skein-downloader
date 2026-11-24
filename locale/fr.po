@@ -291,6 +291,10 @@ msgstr "Tout reprendre"
 msgid "Retrying after connection error"
 msgstr "Nouvel essai après une erreur de connexion"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "Nouvelle tentative dans %d s"
+
 msgid "Same as system"
 msgstr "Comme le système"
 

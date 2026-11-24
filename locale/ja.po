@@ -291,6 +291,10 @@ msgstr "すべて再開"
 msgid "Retrying after connection error"
 msgstr "接続エラー後に再試行中"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "%d 秒後に再試行します"
+
 msgid "Same as system"
 msgstr "システムに従う"
 

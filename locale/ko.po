@@ -291,6 +291,10 @@ msgstr "모두 다시 시작"
 msgid "Retrying after connection error"
 msgstr "연결 오류 후 다시 시도 중"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "%d초 후 다시 시도합니다"
+
 msgid "Same as system"
 msgstr "시스템 설정 따름"
 

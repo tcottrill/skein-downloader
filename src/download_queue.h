@@ -1,6 +1,7 @@
 #pragma once
 #include "core.h"
 #include "json.hpp"
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -21,6 +22,8 @@ struct Job {
     State state = State::Queued;
     nlohmann::json input;
     bool historyOnly = false;
+    // Seconds until an automatic retry, 0 when none; filled by Queue::snapshot(), never saved.
+    uint64_t retryIn = 0;
     bool canMoveToTop() const { return state == State::Queued || state == State::Paused; }
 };
 // Duplicate-detection key for a destination path; case-insensitive on Windows,
@@ -35,6 +38,11 @@ class Queue {
         Job job;
         std::atomic_bool stop = false;
         bool running = false, removing = false, resumeRequested = false;
+        // Automatic retry: runs in a row without progress, the earliest start (a default time_point
+        // means none), and the job's done value when the current run began. Never saved.
+        unsigned retries = 0;
+        std::chrono::steady_clock::time_point notBefore{};
+        uint64_t doneAtStart = 0;
     };
     archive::Path path_;
     Runner runner_;
@@ -45,6 +53,8 @@ class Queue {
     uint64_t next_ = 1;
     bool closing_ = false, historyReadable_ = true, pausedAll_ = false;
     std::string error_, maintenance_;
+    std::vector<std::chrono::milliseconds> retryWaits_{std::chrono::seconds(5), std::chrono::seconds(15), std::chrono::seconds(60), std::chrono::seconds(300)};
+    unsigned maxRetries_ = 12;
     // History is written by its own thread, outside mutex_: saveLocked() only marks it changed.
     // A write that takes long (a large history, a slow disk) then blocks neither the window nor
     // the downloads, and changes made meanwhile are saved together in the next write.
@@ -65,6 +75,9 @@ public:
     bool add(std::string name, std::string kind, std::string key, nlohmann::json input);
     size_t addBatch(std::vector<Job> jobs);
     void start();
+    // Waits before each automatic retry of a job that failed for a temporary network reason (the
+    // last one repeats) and how many retries in a row without progress are allowed.
+    void setRetryWaits(std::vector<std::chrono::milliseconds> waits, unsigned maxRetries);
     void shutdown();
     void pause(uint64_t id);
     void resume(uint64_t id);

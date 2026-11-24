@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cwctype>
 #include <fstream>
+#include <optional>
 #include <unordered_set>
 namespace downloads {
 const char* stateName(State state) {
@@ -182,34 +183,49 @@ void Queue::start() {
         work();
     });
 }
+void Queue::setRetryWaits(std::vector<std::chrono::milliseconds> waits, unsigned maxRetries) {
+    std::lock_guard lock(mutex_);
+    retryWaits_ = std::move(waits);
+    maxRetries_ = maxRetries;
+}
 void Queue::work() {
     for (;;) {
         std::shared_ptr<Entry> entry;
         Job input;
         {
             std::unique_lock lock(mutex_);
-            cv_.wait(lock, [&] {
-                if (closing_) return true;
-                if (pausedAll_) return false;
-                for (auto& e : jobs_)
-                    if (e->job.state == State::Queued && !e->running && !e->removing && e->job.kind != maintenance_) return true;
-                return false;
-            });
-            if (closing_) return;
-            for (auto& e : jobs_)
-                if (e->job.state == State::Queued && !e->running && !e->removing && e->job.kind != maintenance_) {
-                    entry = e;
-                    break;
-                }
+            for (;;) {
+                if (closing_) return;
+                const auto now = std::chrono::steady_clock::now();
+                std::optional<std::chrono::steady_clock::time_point> earliest; // of the jobs still waiting to retry
+                if (!pausedAll_)
+                    for (auto& e : jobs_) {
+                        if (e->job.state != State::Queued || e->running || e->removing || e->job.kind == maintenance_) continue;
+                        if (e->notBefore > now) {
+                            if (!earliest || e->notBefore < *earliest) earliest = e->notBefore;
+                            continue;
+                        }
+                        entry = e;
+                        break;
+                    }
+                if (entry) break;
+                if (earliest)
+                    cv_.wait_until(lock, *earliest);
+                else
+                    cv_.wait(lock);
+            }
             entry->running = true;
             entry->stop = false;
+            entry->notBefore = {};
+            entry->doneAtStart = entry->job.done;
             entry->job.state = State::Active;
             entry->job.detail = "Connecting";
             input = entry->job;
             saveLocked();
         }
         std::string failure;
-        bool completed = false;
+        bool completed = false, retryable = false;
+        unsigned retryAfter = 0;
         try {
             runner_(input, entry->stop, [this, entry](uint64_t done, uint64_t total, const std::string& detail, const std::string& output) {
                 std::lock_guard lock(mutex_);
@@ -219,6 +235,10 @@ void Queue::work() {
                 if (!output.empty()) entry->job.output = output;
             });
             completed = true;
+        } catch (const archive::NetworkError& e) {
+            failure = e.what();
+            retryable = e.retry;
+            retryAfter = e.wait;
         } catch (const std::exception& e) {
             failure = e.what();
         } catch (...) {
@@ -237,6 +257,8 @@ void Queue::work() {
                 if (!entry->job.total) entry->job.total = entry->job.done;
                 entry->job.done = entry->job.total;
             }
+            // A run that made progress starts the count again.
+            if (entry->job.done > entry->doneAtStart) entry->retries = 0;
             if (entry->removing) {
                 if (completed) {
                     entry->removing = false;
@@ -246,6 +268,14 @@ void Queue::work() {
             } else if (!completed && entry->resumeRequested && !closing_ && !pausedAll_) {
                 entry->job.state = State::Queued;
                 entry->job.detail.clear();
+            } else if (!completed && retryable && !entry->stop && entry->retries < maxRetries_) {
+                // A temporary network failure: back to the queue, with the error text kept as the
+                // detail, and not started again before the wait is over.
+                auto wait = retryWaits_.empty() ? std::chrono::milliseconds(0) : retryWaits_[std::min<size_t>(entry->retries, retryWaits_.size() - 1)];
+                wait = std::max(wait, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds(retryAfter)));
+                ++entry->retries;
+                entry->job.state = State::Queued;
+                entry->notBefore = std::chrono::steady_clock::now() + wait;
             }
             entry->resumeRequested = false;
             saveLocked();
@@ -260,6 +290,7 @@ void Queue::shutdown() {
         closing_ = true;
         for (auto& e : jobs_) {
             e->stop = true;
+            e->notBefore = {};
             if (!e->running && e->job.state == State::Queued) e->job.state = State::Paused;
         }
         cv_.notify_all();
@@ -283,6 +314,7 @@ void Queue::pause(uint64_t id) {
                 e->job.detail = "Pausing…";
             } else if (e->job.state == State::Queued)
                 e->job.state = State::Paused;
+            e->notBefore = {};
         }
     saveLocked();
 }
@@ -294,6 +326,8 @@ void Queue::resume(uint64_t id) {
             e->job.state = State::Queued;
             e->job.detail.clear();
             e->stop = false;
+            e->retries = 0;
+            e->notBefore = {};
         }
     saveLocked();
     cv_.notify_all();
@@ -336,8 +370,13 @@ void Queue::remove(uint64_t id) {
 std::vector<Job> Queue::snapshot() const {
     std::lock_guard lock(mutex_);
     std::vector<Job> result;
-    for (auto& e : jobs_)
-        if (!e->removing) result.push_back(e->job);
+    const auto now = std::chrono::steady_clock::now();
+    for (auto& e : jobs_) {
+        if (e->removing) continue;
+        result.push_back(e->job);
+        if (e->job.state == State::Queued && e->notBefore > now)
+            result.back().retryIn = uint64_t(std::chrono::ceil<std::chrono::seconds>(e->notBefore - now).count());
+    }
     return result;
 }
 std::string Queue::error() const {
@@ -362,6 +401,7 @@ void Queue::pauseAll() {
     pausedAll_ = true;
     for (auto& e : jobs_) {
         e->resumeRequested = false;
+        e->notBefore = {};
         if (e->running) {
             e->stop = true;
             e->job.detail = "Pausing…";
@@ -376,6 +416,8 @@ void Queue::resumeAll() {
     pausedAll_ = false;
     for (auto& e : jobs_) {
         if (e->removing) continue;
+        e->retries = 0;
+        e->notBefore = {};
         if (e->running) {
             if (e->stop) e->resumeRequested = true;
         } else if (e->job.state == State::Paused || e->job.state == State::Failed) {

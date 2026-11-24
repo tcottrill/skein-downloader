@@ -291,6 +291,10 @@ msgstr "全部继续"
 msgid "Retrying after connection error"
 msgstr "连接出错后正在重试"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "%d 秒后重试"
+
 msgid "Same as system"
 msgstr "跟随系统"
 

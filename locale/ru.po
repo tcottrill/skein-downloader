@@ -291,6 +291,10 @@ msgstr "Продолжить все"
 msgid "Retrying after connection error"
 msgstr "Повтор после ошибки соединения"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "Повтор через %d с"
+
 msgid "Same as system"
 msgstr "Как в системе"
 

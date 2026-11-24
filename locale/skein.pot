@@ -291,6 +291,10 @@ msgstr ""
 msgid "Retrying after connection error"
 msgstr ""
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr ""
+
 msgid "Same as system"
 msgstr ""
 

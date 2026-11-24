@@ -291,6 +291,10 @@ msgstr "सभी फिर शुरू करें"
 msgid "Retrying after connection error"
 msgstr "कनेक्शन त्रुटि के बाद फिर कोशिश हो रही है"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "%d सेकंड में पुनः प्रयास"
+
 msgid "Same as system"
 msgstr "सिस्टम जैसा"
 

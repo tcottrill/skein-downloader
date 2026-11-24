@@ -291,6 +291,10 @@ msgstr "全部繼續"
 msgid "Retrying after connection error"
 msgstr "連線錯誤後正在重試"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "%d 秒後重試"
+
 msgid "Same as system"
 msgstr "與系統相同"
 

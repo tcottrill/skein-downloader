@@ -1,6 +1,7 @@
 #include "download_queue.h"
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 
@@ -110,6 +111,180 @@ int main() {
             std::ifstream file(lateHistory);
             if (nlohmann::json::parse(file).at(0).at("state") != "Complete")
                 throw std::runtime_error("The completed state was not saved at shutdown");
+        }
+
+        // Automatic retry: a temporary network failure puts the job back in the queue with a wait.
+        {
+            // One queue per case, with its own history file. The runner is given the run number
+            // (1-based) and may throw; a case waits on its conditions with a timeout.
+            std::mutex retryMutex;
+            std::condition_variable retryChanged;
+            int runs = 0;
+            std::function<void(int, const downloads::Job&, const downloads::Report&)> behavior;
+            auto retryRunner = [&](const downloads::Job& job, std::atomic_bool&, const downloads::Report& report) {
+                int run;
+                {
+                    std::lock_guard lock(retryMutex);
+                    run = ++runs;
+                    retryChanged.notify_all();
+                }
+                behavior(run, job, report);
+            };
+            auto runCount = [&] {
+                std::lock_guard lock(retryMutex);
+                return runs;
+            };
+            auto waitRuns = [&](int count, std::chrono::milliseconds limit) {
+                std::unique_lock lock(retryMutex);
+                return retryChanged.wait_for(lock, limit, [&] {
+                    return runs >= count;
+                });
+            };
+            auto waitState = [](downloads::Queue& queue, downloads::State state, std::chrono::milliseconds limit) {
+                const auto end = std::chrono::steady_clock::now() + limit;
+                while (std::chrono::steady_clock::now() < end) {
+                    if (queue.snapshot().at(0).state == state) return true;
+                    std::this_thread::sleep_for(2ms);
+                }
+                return queue.snapshot().at(0).state == state;
+            };
+            int caseNumber = 0;
+            auto begin = [&](const char*) {
+                runs = 0;
+                return folder / ("retry-" + std::to_string(++caseNumber) + ".json");
+            };
+            // A wait of 0 seconds says the server gave no Retry-After, so the schedule decides.
+            const auto temporary = [] {
+                return archive::NetworkError("x", true, 0);
+            };
+
+            { // a. Two temporary failures, then success.
+                behavior = [&](int run, const downloads::Job&, const downloads::Report&) {
+                    if (run <= 2) throw temporary();
+                };
+                downloads::Queue queue(begin("a"), retryRunner);
+                queue.setRetryWaits({10ms}, 12);
+                queue.add("a", "Archive", "a", nullptr);
+                queue.start();
+                if (!waitState(queue, downloads::State::Complete, 10s) || runCount() != 3)
+                    throw std::runtime_error("A job that failed twice for network reasons did not complete on its third run");
+            }
+            { // b. A failure that is not worth retrying fails at once.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw archive::NetworkError("x", false);
+                };
+                downloads::Queue queue(begin("b"), retryRunner);
+                queue.setRetryWaits({10ms}, 12);
+                queue.add("b", "Archive", "b", nullptr);
+                queue.start();
+                if (!waitState(queue, downloads::State::Failed, 10s) || queue.snapshot().at(0).detail != "x")
+                    throw std::runtime_error("A failure marked not retryable did not fail with its text");
+                std::this_thread::sleep_for(100ms);
+                if (runCount() != 1) throw std::runtime_error("A failure marked not retryable was run again");
+            }
+            { // c. The retry limit.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw temporary();
+                };
+                downloads::Queue queue(begin("c"), retryRunner);
+                queue.setRetryWaits({10ms}, 3);
+                queue.add("c", "Archive", "c", nullptr);
+                queue.start();
+                if (!waitState(queue, downloads::State::Failed, 10s))
+                    throw std::runtime_error("A job that always failed did not end Failed after its retries");
+                std::this_thread::sleep_for(100ms);
+                if (runCount() != 4) throw std::runtime_error("A job with 3 retries did not run exactly 4 times");
+            }
+            { // d. A long wait is shown, pause cancels it, resume starts at once.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw temporary();
+                };
+                downloads::Queue queue(begin("d"), retryRunner);
+                queue.setRetryWaits({10s}, 12);
+                queue.add("d", "Archive", "d", nullptr);
+                queue.start();
+                if (!waitRuns(1, 10s)) throw std::runtime_error("The job did not start");
+                bool waiting = false;
+                downloads::Job job;
+                for (int i = 0; i < 2000 && !waiting; ++i) {
+                    job = queue.snapshot().at(0);
+                    waiting = job.state == downloads::State::Queued && job.retryIn != 0;
+                    if (!waiting) std::this_thread::sleep_for(2ms);
+                }
+                if (!waiting || job.retryIn < 1 || job.retryIn > 10 || job.detail != "x")
+                    throw std::runtime_error("A job waiting to retry was not Queued with a countdown and its error");
+                queue.pause(job.id);
+                job = queue.snapshot().at(0);
+                if (job.state != downloads::State::Paused || job.retryIn != 0)
+                    throw std::runtime_error("Pause did not cancel the wait");
+                std::this_thread::sleep_for(200ms);
+                if (runCount() != 1) throw std::runtime_error("A paused job was run again");
+                queue.resume(job.id);
+                if (!waitRuns(2, 1s)) throw std::runtime_error("Resume did not start the job at once");
+            }
+            { // e. Retry-After is a minimum.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw archive::NetworkError("x", true, 2);
+                };
+                downloads::Queue queue(begin("e"), retryRunner);
+                queue.setRetryWaits({10ms}, 12);
+                queue.add("e", "Archive", "e", nullptr);
+                queue.start();
+                if (!waitRuns(1, 10s)) throw std::runtime_error("The job did not start");
+                bool waiting = false;
+                downloads::Job job;
+                for (int i = 0; i < 2000 && !waiting; ++i) {
+                    job = queue.snapshot().at(0);
+                    waiting = job.retryIn != 0;
+                    if (!waiting) std::this_thread::sleep_for(2ms);
+                }
+                if (!waiting || job.retryIn < 1) throw std::runtime_error("A Retry-After of 2 s was not honored over a 10 ms schedule");
+            }
+            { // f. Progress resets the count.
+                behavior = [&](int run, const downloads::Job&, const downloads::Report& report) {
+                    report(uint64_t(run), 0, "", "");
+                    if (run <= 5) throw temporary();
+                };
+                downloads::Queue queue(begin("f"), retryRunner);
+                queue.setRetryWaits({10ms}, 2);
+                queue.add("f", "Archive", "f", nullptr);
+                queue.start();
+                if (!waitState(queue, downloads::State::Complete, 10s) || runCount() != 6)
+                    throw std::runtime_error("Progress did not reset the retry count");
+            }
+            { // g. Removing a waiting job drops it for good.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw temporary();
+                };
+                downloads::Queue queue(begin("g"), retryRunner);
+                queue.setRetryWaits({10s}, 12);
+                queue.add("g", "Archive", "g", nullptr);
+                queue.start();
+                if (!waitRuns(1, 10s)) throw std::runtime_error("The job did not start");
+                uint64_t retryIn = 0;
+                for (int i = 0; i < 2000 && !retryIn; ++i) {
+                    retryIn = queue.snapshot().at(0).retryIn;
+                    if (!retryIn) std::this_thread::sleep_for(2ms);
+                }
+                if (!retryIn) throw std::runtime_error("The job did not wait to retry");
+                queue.remove(queue.snapshot().at(0).id);
+                std::this_thread::sleep_for(200ms);
+                if (!queue.snapshot().empty() || runCount() != 1)
+                    throw std::runtime_error("A removed waiting job stayed or ran again");
+            }
+            { // h. Only NetworkError retries.
+                behavior = [&](int, const downloads::Job&, const downloads::Report&) {
+                    throw std::runtime_error("y");
+                };
+                downloads::Queue queue(begin("h"), retryRunner);
+                queue.setRetryWaits({10ms}, 12);
+                queue.add("h", "Archive", "h", nullptr);
+                queue.start();
+                if (!waitState(queue, downloads::State::Failed, 10s))
+                    throw std::runtime_error("A plain exception did not fail the job");
+                std::this_thread::sleep_for(100ms);
+                if (runCount() != 1) throw std::runtime_error("A plain exception was retried");
+            }
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

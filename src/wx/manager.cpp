@@ -20,6 +20,11 @@
 namespace lite {
 namespace {
 const char* const kofiPage = "https://ko-fi.com/timcottrill";
+// The job's detail line; a job waiting for an automatic retry shows the countdown first.
+wxString jobDetail(const downloads::Job& j) {
+    if (j.retryIn) return wxString::Format(_(L"Retrying in %d s"), int(j.retryIn)) + " · " + translated(j.detail);
+    return translated(j.detail);
+}
 // Ko-fi's support button, drawn at the exact pixel size of each monitor: the
 // label in the system font and the rounded outline as anti-aliased shapes, so only the cup
 // logo is an image (scaled down with high-quality filtering). A scaled picture of the whole
@@ -367,7 +372,7 @@ MainWindow::MainWindow(downloads::Queue& q)
         long column = -1;
         long row = list->HitTest(e.GetPosition(), flags, &column);
         wxString tip;
-        if (row >= 0 && size_t(row) < shown.size()) tip = column == 5 ? _(L"Transfer speed in bytes per second") : translated(shown[size_t(row)].detail) + "\n" + w(shown[size_t(row)].output);
+        if (row >= 0 && size_t(row) < shown.size()) tip = column == 5 ? _(L"Transfer speed in bytes per second") : jobDetail(shown[size_t(row)]) + "\n" + w(shown[size_t(row)].output);
         if (target->GetToolTipText() != tip) {
             if (tip.empty())
                 target->UnsetToolTip();
@@ -629,7 +634,7 @@ void MainWindow::progressCells() {
         cell->SetBackgroundColour(list->GetItemBackgroundColour(r));
         cell->set(percent, percent < 0 ? (j.state == downloads::State::Active ? _(L"Working…") : w("—")) : percent == 100 && j.state == downloads::State::Active ? _(L"Processing…")
                                                                                                                                                                  : wxString::Format("%d%%", percent));
-        cell->SetToolTip(translated(j.detail) + "\n" + w(j.output));
+        cell->SetToolTip(jobDetail(j) + "\n" + w(j.output));
         cell->Show();
     }
     for (size_t i = used; i < bars.size(); ++i) bars[i]->Hide();
@@ -723,7 +728,7 @@ void MainWindow::refresh() {
     selectedDetail = _(L"Paste a URL above. Select one, all, or specific files before adding downloads.");
     for (const auto& j : shown)
         if (!current.empty() && j.id == current.front()) {
-            selectedDetail = w(j.name) + "\n" + translated(j.detail) + w(j.output.empty() ? "" : " · " + j.output);
+            selectedDetail = w(j.name) + "\n" + jobDetail(j) + w(j.output.empty() ? "" : " · " + j.output);
             break;
         }
     detail->SetLabel(selectedDetail);

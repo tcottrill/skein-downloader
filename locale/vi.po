@@ -291,6 +291,10 @@ msgstr "Tiếp tục tất cả"
 msgid "Retrying after connection error"
 msgstr "Đang thử lại sau lỗi kết nối"
 
+#, c-format
+msgid "Retrying in %d s"
+msgstr "Thử lại sau %d giây"
+
 msgid "Same as system"
 msgstr "Theo hệ thống"
 
