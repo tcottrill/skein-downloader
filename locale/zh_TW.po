@@ -77,6 +77,12 @@ msgstr "將最佳可用音訊以最高 VBR 品質儲存為 MP3。\n轉換無法�
 msgid "Browse…"
 msgstr "瀏覽…"
 
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Cancelled. Nothing was added."
+msgstr "已取消。未加入任何項目。"
+
 msgid "Cannot add files"
 msgstr "無法加入檔案"
 
@@ -85,6 +91,10 @@ msgstr "找不到 Windows PowerShell。"
 
 msgid "Check highlighted"
 msgstr "勾選反白項目"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "正在檢查檔案… %zu / %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "正在檢查 yt-dlp 更新…"

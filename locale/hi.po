@@ -77,6 +77,12 @@ msgstr "उपलब्ध सर्वोत्तम ऑडियो, उच�
 msgid "Browse…"
 msgstr "ब्राउज़ करें…"
 
+msgid "Cancel"
+msgstr "निरस्त"
+
+msgid "Cancelled. Nothing was added."
+msgstr "रद्द किया गया। कुछ भी नहीं जोड़ा गया।"
+
 msgid "Cannot add files"
 msgstr "फ़ाइलें नहीं जोड़ सकते"
 
@@ -85,6 +91,10 @@ msgstr "Windows PowerShell नहीं मिल सका।"
 
 msgid "Check highlighted"
 msgstr "हाइलाइट किए गए चुनें"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "फ़ाइलों की जाँच हो रही है… %zu / %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "yt-dlp अपडेट की जाँच हो रही है…"

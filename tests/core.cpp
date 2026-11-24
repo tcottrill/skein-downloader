@@ -84,6 +84,47 @@ static void paths() {
             safePath(root, name);
         },
                (std::string("safePath rejects \"") + name + "\"").c_str());
+    // With the root already checked, every name is still validated and the result is the same.
+    check(safePath(root, "a/b.txt", RootState::Checked) == root / "a" / "b.txt", "safePath with a checked root joins a relative path");
+    check(safePath(root / "", "x.zip", RootState::Checked) == root / "x.zip", "safePath with a checked root and a trailing separator");
+    for (const char* name : {"", "/x", "x/", "a\\b", "../x", "a/../b", "a/./b", "a//b", "con.txt", "a/LPT1", "name.", "name ", "a:b", "a|b", "a\x01"})
+        throws([&] {
+            safePath(root, name, RootState::Checked);
+        },
+               (std::string("safePath with a checked root rejects \"") + name + "\"").c_str());
+    // A missing root: the names are validated all the same, the link walk is skipped.
+    check(safePath(root, "a/b.txt", RootState::Missing) == root / "a" / "b.txt", "safePath with a missing root joins a relative path");
+    for (const char* name : {"", "/x", "../x", "a/../b", "con.txt", "name.", "a:b"})
+        throws([&] {
+            safePath(root, name, RootState::Missing);
+        },
+               (std::string("safePath with a missing root rejects \"") + name + "\"").c_str());
+    // Links: one inside the root is always found; one at or above the root only when the root is not yet checked.
+    std::error_code ec;
+    const auto work = std::filesystem::absolute(std::filesystem::temp_directory_path() / "skein-core-test-links").lexically_normal();
+    std::filesystem::remove_all(work, ec);
+    std::filesystem::create_directories(work / "real" / "sub", ec);
+    std::filesystem::create_directory_symlink(work / "real", work / "link", ec);
+    if (ec)
+        std::cerr << "note: cannot create symbolic links here, link checks skipped\n";
+    else {
+        std::filesystem::create_directory_symlink(work / "real" / "sub", work / "real" / "inner", ec);
+        throws([&] {
+            safePath(work / "link", "f.zip");
+        },
+               "safePath rejects a root that is a link");
+        check(safePath(work / "link", "f.zip", RootState::Checked) == work / "link" / "f.zip", "safePath with a checked root does not look at the root again");
+        throws([&] {
+            safePath(work / "real", "inner/f.zip", RootState::Checked);
+        },
+               "safePath with a checked root still rejects a link below the root");
+        throws([&] {
+            safePath(work / "real", "inner", RootState::Checked);
+        },
+               "safePath with a checked root still rejects a link as the file itself");
+        check(safePath(work / "real", "sub/f.zip", RootState::Checked) == work / "real" / "sub" / "f.zip", "safePath with a checked root accepts a plain folder below the root");
+    }
+    std::filesystem::remove_all(work, ec);
 }
 
 static void ranges() {

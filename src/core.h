@@ -121,7 +121,14 @@ Item loadDirectLink(const std::string& url, std::atomic_bool& stop);
 std::string encode(const std::string& input, bool keepSlash = false);
 // Percent-decoding; throws on a malformed escape.
 std::string decode(const std::string& input);
-Path safePath(const Path& root, const std::string& name);
+// How much of the root the caller already knows, for thousands of names in one folder: Checked means an earlier call
+// with this same root found no link in it or above it, so only the parts below the root are looked at; Missing means
+// that and that the root does not exist, so nothing below it can be a link either. The name is always validated.
+enum class RootState { Unchecked,
+                       Checked,
+                       Missing };
+// Links and junctions in the result path (the root and its parents included, unless known) are rejected.
+Path safePath(const Path& root, const std::string& name, RootState rootState = RootState::Unchecked);
 std::vector<Range> split(uint64_t size, unsigned connections);
 Item parseMetadata(const std::string& id, const std::string& json);
 Item loadItem(const std::string& link, std::atomic_bool& stop);

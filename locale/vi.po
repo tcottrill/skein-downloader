@@ -77,6 +77,12 @@ msgstr "Âm thanh tốt nhất hiện có, lưu dưới dạng MP3 với chất 
 msgid "Browse…"
 msgstr "Duyệt…"
 
+msgid "Cancel"
+msgstr "Hủy"
+
+msgid "Cancelled. Nothing was added."
+msgstr "Đã hủy. Không có gì được thêm."
+
 msgid "Cannot add files"
 msgstr "Không thể thêm tệp"
 
@@ -85,6 +91,10 @@ msgstr "Không tìm thấy Windows PowerShell."
 
 msgid "Check highlighted"
 msgstr "Đánh dấu các mục được chọn"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "Đang kiểm tra tệp… %zu trên %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "Đang kiểm tra bản cập nhật yt-dlp…"

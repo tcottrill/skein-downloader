@@ -392,10 +392,11 @@ std::string hubNextPage(const std::string& header) {
     auto url = m[1].str();
     return url.starts_with("https://huggingface.co/api/") ? url : std::string();
 }
-Path safePath(const Path& root, const std::string& name) {
+Path safePath(const Path& root, const std::string& name, RootState rootState) {
     if (name.empty() || name.front() == '/' || name.back() == '/' || name.find('\\') != std::string::npos)
         throw std::runtime_error("Unsafe filename: " + name);
     Path result = std::filesystem::absolute(root).lexically_normal();
+    const Path top = result.has_filename() ? result : result.parent_path(); // without a trailing separator, as parent_path() below gives it
     std::istringstream in(name);
     std::string part;
     while (std::getline(in, part, '/')) {
@@ -410,7 +411,8 @@ Path safePath(const Path& root, const std::string& name) {
         result /= pathFromUtf8(part);
     }
     // Existing junctions/symlinks must not redirect writes outside the chosen folder.
-    for (auto p = result; !p.empty() && p != p.root_path(); p = p.parent_path()) {
+    if (rootState == RootState::Missing) return result; // nothing exists below a folder that does not exist, so there is no link either
+    for (auto p = result; !p.empty() && p != p.root_path() && !(rootState != RootState::Unchecked && p == top); p = p.parent_path()) {
 #ifdef _WIN32
         DWORD attrs = GetFileAttributesW(p.c_str());
         if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_REPARSE_POINT))

@@ -10,16 +10,27 @@ bool visible(const downloads::Job& j, int mode, const std::string& query) {
     return lower(j.name).find(lower(query)) != std::string::npos &&
            ((mode == 0 && !j.historyOnly) || (mode == 1 && j.state == downloads::State::Active) || (mode == 2 && (j.state == downloads::State::Queued || j.state == downloads::State::Paused || j.state == downloads::State::Failed)) || (mode == 3 && j.state == downloads::State::Complete));
 }
-std::vector<downloads::Job> fileJobs(const archive::Item& item, const std::vector<bool>& checked, const archive::Path& folder, unsigned connections, const std::string& server) {
+std::vector<downloads::Job> fileJobs(const archive::Item& item, const std::vector<bool>& checked, const archive::Path& folder, unsigned connections, const std::string& server, std::atomic_size_t* progress, const std::atomic_bool* stop) {
     if (!folder.is_absolute()) throw std::runtime_error("Choose an absolute download folder.");
     if (checked.size() != item.files.size()) throw std::runtime_error("Invalid file selection.");
+    if (progress) progress->store(0);
     auto base = item.sourceUrl.empty() ? archive::safePath(folder, item.id) : folder.lexically_normal();
     std::vector<downloads::Job> result;
+    // The first name has the whole path to the folder checked for links; the others only what lies below it.
+    // When the folder does not exist yet, nothing in it can exist either, so the per-file existence check is skipped.
+    auto rootState = archive::RootState::Unchecked;
+    size_t examined = 0;
     for (size_t i = 0; i < checked.size(); ++i)
         if (checked[i]) {
+            if (stop && stop->load(std::memory_order_relaxed)) throw std::runtime_error("Paused");
             const auto& f = item.files[i];
-            auto target = archive::safePath(base, f.name);
-            if (std::filesystem::exists(target)) continue;
+            auto target = archive::safePath(base, f.name, rootState);
+            if (rootState == archive::RootState::Unchecked) {
+                std::error_code ec;
+                rootState = std::filesystem::exists(base, ec) ? archive::RootState::Checked : archive::RootState::Missing;
+            }
+            if (progress) progress->store(++examined, std::memory_order_relaxed);
+            if (rootState == archive::RootState::Checked && std::filesystem::exists(target)) continue;
             nlohmann::json input = {{"item", item.id}, {"name", f.name}, {"format", f.format}, {"sha1", f.sha1}, {"sha256", f.sha256}, {"size", f.size}, {"sizeKnown", f.sizeKnown}, {"target", archive::pathUtf8(target)}, {"mirrors", item.mirrorBases}, {"server", server}, {"connections", connections}};
             if (!item.sourceUrl.empty()) {
                 input["url"] = item.sourceUrl;

@@ -77,6 +77,12 @@ msgstr "O melhor áudio disponível, guardado em MP3 com a definição de qualid
 msgid "Browse…"
 msgstr "Procurar…"
 
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Cancelled. Nothing was added."
+msgstr "Cancelado. Não foi adicionado nada."
+
 msgid "Cannot add files"
 msgstr "Não é possível adicionar ficheiros"
 
@@ -85,6 +91,10 @@ msgstr "Não foi possível localizar o Windows PowerShell."
 
 msgid "Check highlighted"
 msgstr "Selecionar os realçados"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "A verificar ficheiros… %zu de %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "A procurar uma atualização do yt-dlp…"

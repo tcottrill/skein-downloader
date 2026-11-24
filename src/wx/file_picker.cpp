@@ -34,6 +34,9 @@ class FilePicker : public wxDialog {
     wxListCtrl* list;
     wxChoice *servers, *connections;
     wxStaticText* status;
+    // The controls that are locked while "Add to downloads" works (see lockForAdding) and the button that becomes Cancel.
+    wxButton *loadButton, *selectAllButton, *clearButton, *checkButton, *uncheckButton, *testButton, *addButton;
+    wxString addLabel;
     archive::Item item;
     std::vector<bool> checked;
     std::vector<size_t> rows;
@@ -42,12 +45,19 @@ class FilePicker : public wxDialog {
     std::future<archive::Item> loading;
     std::future<std::vector<archive::ServerSpeed>> measuring;
     std::shared_ptr<std::atomic_bool> stop = std::make_shared<std::atomic_bool>(false);
+    // The work of "Add to downloads" runs on a thread on copies of what it needs; it writes only these two values.
+    std::future<std::vector<downloads::Job>> adding;
+    std::shared_ptr<std::atomic_size_t> addDone = std::make_shared<std::atomic_size_t>(0);
+    std::shared_ptr<std::atomic_bool> addStop = std::make_shared<std::atomic_bool>(false);
+    size_t addTotal = 0;
+    bool addLook = false; // the dialog shows the Cancel button, the count and the locked controls
+    std::chrono::steady_clock::time_point addStarted;
     wxTimer timer;
     bool closing = false;
     int sortColumn = -1;
     bool ascending = true;
     friend void runBenchmark(MainWindow&, downloads::Queue&, size_t); // benchmark only
-    bool busy() const { return loading.valid() || measuring.valid(); }
+    bool busy() const { return loading.valid() || measuring.valid() || adding.valid(); }
     // Rows follow the clicked column header, as in Explorer: natural name order (file2 before file10), unknown sizes after known ones,
     // checked files first, ties by name. Until a header is clicked the files keep the order the source listed them in.
     void order(std::vector<size_t>& shown) const {
@@ -237,24 +247,72 @@ class FilePicker : public wxDialog {
             }
             summary();
         }
+        if (adding.valid()) {
+            if (adding.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                finishAdding();
+            else {
+                // Work that ends within about 150 ms never changes the dialog's look.
+                if (!addLook && !closing && std::chrono::steady_clock::now() - addStarted >= std::chrono::milliseconds(150)) lockForAdding(true);
+                if (addLook) status->SetLabel(wxString::Format(_(L"Checking files… %zu of %zu"), addDone->load(), addTotal));
+            }
+        }
         if (closing && !busy()) {
             timer.Stop();
             Destroy();
         }
     }
+    // The selection and the other inputs must not change while the thread works, and the button becomes Cancel.
+    void lockForAdding(bool on) {
+        addLook = on;
+        for (wxWindow* c : std::initializer_list<wxWindow*>{url, filter, list, loadButton, selectAllButton, clearButton, checkButton, uncheckButton, testButton}) c->Enable(!on);
+        addButton->SetLabel(on ? _(L"Cancel") : addLabel);
+        Layout();
+    }
+    // "Add to downloads" starts the thread; pressed again while it works (as Cancel) it stops it.
     void add() {
-        if (busy() || std::find(checked.begin(), checked.end(), true) == checked.end()) return;
-        try {
-            static constexpr unsigned counts[] = {1, 2, 4, 8, 16};
-            auto jobs = fileJobs(item, checked, archive::pathFromUtf8(u(folder->GetValue())), counts[connections->GetSelection()], routes[size_t(servers->GetSelection())]);
-            auto n = queue.addBatch(std::move(jobs));
-            preferences();
-            saveSelection();
-            status->SetLabel(wxString::Format(_(L"Added %zu downloads. Existing files and duplicate queue entries were kept."), n));
-        } catch (const std::exception& e) {
-            LOG_ERROR("Cannot add files: %s", e.what());
-            wxMessageBox(translated(e.what()), _(L"Cannot add files"), wxOK | wxICON_WARNING, this);
+        if (adding.valid()) {
+            *addStop = true;
+            return;
         }
+        if (busy() || std::find(checked.begin(), checked.end(), true) == checked.end()) return;
+        static constexpr unsigned counts[] = {1, 2, 4, 8, 16};
+        addTotal = size_t(std::count(checked.begin(), checked.end(), true));
+        addDone->store(0);
+        addStop = std::make_shared<std::atomic_bool>(false);
+        addStarted = std::chrono::steady_clock::now();
+        adding = std::async(std::launch::async, [item = item, checked = checked, target = archive::pathFromUtf8(u(folder->GetValue())), connections = counts[connections->GetSelection()], route = routes[size_t(servers->GetSelection())], done = addDone, halt = addStop] {
+            return fileJobs(item, checked, target, connections, route, done.get(), halt.get());
+        });
+        // A small selection is finished before the dialog needs to look any different.
+        if (adding.wait_for(std::chrono::milliseconds(25)) == std::future_status::ready) finishAdding();
+    }
+    // On the GUI thread, when the thread has returned (or the dialog is closing and the result is not wanted).
+    void finishAdding() {
+        std::vector<downloads::Job> jobs;
+        std::string error;
+        try {
+            jobs = adding.get();
+        } catch (const std::exception& e) {
+            error = e.what();
+        }
+        const bool cancelled = *addStop || (error == "Paused");
+        if (addLook) lockForAdding(false);
+        if (closing) return;
+        if (cancelled) {
+            status->SetLabel(_(L"Cancelled. Nothing was added."));
+            return;
+        }
+        if (error.empty()) try {
+                auto n = queue.addBatch(std::move(jobs));
+                preferences();
+                saveSelection();
+                status->SetLabel(wxString::Format(_(L"Added %zu downloads. Existing files and duplicate queue entries were kept."), n));
+                return;
+            } catch (const std::exception& e) {
+                error = e.what();
+            }
+        LOG_ERROR("Cannot add files: %s", error.c_str());
+        wxMessageBox(translated(error), _(L"Cannot add files"), wxOK | wxICON_WARNING, this);
     }
     void measure() {
         if (busy() || item.files.empty()) return;
@@ -307,17 +365,17 @@ public:
         auto row = new wxBoxSizer(wxHORIZONTAL);
         url = field(this, link, _(L"Paste a file, folder, FTP, release, package, MediaFire, Google Drive, OneDrive, WeTransfer, archive.org or Wayback Machine link, or an archive.org item identifier"));
         row->Add(url, 1, wxALIGN_CENTER_VERTICAL);
-        button(this, row, _(L"Load files"), [this] {
+        loadButton = button(this, row, _(L"Load files"), [this] {
             load();
         });
         box->Add(row, 0, wxEXPAND | wxBOTTOM, gap);
         row = new wxBoxSizer(wxHORIZONTAL);
         filter = field(this, {}, _(L"Filter by filename…"));
         row->Add(filter, 1, wxALIGN_CENTER_VERTICAL);
-        button(this, row, _(L"Select all"), [this] {
+        selectAllButton = button(this, row, _(L"Select all"), [this] {
             select(true, false);
         });
-        button(this, row, _(L"Clear selection"), [this] {
+        clearButton = button(this, row, _(L"Clear selection"), [this] {
             select(false, false);
         });
         box->Add(row, 0, wxEXPAND | wxBOTTOM, gap);
@@ -338,10 +396,10 @@ public:
         for (int c = 1; c < 4; ++c) list->SetColumnWidth(c, FromDIP(100));
         box->Add(list, 1, wxEXPAND | wxBOTTOM, gap);
         row = new wxBoxSizer(wxHORIZONTAL);
-        button(this, row, _(L"Check highlighted"), [this] {
+        checkButton = button(this, row, _(L"Check highlighted"), [this] {
             select(true, true);
         });
-        button(this, row, _(L"Uncheck highlighted"), [this] {
+        uncheckButton = button(this, row, _(L"Uncheck highlighted"), [this] {
             select(false, true);
         });
         box->Add(row, 0, wxBOTTOM, gap);
@@ -359,7 +417,7 @@ public:
         row->Add(new wxStaticText(this, wxID_ANY, _(L"Server")), 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, gap);
         servers = new wxChoice(this, wxID_ANY);
         row->Add(servers, 1, wxALIGN_CENTER_VERTICAL);
-        button(this, row, _(L"Test speeds"), [this] {
+        testButton = button(this, row, _(L"Test speeds"), [this] {
             measure();
         });
         box->Add(row, 0, wxEXPAND | wxBOTTOM, gap);
@@ -383,7 +441,8 @@ public:
             openFolder(w(archive::pathUtf8(path)));
         });
         row->AddStretchSpacer();
-        button(this, row, _(L"Add to downloads"), [this] {
+        addLabel = _(L"Add to downloads");
+        addButton = button(this, row, addLabel, [this] {
             add();
         });
         // wxID_CANCEL lets Escape close the dialog, as QDialog's reject does.
@@ -463,6 +522,7 @@ public:
             preferences();
             saveSelection();
             *stop = true;
+            *addStop = true;
             if (busy() && e.CanVeto()) {
                 closing = true;
                 Hide();
@@ -501,11 +561,16 @@ public:
             if (rows != std::vector<size_t>({2, 0, 1}) || list->IsItemChecked(0) || !list->IsItemChecked(1) || !list->IsItemChecked(2)) throw std::runtime_error("Sorting by type failed");
             folder->SetValue(w(archive::pathUtf8(dataPath / "downloads")));
             add();
+            if (adding.valid()) { // normally finished within add() already
+                adding.wait();
+                tick();
+            }
             if (queue.snapshot().size() < 3) throw std::runtime_error("File picker failed to queue selected files");
         }
     }
     ~FilePicker() override {
         *stop = true;
+        *addStop = true;
         timer.Stop();
     }
 };
@@ -575,6 +640,9 @@ void runBenchmark(MainWindow& main, downloads::Queue& queue, size_t n) {
     step("picker_sort", [&] {
         picker->sortBy(1);
     });
+    step("picker_sort_name", [&] {
+        picker->sortBy(0);
+    });
     step("picker_select_all", [&] {
         picker->select(true, false);
     });
@@ -631,6 +699,63 @@ void runBenchmark(MainWindow& main, downloads::Queue& queue, size_t n) {
         report("queue_history_build_and_save", millis(start));
         std::error_code ec;
         report("history_bytes", std::to_string(std::filesystem::file_size(dataPath / "history.json", ec)));
+    }
+    {
+        // Cancel: press Add, wait until the dialog shows the Cancel button, press it, and see that nothing was added.
+        auto before = queue.snapshot().size();
+        picker->add();
+        auto deadline = Clock::now() + std::chrono::seconds(3);
+        while (picker->adding.valid() && !picker->addLook && Clock::now() < deadline) {
+            wxYield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        report("picker_cancel_button_label", u(picker->addButton->GetLabel()));
+        report("picker_cancel_list_enabled", picker->list->IsEnabled() ? "yes" : "no");
+        picker->add(); // the Cancel button
+        while (picker->adding.valid()) {
+            wxYield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        report("picker_cancel_status", u(picker->status->GetLabel()));
+        report("picker_cancel_label_restored", u(picker->addButton->GetLabel()));
+        report("picker_cancel_list_enabled_after", picker->list->IsEnabled() ? "yes" : "no");
+        report("picker_cancel_queue_grew_by", std::to_string(queue.snapshot().size() - before));
+    }
+    {
+        // The user's action end to end: pressing "Add to downloads" until the status shows the result, with the
+        // event loop pumped the way the running program does it (a short sleep between rounds). A new folder makes
+        // every job new. The longest block is the longest stretch the GUI thread did not return to the event loop:
+        // the add() call itself (it copies the item and waits at most 25 ms) or one round of events (a timer tick).
+        picker->folder->SetValue(w(archive::pathUtf8(dataPath / "downloads-ui")));
+        wxYield();
+        auto start = Clock::now();
+        auto longest = std::chrono::duration<double, std::milli>::zero();
+        auto lap = [&](Clock::time_point from) {
+            longest = std::max(longest, std::chrono::duration<double, std::milli>(Clock::now() - from));
+        };
+        std::set<std::string> labels; // the status lines seen while it ran, numbers cut off
+        picker->add();
+        lap(start);
+        report("picker_add_ui_call", millis(start));
+        std::string lastCount;
+        while (picker->adding.valid()) {
+            auto round = Clock::now();
+            wxYield();
+            lap(round);
+            auto text = u(picker->status->GetLabel());
+            labels.insert(text.substr(0, text.find_first_of("0123456789")));
+            if (text.find("Checking files") == 0) lastCount = text;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        report("picker_add_ui", millis(start));
+        report("picker_add_ui_longest_block", [&] {
+            char text[32];
+            snprintf(text, sizeof text, "%.3f", longest.count());
+            return std::string(text);
+        }());
+        report("picker_add_ui_last_count", lastCount);
+        report("picker_add_ui_look_shown", labels.size() > 1 && lastCount.size() ? "yes" : "no");
+        report("picker_add_ui_status", u(picker->status->GetLabel()));
     }
     picker->Close();
     main.benchTimer(true);

@@ -77,6 +77,12 @@ msgstr "利用可能な最高品質の音声を、最高 VBR 品質の MP3 で�
 msgid "Browse…"
 msgstr "参照…"
 
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Cancelled. Nothing was added."
+msgstr "キャンセルしました。何も追加されていません。"
+
 msgid "Cannot add files"
 msgstr "ファイルを追加できません"
 
@@ -85,6 +91,10 @@ msgstr "Windows PowerShell が見つかりません。"
 
 msgid "Check highlighted"
 msgstr "選択項目にチェック"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "ファイルを確認中… %zu / %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "yt-dlp の更新を確認中…"

@@ -77,6 +77,12 @@ msgstr "Bestes verfügbares Audio, als MP3 mit höchster VBR-Qualität gespeiche
 msgid "Browse…"
 msgstr "Durchsuchen…"
 
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Cancelled. Nothing was added."
+msgstr "Abgebrochen. Es wurde nichts hinzugefügt."
+
 msgid "Cannot add files"
 msgstr "Dateien können nicht hinzugefügt werden"
 
@@ -85,6 +91,10 @@ msgstr "Windows PowerShell wurde nicht gefunden."
 
 msgid "Check highlighted"
 msgstr "Markierte ankreuzen"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "Dateien werden geprüft… %zu von %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "Suche nach yt-dlp-Updates…"

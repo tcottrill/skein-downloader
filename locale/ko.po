@@ -77,6 +77,12 @@ msgstr "사용 가능한 최고 품질의 오디오를 최고 VBR 품질의 MP3�
 msgid "Browse…"
 msgstr "찾아보기…"
 
+msgid "Cancel"
+msgstr "취소"
+
+msgid "Cancelled. Nothing was added."
+msgstr "취소되었습니다. 아무것도 추가되지 않았습니다."
+
 msgid "Cannot add files"
 msgstr "파일을 추가할 수 없음"
 
@@ -85,6 +91,10 @@ msgstr "Windows PowerShell을 찾을 수 없습니다."
 
 msgid "Check highlighted"
 msgstr "강조된 항목 체크"
+
+#, c-format
+msgid "Checking files… %zu of %zu"
+msgstr "파일 확인 중… %zu / %zu"
 
 msgid "Checking for a yt-dlp update…"
 msgstr "yt-dlp 업데이트 확인 중…"
