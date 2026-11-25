@@ -6,3 +6,7 @@ __pycache__/
 /icons/*.zip
 # Source snapshots (zip archives of the tree) made for sharing; release zips go to dist/.
 /*.zip
+
+# Working documents of the planning workflow: kept on disk, never committed.
+docs/superpowers/
+.superpowers/
