@@ -201,7 +201,8 @@ struct Request {
             curl_easy_setopt(easy, CURLOPT_SHARE, cache.share);
             if (auto ca = caBundle()) curl_easy_setopt(easy, CURLOPT_CAINFO, ca);
             curl_easy_setopt(easy, CURLOPT_URL, url.address.c_str());
-            curl_easy_setopt(easy, CURLOPT_USERAGENT, "SkeinDownloader/1.0");
+            // The agent in use now; libcurl copies the text.
+            curl_easy_setopt(easy, CURLOPT_USERAGENT, userAgent().c_str());
             // HTTPS never redirects down to HTTP. The _STR options need libcurl 7.85; older ones (Ubuntu 22.04) take bitmasks.
 #if LIBCURL_VERSION_NUM >= 0x075500
             curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https");

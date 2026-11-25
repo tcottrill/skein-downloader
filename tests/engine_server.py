@@ -18,9 +18,13 @@ Byte i of version v of a file is (i * 31 + 7 + v) & 0xFF. Modes:
   redirect-back  302 to mode bearer on the same host name
   redirect-loop  302 to itself (a relative Location)
   forbidden      403 always
+  extras-redirect-out  302 to mode etag on the other host name (127.0.0.1 <-> localhost), no sign-in needed
+  needs-cookie   403 unless the request has a Cookie containing pass=1; then like etag
 The same port answers as 127.0.0.1 and localhost (and ::1 when it can be bound). /stats has
 "auth": the Host header's name (without port) to the Authorization values of file requests since /reset,
-and "anonymous": the mode to the number of file requests without Authorization since /reset.
+and "anonymous": the mode to the number of file requests without Authorization since /reset;
+"agents": the distinct User-Agent values of file requests, in order of first appearance; "headers": the Host
+name to the list of {referer, cookie, x} (x is the X-Skein-Test header) of file requests since /reset.
 """
 import base64
 import json
@@ -65,13 +69,16 @@ class Stats:
             self.max_concurrent = 0
             self.auth = {}
             self.anonymous = {}
+            self.agents = []
+            self.headers = {}
 
     def snapshot(self):
         with self.lock:
             return {"requests": self.requests, "ranged": self.ranged, "bytes": self.bytes,
                     "maxConcurrent": self.max_concurrent,
                     "auth": {host: list(values) for host, values in self.auth.items()},
-                    "anonymous": dict(self.anonymous)}
+                    "anonymous": dict(self.anonymous), "agents": list(self.agents),
+                    "headers": {host: [dict(entry) for entry in entries] for host, entries in self.headers.items()}}
 
 
 STATS = Stats()
@@ -112,7 +119,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_text(200, "ok", "text/plain")
             return
         match = re.fullmatch(r"/(etag|norange|nolength|modified|weak|rangeprobe|changed|ignore-ifrange|basic|bearer|basic-secret|bearer-secret"
-                             r"|redirect-out|redirect-back|redirect-loop|forbidden)/(\d+)/file\.bin", self.path)
+                             r"|redirect-out|redirect-back|redirect-loop|forbidden|extras-redirect-out|needs-cookie)/(\d+)/file\.bin", self.path)
         if not match:
             self.send_text(404, "not found", "text/plain")
             return
@@ -124,6 +131,11 @@ class Handler(BaseHTTPRequestHandler):
         host = host.strip("[]")
         with STATS.lock:
             STATS.requests += 1
+            agent = self.headers.get("User-Agent", "")
+            if agent not in STATS.agents:
+                STATS.agents.append(agent)
+            STATS.headers.setdefault(host, []).append({"referer": self.headers.get("Referer", ""), "cookie": self.headers.get("Cookie", ""),
+                                                       "x": self.headers.get("X-Skein-Test", "")})
             if authorization is not None:
                 STATS.auth.setdefault(host, []).append(authorization)
             else:
@@ -143,6 +155,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b"unauthorized")
                 return
+        if mode == "needs-cookie":
+            if "pass=1" not in self.headers.get("Cookie", ""):
+                self.send_text(403, "forbidden", "text/plain")
+                return
+            mode = "etag"
+        if mode == "extras-redirect-out":
+            other = "localhost" if host == "127.0.0.1" else "127.0.0.1"
+            self.send_response(302)
+            self.send_header("Location", f"http://{other}:{port}/etag/{size}/file.bin")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if mode.startswith("redirect-"):
             if mode == "redirect-out":
                 other = "localhost" if host == "127.0.0.1" else "127.0.0.1"

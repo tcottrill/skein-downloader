@@ -23,6 +23,10 @@ struct Job {
     std::string name, kind, key, detail, output;
     State state = State::Queued;
     nlohmann::json input;
+    // A referer, cookies and headers for this job's link (archive::extrasToJson form), an empty object when
+    // none. Unlike input it changes: the queue clears it when the job completes, and it is saved with the
+    // job's small fields under the lock. Left out of rows(), which the window shows.
+    nlohmann::json extras = nlohmann::json::object();
     bool historyOnly = false;
     // Seconds until an automatic retry, 0 when none; filled by Queue::snapshot(), never saved.
     uint64_t retryIn = 0;

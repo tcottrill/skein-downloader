@@ -1,4 +1,5 @@
 #include "core.h"
+#include "extras.h"
 #include "host_limit.h"
 #include "signin.h"
 #include "sites.h"
@@ -47,10 +48,16 @@ LoadProgress* progressFor(const std::atomic_bool& stop) {
 void countRequest(const std::atomic_bool& stop) {
     if (auto progress = progressFor(stop)) ++progress->requests;
 }
+// The User-Agent file requests send (see setUserAgent); the lock is only held to copy it.
+std::mutex agentLock;
+std::string agentValue = defaultUserAgent;
 // Shared by both transports for any response other than 200/206 (a 401 is SignInNeeded instead).
 NetworkError statusError(unsigned long status, unsigned retryAfter) {
     std::string message = "HTTP " + std::to_string(status);
-    if (status == 403) message += ": the server refused access to this file.";
+    if (status == 403) {
+        message += ": the server refused access to this file.";
+        if (userAgent() == defaultUserAgent) message += " Some servers refuse download programs; Settings can make Skein identify as a web browser.";
+    }
     if (status == 404) message += ": file not found.";
     return NetworkError(message, status == 429 || status == 408 || status >= 500, retryAfter, (unsigned)status);
 }
@@ -224,14 +231,20 @@ std::unique_ptr<Request> build(const Request::Url& url, const std::wstring& head
 // final address on both paths. A 401 is SignInNeeded on both.
 std::unique_ptr<Request> open(const std::string& url, const std::wstring& requestHeaders, std::atomic_bool& stop, bool redirects = true, unsigned wait = 10, const std::string* body = nullptr) {
     std::string current = url;
+    // Extras of this operation (a referer, cookies, headers of one link): while it has any, every request of
+    // it takes the manual path, so that the engine follows its redirects and each hop gets the extras only if
+    // it is to the link's own host, never a transport-followed redirect that would carry them along.
+    const auto extras = extrasFor(stop);
     for (unsigned hops = 0;;) {
         cancelled(stop);
         // A release asset's API address answers with the file only when asked for application/octet-stream:
         // every request for that address (probe, ranges, speed samples) gets it, and no other address does.
-        const auto headers = isGitHubAssetApiUrl(current) ? requestHeaders + L"Accept: application/octet-stream\r\n" : requestHeaders;
+        auto headers = isGitHubAssetApiUrl(current) ? requestHeaders + L"Accept: application/octet-stream\r\n" : requestHeaders;
         const Request::Url target(current);
         const auto host = signInHost(target.host);
-        if (target.isFtp || !hasSignIn(host, target.port)) return build(target, headers, redirects, stop, body, wait, false);
+        if (target.isFtp || (!extras && !hasSignIn(host, target.port))) return build(target, headers, redirects, stop, body, wait, false);
+        // The extras for this hop's own address, when it is the link's host (never logged).
+        if (extras) headers += wide(extraHeadersFor(*extras, target.secure ? "https" : "http", host, target.port));
         // Read before the lookup: if the table changes in between, what this request learns is dropped.
         const auto generation = signInGeneration();
         const auto signIn = signInFor(target.secure ? "https" : "http", host, target.port);
@@ -309,6 +322,17 @@ std::vector<Range> queuedRanges(uint64_t size) {
     }
     return result;
 }
+}
+void setUserAgent(const std::string& value) {
+    if (value.size() > 512) throw std::runtime_error("The user agent is longer than 512 characters.");
+    for (unsigned char c : value)
+        if (c < 0x20 || c == 0x7F) throw std::runtime_error("The user agent contains a control character.");
+    std::lock_guard lock(agentLock);
+    agentValue = value.empty() ? std::string(defaultUserAgent) : value;
+}
+std::string userAgent() {
+    std::lock_guard lock(agentLock);
+    return agentValue;
 }
 LoadWatch::LoadWatch(const std::atomic_bool& stop, LoadProgress& progress)
     : stop_(&stop) {

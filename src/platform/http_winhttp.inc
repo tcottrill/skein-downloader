@@ -89,6 +89,8 @@ struct Request {
         DWORD policy = redirects && !manual ? WINHTTP_OPTION_REDIRECT_POLICY_DISALLOW_HTTPS_TO_HTTP : WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
         WinHttpSetOption(handle, WINHTTP_OPTION_REDIRECT_POLICY, &policy, sizeof policy);
         auto allHeaders = L"Accept-Encoding: identity\r\n" + headers;
+        // The session was opened with the default agent; any other is sent as a header, which replaces it.
+        if (const auto agent = userAgent(); agent != defaultUserAgent) allHeaders += L"User-Agent: " + wide(agent) + L"\r\n";
         auto data = body ? (LPVOID)body->data() : WINHTTP_NO_REQUEST_DATA;
         DWORD length = body ? (DWORD)body->size() : 0;
         if (!WinHttpSendRequest(handle, allHeaders.c_str(), (DWORD)-1, data, length, length, 0) || !WinHttpReceiveResponse(handle, nullptr))

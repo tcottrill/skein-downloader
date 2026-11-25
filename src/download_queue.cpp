@@ -53,6 +53,8 @@ Queue::Queue(archive::Path path, Runner runner)
             v.kind = j.at("kind");
             v.key = j.at("key");
             v.input = j.at("input");
+            // Entries written before extras existed have no such key.
+            if (j.contains("extras") && j["extras"].is_object()) v.extras = j["extras"];
             v.state = stateFromName(j.value("state", "Paused"));
             v.done = j.value("done", uint64_t(0));
             v.total = j.value("total", uint64_t(0));
@@ -76,10 +78,14 @@ Queue::~Queue() {
 }
 namespace {
 nlohmann::json historyEntry(const Job& j, const nlohmann::json& input) {
-    return {{"id", j.id}, {"name", j.name}, {"kind", j.kind}, {"key", j.key}, {"input", input}, {"state", stateName(j.state)}, {"done", j.done}, {"total", j.total}, {"detail", j.detail}, {"output", j.output}, {"historyOnly", j.historyOnly}};
+    nlohmann::json entry = {{"id", j.id}, {"name", j.name}, {"kind", j.kind}, {"key", j.key}, {"input", input}, {"state", stateName(j.state)}, {"done", j.done}, {"total", j.total}, {"detail", j.detail}, {"output", j.output}, {"historyOnly", j.historyOnly}};
+    // Written only for a job that has extras, so a history without any is byte for byte as before.
+    if (j.extras.is_object() && !j.extras.empty()) entry["extras"] = j.extras;
+    return entry;
 }
-// A job without its input (most of a copy's cost), and without its key unless asked for.
-Job withoutInput(const Job& from, bool key) {
+// A job without its input (most of a copy's cost), and without its key unless asked for. The extras are
+// small and change, so the saver (extras true) takes them under the lock; the window's rows never do.
+Job withoutInput(const Job& from, bool key, bool extras = false) {
     Job row;
     row.id = from.id;
     row.done = from.done;
@@ -91,6 +97,7 @@ Job withoutInput(const Job& from, bool key) {
     row.output = from.output;
     row.state = from.state;
     row.historyOnly = from.historyOnly;
+    if (extras) row.extras = from.extras;
     return row;
 }
 }
@@ -172,7 +179,7 @@ void Queue::saveLoop() {
         entries.reserve(jobs_.size());
         for (auto& e : jobs_)
             if (!e->removing) {
-                jobs.push_back(withoutInput(e->job, true));
+                jobs.push_back(withoutInput(e->job, true, true));
                 entries.push_back(e);
             }
         dirty_ = false;
@@ -328,6 +335,8 @@ void Queue::work() {
             if (completed) {
                 if (!entry->job.total) entry->job.total = entry->job.done;
                 entry->job.done = entry->job.total;
+                // Kept only so the download could resume; a finished one has no use for them.
+                entry->job.extras = nlohmann::json::object();
             }
             // A run that made progress starts the count again.
             if (entry->job.done > entry->doneAtStart) entry->retries = 0;
@@ -614,6 +623,7 @@ bool Queue::downloadAgain(uint64_t id) {
     j.state = pausedAll_ ? State::Paused : State::Queued;
     j.detail.clear();
     j.output.clear();
+    j.extras = nlohmann::json::object();
     if (j.kind == "Archive") {
         archive::Path old(archive::pathFromUtf8(j.input.at("target").get<std::string>())), target;
         for (unsigned attempt = 0;; ++attempt) {

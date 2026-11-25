@@ -1,5 +1,6 @@
 // End-to-end download engine tests against the local server in tests/engine_server.py,
 // started by tests/run_engine_tests.py, which passes the server's base URL.
+#include "extras.h"
 #include "host_limit.h"
 #include "signin.h"
 #include "sites.h"
@@ -15,6 +16,7 @@
 #include <exception>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <thread>
@@ -61,8 +63,11 @@ void reset(const std::string& base) {
 }
 
 // Runs archive::download; when pauseAt is not 0, sets stop once done >= pauseAt and expects "Paused".
-void run(const std::string& url, const archive::Path& target, unsigned connections, uint64_t pauseAt = 0) {
+// With extras, the download runs under an ExtrasScope on its stop flag.
+void run(const std::string& url, const archive::Path& target, unsigned connections, uint64_t pauseAt = 0, const archive::RequestExtras* extras = nullptr) {
     std::atomic_bool stop = false;
+    std::optional<archive::ExtrasScope> scope;
+    if (extras) scope.emplace(stop, *extras);
     archive::File file;
     file.name = "file.bin";
     const auto report = [&](const archive::Progress& progress) {
@@ -625,7 +630,16 @@ void forbidden(const std::string& base) {
         message = e.what();
     }
     expect(message.starts_with("HTTP 403"), "A 403 answer fails with a message starting \"HTTP 403\", not \"" + message + "\".");
-    expect(message == "HTTP 403: the server refused access to this file.", "A 403 answer says the server refused access, not \"" + message + "\".");
+    expect(message == "HTTP 403: the server refused access to this file. Some servers refuse download programs; Settings can make Skein identify as a web browser.", "A 403 answer with the default identity says the server refused access and points to the setting, not \"" + message + "\".");
+    archive::setUserAgent("TestAgent/9");
+    message.clear();
+    try {
+        run(urlFor(base, "forbidden", 10 * MiB), folder.path / "file.bin", 4);
+    } catch (const std::exception& e) {
+        message = e.what();
+    }
+    archive::setUserAgent("");
+    expect(message == "HTTP 403: the server refused access to this file.", "A 403 answer with a chosen identity does not suggest changing it, not \"" + message + "\".");
 }
 
 void nothingUnasked(const std::string& base) {
@@ -725,6 +739,152 @@ void noSecretOnDisk(const std::string& base) {
     }
 }
 
+// The User-Agent values the server saw on file requests since the last reset, in order of first appearance.
+std::vector<std::string> agentsSeen(const std::string& base) {
+    return stats(base)["agents"].get<std::vector<std::string>>();
+}
+
+// The user agent setting reaches the probe and every range request.
+void userAgentSent(const std::string& base) {
+    struct Restore {
+        ~Restore() { archive::setUserAgent(""); }
+    } restore;
+    {
+        TempFolder folder("agent-default");
+        reset(base);
+        run(urlFor(base, "etag", 10 * MiB), folder.path / "file.bin", 4);
+        const auto agents = agentsSeen(base);
+        expect(agents == std::vector<std::string>{"SkeinDownloader/1.0"}, "With the default setting every request sends SkeinDownloader/1.0.");
+    }
+    {
+        TempFolder folder("agent-custom");
+        archive::setUserAgent("TestAgent/9");
+        reset(base);
+        run(urlFor(base, "etag", 10 * MiB), folder.path / "file.bin", 4);
+        const auto agents = agentsSeen(base);
+        expect(agents == std::vector<std::string>{"TestAgent/9"}, "After setUserAgent every request, the probe and each range, sends TestAgent/9.");
+        expect(stats(base)["ranged"].get<int>() >= 10, "The custom agent case made ranged requests.");
+    }
+}
+
+// The extras of these tests: a referer, a cookie and one header, bound to the link.
+archive::RequestExtras extrasForLink(const std::string& base, const std::string& link) {
+    archive::RequestExtras extras;
+    extras.referer = base + "/page";
+    extras.cookie = "pass=1";
+    extras.headers.push_back({"X-Skein-Test", "yes"});
+    return archive::forLink(link, extras);
+}
+
+struct SeenHeaders {
+    std::string referer, cookie, x;
+};
+
+// What the server saw on a host name since the last reset.
+std::vector<SeenHeaders> headersOn(const std::string& base, const std::string& host) {
+    const auto all = stats(base)["headers"];
+    std::vector<SeenHeaders> seen;
+    if (!all.contains(host)) return seen;
+    for (const auto& entry : all[host]) seen.push_back({entry["referer"].get<std::string>(), entry["cookie"].get<std::string>(), entry["x"].get<std::string>()});
+    return seen;
+}
+
+bool allCarry(const std::vector<SeenHeaders>& seen, const std::string& base) {
+    return std::all_of(seen.begin(), seen.end(), [&](const SeenHeaders& s) {
+        return s.referer == base + "/page" && s.cookie == "pass=1" && s.x == "yes";
+    });
+}
+
+void extrasNeeded(const std::string& base) {
+    TempFolder folder("extras-needed");
+    std::string message;
+    try {
+        run(urlFor(base, "needs-cookie", 10 * MiB), folder.path / "file.bin", 4);
+    } catch (const std::exception& e) {
+        message = e.what();
+    }
+    expect(message.starts_with("HTTP 403"), "A download from a server that wants a cookie, with none, fails with \"HTTP 403\", not \"" + message + "\".");
+}
+
+void extrasRanges(const std::string& base) {
+    TempFolder folder("extras-ranges");
+    reset(base);
+    const auto url = urlFor(base, "needs-cookie", 10 * MiB);
+    const auto extras = extrasForLink(base, url);
+    const auto target = folder.path / "file.bin";
+    run(url, target, 4, 0, &extras);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A download that needs a cookie has the right content when it carries the extras.");
+    auto seen = headersOn(base, "127.0.0.1");
+    expect(seen.size() >= 10 && allCarry(seen, base), "Every request of a download, the probe and each range, carries the referer, the cookie and the header.");
+    std::filesystem::remove(target);
+    reset(base);
+    run(url, target, 4, 3 * MiB, &extras);
+    run(url, target, 4, 0, &extras);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A paused and resumed download with extras has the right content.");
+    expect(stats(base)["bytes"].get<uint64_t>() < 15 * MiB, "The resumed download with extras reused the data already received.");
+    seen = headersOn(base, "127.0.0.1");
+    expect(!seen.empty() && allCarry(seen, base), "Every request of the paused and of the resumed run carries the extras.");
+}
+
+void extrasRedirectOut(const std::string& base) {
+    TempFolder folder("extras-redirect-out");
+    reset(base);
+    const auto url = urlFor(base, "extras-redirect-out", 10 * MiB);
+    const auto extras = extrasForLink(base, url);
+    const auto target = folder.path / "file.bin";
+    run(url, target, 4, 0, &extras);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A file redirected to another host downloads with the right content.");
+    const auto first = headersOn(base, "127.0.0.1"), second = headersOn(base, "localhost");
+    expect(!first.empty() && allCarry(first, base), "The link's own host gets the extras.");
+    expect(second.size() >= 10, "The ranges were fetched from the other host.");
+    expect(std::all_of(second.begin(), second.end(), [](const SeenHeaders& s) {
+               return s.referer.empty() && s.cookie.empty() && s.x.empty();
+           }),
+           "The host a redirect leads to gets no referer, cookie or header.");
+}
+
+void extrasWithSignIn(const std::string& base) {
+    SignIns table({tokenFor("127.0.0.1", "tok")});
+    TempFolder folder("extras-with-signin");
+    reset(base);
+    const auto url = urlFor(base, "bearer", 10 * MiB);
+    const auto extras = extrasForLink(base, url);
+    const auto target = folder.path / "file.bin";
+    run(url, target, 4, 0, &extras);
+    expect(readFile(target) == expectedBytes(10 * MiB), "A download with a sign-in and extras has the right content.");
+    const auto seen = headersOn(base, "127.0.0.1");
+    const auto auth = authOn(base, "127.0.0.1");
+    expect(!seen.empty() && allCarry(seen, base), "Requests with a sign-in also carry the extras.");
+    expect(auth.size() == seen.size() && std::all_of(auth.begin(), auth.end(), [](const std::string& value) {
+               return value == "Bearer tok";
+           }),
+           "The same requests carry the token.");
+}
+
+void extrasEnd(const std::string& base) {
+    reset(base);
+    std::atomic_bool stop = false;
+    const auto url = urlFor(base, "needs-cookie", 2 * MiB);
+    const auto extras = extrasForLink(base, url);
+    {
+        archive::ExtrasScope scope(stop, extras);
+        expect(archive::fetch(url, stop).file, "A loader's fetch under an ExtrasScope carries the extras.");
+        archive::fetch(urlFor(base, "needs-cookie", 1024), stop);
+    }
+    expect(allCarry(headersOn(base, "127.0.0.1"), base), "The fetches under the scope carried the extras.");
+    reset(base);
+    TempFolder folder("extras-end");
+    archive::File file;
+    file.name = "file.bin";
+    archive::download(urlFor(base, "etag", 2 * MiB), file, folder.path / "file.bin", 4, stop, {});
+    const auto seen = headersOn(base, "127.0.0.1");
+    expect(!seen.empty(), "The download after the scope made requests.");
+    expect(std::all_of(seen.begin(), seen.end(), [](const SeenHeaders& s) {
+               return s.referer.empty() && s.cookie.empty() && s.x.empty();
+           }),
+           "After the ExtrasScope is gone the same stop flag sends no extras.");
+}
+
 void loaderSignsIn(const std::string& base) {
     SignIns table({passwordFor("127.0.0.1", "user", "pass")});
     std::atomic_bool stop = false;
@@ -766,6 +926,12 @@ int main(int argc, char** argv) {
         forbidden(base);
         nothingUnasked(base);
         loaderSignsIn(base);
+        userAgentSent(base);
+        extrasNeeded(base);
+        extrasRanges(base);
+        extrasRedirectOut(base);
+        extrasWithSignIn(base);
+        extrasEnd(base);
         noSecretOnDisk(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';

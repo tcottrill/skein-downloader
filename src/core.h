@@ -148,6 +148,12 @@ void download(const std::string& url, const File& file, const Path& destination,
               const std::vector<std::string>& mirrors = {}, const std::string& forcedSource = {},
               const SpeedReport& speeds = {}, const std::string& identity = {});
 std::string formatBytes(uint64_t bytes);
+inline constexpr const char* defaultUserAgent = "SkeinDownloader/1.0";
+inline constexpr const char* browserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+// What file requests send as User-Agent from now on. Empty restores defaultUserAgent. Thread-safe.
+// Throws std::runtime_error when the text contains a control character or is longer than 512 bytes.
+void setUserAgent(const std::string& value);
+std::string userAgent();
 // Progress of one load operation, identified by its stop flag. Only atomics: any thread may read it.
 struct LoadProgress {
     std::atomic<uint64_t> bytes{0};    // response bytes read so far

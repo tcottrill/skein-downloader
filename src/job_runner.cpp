@@ -1,4 +1,5 @@
 #include "job_runner.h"
+#include "extras.h"
 #include "video.h"
 #include "sites.h"
 #include "util/sys_log.h"
@@ -24,6 +25,15 @@ std::string fileSourceUrl(const downloads::Job& job) {
 void runJob(const downloads::Job& job, std::atomic_bool& stop, const downloads::Report& report) {
     auto& j = job.input;
     if (job.kind == "Archive") {
+        // This job's referer, cookies and headers, for every request made with its stop flag (the file
+        // locker lookup included); the engine sends them to the link's own host only. Names are logged, never values.
+        const auto extras = archive::extrasFromJson(job.extras);
+        archive::ExtrasScope extrasScope(stop, extras);
+        if (!extras.empty()) {
+            std::string names;
+            for (const auto& name : archive::extraHeaderNames(extras)) names += (names.empty() ? "" : ", ") + name;
+            LOG_INFO("Job %llu: sending %s to %s only", (unsigned long long)job.id, names.c_str(), extras.host.c_str());
+        }
         archive::File file;
         file.name = j.at("name");
         file.format = j.at("format");

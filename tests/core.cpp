@@ -1,5 +1,6 @@
 // Link parsing, file naming, path safety and site answers (src/core.cpp, hosts.cpp, lockers.cpp),
 // without the network.
+#include "core.h"
 #include "signin.h"
 #include "sites.h"
 #include <iostream>
@@ -359,8 +360,34 @@ static void lockers() {
     check(oneDriveShareToken(" https://1drv.ms/u/s!abc ") == "u!aHR0cHM6Ly8xZHJ2Lm1zL3UvcyFhYmM", "oneDriveShareToken");
 }
 
+// The user agent the engine sends: the default at start, replaceable, and never a value that could split a header.
+static void userAgentSetting() {
+    using namespace archive;
+    struct Restore {
+        ~Restore() { setUserAgent(""); }
+    } restore;
+    check(userAgent() == defaultUserAgent, "userAgent is the default at start");
+    check(std::string(defaultUserAgent) == "SkeinDownloader/1.0", "the default user agent is SkeinDownloader/1.0");
+    setUserAgent(browserUserAgent);
+    check(userAgent() == browserUserAgent, "userAgent is the browser's after setUserAgent");
+    setUserAgent("");
+    check(userAgent() == defaultUserAgent, "an empty value restores the default user agent");
+    setUserAgent("Mine/2");
+    const std::string nul = std::string("a") + '\0' + "b";
+    for (const std::string& bad : {std::string("a\rb"), std::string("a\nb"), nul, std::string(513, 'x')}) {
+        throws([&] {
+            setUserAgent(bad);
+        },
+               "setUserAgent rejects a control character or more than 512 bytes");
+        check(userAgent() == "Mine/2", "a rejected user agent leaves the previous value");
+    }
+    setUserAgent(std::string(512, 'x'));
+    check(userAgent().size() == 512, "512 bytes are accepted");
+}
+
 int main() {
     try {
+        userAgentSetting();
         textHelpers();
         fileNames();
         paths();

@@ -1,4 +1,5 @@
 #include "logic.h"
+#include "job_runner.h"
 #include <cctype>
 #include <stdexcept>
 namespace lite {
@@ -10,7 +11,7 @@ bool visible(const downloads::Job& j, int mode, const std::string& query) {
     return lower(j.name).find(lower(query)) != std::string::npos &&
            ((mode == 0 && !j.historyOnly) || (mode == 1 && j.state == downloads::State::Active) || (mode == 2 && (j.state == downloads::State::Queued || j.state == downloads::State::Paused || j.state == downloads::State::Failed)) || (mode == 3 && j.state == downloads::State::Complete));
 }
-std::vector<downloads::Job> fileJobs(const archive::Item& item, const std::vector<bool>& checked, const archive::Path& folder, unsigned connections, const std::string& server, std::atomic_size_t* progress, const std::atomic_bool* stop) {
+std::vector<downloads::Job> fileJobs(const archive::Item& item, const std::vector<bool>& checked, const archive::Path& folder, unsigned connections, const std::string& server, std::atomic_size_t* progress, const std::atomic_bool* stop, const archive::RequestExtras* extras) {
     if (!folder.is_absolute()) throw std::runtime_error("Choose an absolute download folder.");
     if (checked.size() != item.files.size()) throw std::runtime_error("Invalid file selection.");
     if (progress) progress->store(0);
@@ -49,6 +50,16 @@ std::vector<downloads::Job> fileJobs(const archive::Item& item, const std::vecto
             j.kind = "Archive";
             j.key = downloads::pathKey(target);
             j.input = std::move(input);
+            // Only a job on the extras' own host and port carries them (an unbound or non-http address gets none).
+            if (extras && !extras->empty() && !extras->host.empty()) try {
+                    const auto own = archive::forLink(downloads::fileSourceUrl(j), *extras);
+                    if (own.host == extras->host && own.port == extras->port) {
+                        // The extras' own scheme stays: extras bound to an https link never go over http.
+                        auto bound = own;
+                        if (extras->scheme == "https") bound.scheme = "https";
+                        j.extras = archive::extrasToJson(bound);
+                    }
+                } catch (const std::exception&) {}
             result.push_back(std::move(j));
         }
     return result;

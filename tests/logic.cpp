@@ -81,6 +81,26 @@ int main() {
             check(text.find("pw-SECRET-789") == std::string::npos && text.find("bob") == std::string::npos, "a job's stored input holds no FTP password or user");
         }
 
+        // Extras go to the jobs whose download address is on the extras' own host and port, and to no other.
+        {
+            archive::Item mixed = sample(2);
+            mixed.sourceUrl = "https://example.org/dir/";
+            mixed.files[0].url = "https://example.org/dir/f0.zip";
+            mixed.files[1].url = "https://other.org/dir/f1.zip";
+            archive::RequestExtras extras;
+            extras.cookie = "c=1";
+            extras.headers.push_back({"X-A", "1"});
+            const auto bound = archive::forLink("https://example.org/dir/f0.zip", extras);
+            auto withExtras = lite::fileJobs(mixed, {true, true}, root, 2, "standard", nullptr, nullptr, &bound);
+            check(withExtras.size() == 2, "extras do not change which jobs are made");
+            check(archive::extrasFromJson(withExtras[0].extras).cookie == "c=1" && archive::extrasFromJson(withExtras[0].extras).host == "example.org", "a job on the extras' host carries them, bound to its address");
+            check(withExtras[1].extras.is_object() && withExtras[1].extras.empty(), "a job on another host carries none");
+            auto plain = lite::fileJobs(mixed, {true, true}, root, 2, "standard");
+            check(plain[0].extras.is_object() && plain[0].extras.empty() && plain[1].extras.is_object() && plain[1].extras.empty(), "without the parameter no job carries extras");
+            const auto otherPort = archive::forLink("https://example.org:8443/x", extras);
+            check(lite::fileJobs(mixed, {true, true}, root, 2, "standard", nullptr, nullptr, &otherPort)[0].extras.empty(), "extras for another port of the same host are not given to the job");
+        }
+
         // Names are validated for every file, also after the first.
         item.files[3].name = "../escape.zip";
         bool rejected = false;

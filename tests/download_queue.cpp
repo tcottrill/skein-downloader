@@ -735,6 +735,62 @@ int main() {
                 const auto jobs = legacy.snapshot();
                 if (jobs.size() != 2 || jobs[1].name != "old2" || jobs[0].state != downloads::State::Complete || !legacy.error().empty())
                     throw std::runtime_error("A history written with indentation did not load");
+                if (!jobs[0].extras.is_object() || !jobs[0].extras.empty()) throw std::runtime_error("A history entry without the extras key did not load with empty extras");
+            }
+            {
+                // Extras (a referer, cookies, headers of one link) are savedNow with an unfinished job, kept across a
+                // restart, reach the extrasRunner, and are gone from the job and from the file once it completes.
+                const auto file = folder / "extras.json";
+                const nlohmann::json extras = {{"cookie", "c=1-SECRET"}};
+                nlohmann::json seen;
+                auto noRun = [](const downloads::Job&, std::atomic_bool&, const downloads::Report&) {
+                };
+                auto readHistory = [&] {
+                    std::ifstream in(file);
+                    return nlohmann::json::parse(in);
+                };
+                auto slurp = [&] {
+                    std::ifstream in(file);
+                    return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                };
+                {
+                    downloads::Queue queue(file, noRun);
+                    std::vector<downloads::Job> jobs(2);
+                    for (int i = 0; i < 2; ++i) {
+                        jobs[i].name = "extras" + std::to_string(i);
+                        jobs[i].kind = "Archive";
+                        jobs[i].key = "extras-key-" + std::to_string(i);
+                        jobs[i].input = {{"target", archive::pathUtf8(folder / ("extras" + std::to_string(i) + ".bin"))}};
+                    }
+                    jobs[0].extras = extras;
+                    if (queue.addBatch(std::move(jobs)) != 2) throw std::runtime_error("The jobs with and without extras were not added");
+                    queue.flush();
+                    const auto savedNow = readHistory();
+                    if (savedNow.size() != 2 || !savedNow[0].contains("extras") || savedNow[0]["extras"] != extras) throw std::runtime_error("A job's extras were not savedNow with it");
+                    if (savedNow[1].contains("extras") && !savedNow[1]["extras"].empty()) throw std::runtime_error("A job without extras was savedNow with extras");
+                    if (!queue.snapshot()[1].extras.is_object() || !queue.snapshot()[1].extras.empty()) throw std::runtime_error("A job without extras does not have an empty object");
+                    for (const auto& row : queue.rows())
+                        if (!row.extras.empty()) throw std::runtime_error("The window's rows carry the extras");
+                }
+                auto extrasRunner = [&](const downloads::Job& job, std::atomic_bool&, const downloads::Report&) {
+                    if (job.name == "extras0") seen = job.extras;
+                };
+                downloads::Queue queue(file, extrasRunner);
+                auto jobs = queue.snapshot();
+                if (jobs.size() != 2 || jobs[0].extras != extras) throw std::runtime_error("A job's extras did not survive a restart");
+                if (!jobs[1].extras.is_object() || !jobs[1].extras.empty()) throw std::runtime_error("A job without extras did not read back with empty extras");
+                queue.resume(jobs[0].id);
+                queue.start();
+                const auto until = std::chrono::steady_clock::now() + 10s;
+                while (queue.snapshot()[0].state != downloads::State::Complete && std::chrono::steady_clock::now() < until) std::this_thread::sleep_for(10ms);
+                if (queue.snapshot()[0].state != downloads::State::Complete) throw std::runtime_error("The job with extras did not complete");
+                if (seen != extras) throw std::runtime_error("The extrasRunner was not given the job's extras");
+                if (!queue.snapshot()[0].extras.is_object() || !queue.snapshot()[0].extras.empty()) throw std::runtime_error("A completed job keeps its extras in memory");
+                queue.flush();
+                if (slurp().find("SECRET") != std::string::npos) throw std::runtime_error("A completed job's extras are still in the history file");
+                if (readHistory()[0].contains("extras") && !readHistory()[0]["extras"].empty()) throw std::runtime_error("A completed job's savedNow entry still has extras");
+                if (!queue.downloadAgain(jobs[0].id)) throw std::runtime_error("A completed job could not be downloaded again");
+                if (!queue.snapshot().back().extras.empty()) throw std::runtime_error("A download again carries extras");
             }
         }
     } catch (const std::exception& e) {
