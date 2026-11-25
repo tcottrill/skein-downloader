@@ -19,6 +19,13 @@ long stored(const wxString& key, long fallback, long maximum) {
     return value;
 }
 
+// The user agent text a stored "userAgent" value stands for: empty (Skein Downloader), "browser", or "custom:" and the text.
+std::string userAgentFromPref(const wxString& value) {
+    if (value == "browser") return archive::browserUserAgent;
+    if (value.StartsWith("custom:")) return u(value.Mid(7));
+    return {};
+}
+
 // What one site choice means in the sign-in dialog. The site names are proper names and stay as they are.
 struct Site {
     const wchar_t* name;
@@ -309,7 +316,16 @@ void applySettings(downloads::Queue& queue) {
     const auto connections = stored("hostConnections", defaultConnections, maxConnections);
     queue.setLimit(unsigned(jobs));
     archive::setHostLimit(unsigned(connections));
-    LOG_INFO("Settings applied: %ld downloads at once, %ld connections per server", jobs, connections);
+    const auto agent = userAgentFromPref(pref("userAgent"));
+    try {
+        archive::setUserAgent(agent);
+    } catch (const std::exception& e) {
+        // A stored text the engine refuses: identify as Skein. The text itself is not logged.
+        LOG_WARN("The saved user agent was not accepted (%s); using the default", e.what());
+        archive::setUserAgent({});
+    }
+    LOG_INFO("Settings applied: %ld downloads at once, %ld connections per server, identify as %s", jobs, connections, agent.empty() ? "Skein Downloader" : agent == archive::browserUserAgent ? "a web browser"
+                                                                                                                                                                                  : "custom text");
 }
 void showSettings(wxWindow* parent, downloads::Queue& queue) {
     wxDialog dialog(parent, wxID_ANY, _(L"Settings"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE);
@@ -331,7 +347,30 @@ void showSettings(wxWindow* parent, downloads::Queue& queue) {
     grid->Add(connectionsLabel, 0, wxALIGN_CENTER_VERTICAL);
     grid->Add(connections, 0, wxALIGN_CENTER_VERTICAL);
     grid->AddSpacer(0);
-    grid->Add(connectionsNote);
+    grid->Add(connectionsNote, 0, wxBOTTOM, dialog.FromDIP(12));
+
+    // Identify as: stored as "" (Skein Downloader), "browser" or "custom:<text>".
+    auto agentLabel = new wxStaticText(&dialog, wxID_ANY, _(L"Identify as"));
+    auto agent = new wxChoice(&dialog, wxID_ANY);
+    agent->Append(_(L"Skein Downloader"));
+    agent->Append(_(L"A web browser"));
+    agent->Append(_(L"Custom"));
+    auto agentText = new wxTextCtrl(&dialog, wxID_ANY);
+    agentText->SetMinSize(dialog.FromDIP(wxSize(260, -1)));
+    {
+        const wxString saved = pref("userAgent");
+        agent->SetSelection(saved == "browser" ? 1 : saved.StartsWith("custom:") ? 2
+                                                                                 : 0);
+        if (saved.StartsWith("custom:")) agentText->SetValue(saved.Mid(7));
+    }
+    auto agentNote = new wxStaticText(&dialog, wxID_ANY, _(L"What Skein tells servers it is. Some servers refuse download programs."));
+    auto agentRow = new wxBoxSizer(wxHORIZONTAL);
+    agentRow->Add(agent, 0, wxALIGN_CENTER_VERTICAL);
+    agentRow->Add(agentText, 1, wxLEFT | wxALIGN_CENTER_VERTICAL, dialog.FromDIP(6));
+    grid->Add(agentLabel, 0, wxALIGN_CENTER_VERTICAL);
+    grid->Add(agentRow, 0, wxEXPAND);
+    grid->AddSpacer(0);
+    grid->Add(agentNote);
 
     // The sign-ins: saved as soon as the add/edit dialog is confirmed or Remove is pressed, not by OK.
     auto heading = new wxStaticText(&dialog, wxID_ANY, _(L"Sign-ins"));
@@ -427,15 +466,48 @@ void showSettings(wxWindow* parent, downloads::Queue& queue) {
         box->Add(note, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, dialog.FromDIP(6));
     }
     box->Add(listRow, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, dialog.FromDIP(8));
-    auto saved = new wxStaticText(&dialog, wxID_ANY, _(L"Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."));
+    auto saved = new wxStaticText(&dialog, wxID_ANY, _(L"Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."));
     saved->Wrap(dialog.FromDIP(520));
     box->Add(saved, 0, wxEXPAND | wxALL, dialog.FromDIP(12));
     box->Add(dialog.CreateStdDialogButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, dialog.FromDIP(12));
     dialog.SetSizerAndFit(box);
+    // The text field is only for Custom. It keeps its room, so the dialog does not change size.
+    auto showText = [&] {
+        agentText->Enable(agent->GetSelection() == 2);
+        agentText->Show(agent->GetSelection() == 2);
+        agentRow->Layout();
+    };
+    agent->Bind(wxEVT_CHOICE, [&](wxCommandEvent&) {
+        showText();
+    });
+    showText();
+    // OK checks the custom text with the engine before the dialog closes.
+    dialog.Bind(
+            wxEVT_BUTTON, [&](wxCommandEvent& e) {
+                if (agent->GetSelection() == 2) {
+                    const auto before = archive::userAgent();
+                    try {
+                        archive::setUserAgent(u(agentText->GetValue()));
+                    } catch (const std::exception& ex) {
+                        archive::setUserAgent(before == archive::defaultUserAgent ? std::string() : before);
+                        wxMessageBox(translated(ex.what()), _(L"Settings"), wxOK | wxICON_WARNING, &dialog);
+                        agentText->SetFocus();
+                        return;
+                    }
+                    archive::setUserAgent(before == archive::defaultUserAgent ? std::string() : before);
+                }
+                e.Skip();
+            },
+            wxID_OK);
     dialog.CentreOnParent();
-    if (dialog.ShowModal() != wxID_OK) return;
+    const bool ok = dialog.ShowModal() == wxID_OK;
+    const wxString chosen = agent->GetSelection() == 1 ? wxString("browser") : agent->GetSelection() == 2 ? "custom:" + agentText->GetValue()
+                                                                                                          : wxString();
+    agentText->ChangeValue(wxEmptyString);
+    if (!ok) return;
     save("maxDownloads", wxString::Format("%d", downloads->GetSelection() + 1));
     save("hostConnections", wxString::Format("%d", connections->GetValue()));
+    save("userAgent", chosen);
     applySettings(queue);
 }
 }

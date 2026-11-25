@@ -31,6 +31,9 @@ msgstr "+ Video"
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr "Không thể gửi mã qua liên kết không mã hóa. Hãy dùng liên kết https."
 
+msgid "A web browser"
+msgstr "Trình duyệt web"
+
 msgid "About"
 msgstr "Giới thiệu"
 
@@ -110,8 +113,8 @@ msgstr "Không thể thêm tệp"
 msgid "Cannot locate Windows PowerShell."
 msgstr "Không tìm thấy Windows PowerShell."
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
-msgstr "Thay đổi đối với các đăng nhập được lưu ngay khi bạn thực hiện. OK và Hủy áp dụng cho hai cài đặt ở trên."
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
+msgstr "Thay đổi đối với các đăng nhập được lưu ngay khi bạn thực hiện. OK và Hủy áp dụng cho các cài đặt ở trên."
 
 msgid "Check highlighted"
 msgstr "Đánh dấu các mục được chọn"
@@ -153,6 +156,9 @@ msgstr "Số kết nối mỗi tệp"
 msgid "Connections per server"
 msgstr "Số kết nối mỗi máy chủ"
 
+msgid "Cookies"
+msgstr "Cookie"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookie cho phép trang web sử dụng phiên đăng nhập trong trình duyệt của bạn. Chỉ dùng với trang web đáng tin cậy. Firefox hoạt động tốt nhất: Chrome và Edge trên Windows thường chặn ứng dụng khác đọc cookie. Hãy đóng trình duyệt trước khi tải."
 
@@ -162,6 +168,9 @@ msgstr "Cookie cho phép trang web sử dụng phiên đăng nhập trong trình
 #, c-format
 msgid "Could not start video tools: %s"
 msgstr "Không thể khởi động công cụ video: %s"
+
+msgid "Custom"
+msgstr "Tùy chỉnh"
 
 msgid "Dark"
 msgstr "Tối"
@@ -199,6 +208,9 @@ msgstr "Hãy nhập khóa bí mật."
 msgid "Enter the user name."
 msgstr "Hãy nhập tên người dùng."
 
+msgid "Extra headers"
+msgstr "Tiêu đề bổ sung"
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr "FTP luôn gửi mật khẩu không mã hóa. Hãy đánh dấu ô để cho phép với máy chủ này, hoặc hủy."
 
@@ -225,6 +237,9 @@ msgstr "Lịch sử"
 
 msgid "How many downloads run at the same time."
 msgstr "Số lượt tải chạy cùng một lúc."
+
+msgid "Identify as"
+msgstr "Nhận diện là"
 
 msgid "Install / repair tools"
 msgstr "Cài đặt / sửa chữa công cụ"
@@ -285,6 +300,12 @@ msgstr "MP4 (tương thích iPhone)"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: video H.264 + âm thanh AAC để phát trên iPhone. Không dùng codec không tương thích để thay thế.\nGiới hạn độ phân giải vẫn được áp dụng; sẽ báo lỗi nếu không có luồng tương thích."
 
+msgid "More options"
+msgstr "Tùy chọn khác"
+
+msgid "More options were cleared for the new server."
+msgstr "Đã xóa các tùy chọn khác cho máy chủ mới."
+
 msgid "Move to top of queue"
 msgstr "Chuyển lên đầu hàng đợi"
 
@@ -293,6 +314,9 @@ msgstr "Tên"
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
 msgstr "Ở đây không có kho thông tin xác thực: các đăng nhập chỉ được giữ đến khi Skein đóng."
+
+msgid "One per line, as Name: value"
+msgstr "Mỗi dòng một mục, dạng Tên: giá trị"
 
 msgid "Open folder"
 msgstr "Mở thư mục"
@@ -363,6 +387,9 @@ msgstr "&Xóa khỏi danh sách\tDel"
 msgid "Re&try"
 msgstr "Thử &lại"
 
+msgid "Referer"
+msgstr "Referer"
+
 msgid "Remember on this computer"
 msgstr "Ghi nhớ trên máy tính này"
 
@@ -416,6 +443,9 @@ msgstr "Lựa chọn"
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr "Gửi yêu cầu với dấu vân tay mạng Chrome thực. Hữu ích với Cloudflare và các trang \"đang kiểm tra trình duyệt\" khác."
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr "Chỉ gửi đến máy chủ của liên kết này. Được lưu cùng lượt tải trong lịch sử của Skein cho đến khi tải xong."
+
 msgid "Server"
 msgstr "Máy chủ"
 
@@ -446,6 +476,9 @@ msgstr "Truy cập trang web"
 
 msgid "Size"
 msgstr "Kích thước"
+
+msgid "Skein Downloader"
+msgstr "Skein Downloader"
 
 msgid "Speed"
 msgstr "Tốc độ"
@@ -622,8 +655,14 @@ msgstr "Công cụ video đã sẵn sàng."
 msgid "Waiting for a free connection"
 msgstr "Đang chờ kết nối trống"
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr "Điều Skein cho máy chủ biết nó là gì. Một số máy chủ từ chối các chương trình tải xuống."
+
 msgid "Working…"
 msgstr "Đang xử lý…"
+
+msgid "name=value; name2=value2"
+msgstr "name=value; name2=value2"
 
 msgid "not available"
 msgstr "không khả dụng"

@@ -31,6 +31,9 @@ msgstr "+ 동영상"
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr "토큰은 암호화되지 않은 링크로 보낼 수 없습니다. https 링크를 사용하세요."
 
+msgid "A web browser"
+msgstr "웹 브라우저"
+
 msgid "About"
 msgstr "정보"
 
@@ -110,8 +113,8 @@ msgstr "파일을 추가할 수 없음"
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell을 찾을 수 없습니다."
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
-msgstr "로그인 변경 사항은 바로 저장됩니다. 확인과 취소는 위의 두 설정에 적용됩니다."
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
+msgstr "로그인 변경 사항은 바로 저장됩니다. 확인과 취소는 위의 설정에 적용됩니다."
 
 msgid "Check highlighted"
 msgstr "강조된 항목 체크"
@@ -153,6 +156,9 @@ msgstr "파일당 연결 수"
 msgid "Connections per server"
 msgstr "서버당 연결 수"
 
+msgid "Cookies"
+msgstr "쿠키"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "쿠키를 사용하면 이 사이트에서 브라우저의 로그인 상태를 이용합니다. 신뢰할 수 있는 사이트에서만 사용하세요. Firefox를 권장합니다. Windows의 Chrome과 Edge는 다른 앱의 쿠키 읽기를 차단하는 경우가 많습니다. 다운로드하기 전에 브라우저를 닫으세요."
 
@@ -162,6 +168,9 @@ msgstr "쿠키를 사용하면 이 사이트에서 브라우저의 로그인 상
 #, c-format
 msgid "Could not start video tools: %s"
 msgstr "동영상 도구를 시작할 수 없습니다: %s"
+
+msgid "Custom"
+msgstr "사용자 지정"
 
 msgid "Dark"
 msgstr "어둡게"
@@ -199,6 +208,9 @@ msgstr "비밀 키를 입력하세요."
 msgid "Enter the user name."
 msgstr "사용자 이름을 입력하세요."
 
+msgid "Extra headers"
+msgstr "추가 헤더"
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr "FTP는 항상 비밀번호를 암호화하지 않고 보냅니다. 이 서버에 허용하려면 확인란을 선택하거나 취소하세요."
 
@@ -225,6 +237,9 @@ msgstr "기록"
 
 msgid "How many downloads run at the same time."
 msgstr "동시에 실행할 다운로드의 수입니다."
+
+msgid "Identify as"
+msgstr "식별 방식"
 
 msgid "Install / repair tools"
 msgstr "도구 설치 / 복구"
@@ -285,6 +300,12 @@ msgstr "MP4 (iPhone 호환)"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: iPhone 재생을 위한 H.264 동영상과 AAC 오디오입니다. 호환되지 않는 코덱으로 대체하지 않습니다.\n해상도 제한은 그대로 적용되며, 호환되는 스트림이 없으면 오류가 표시됩니다."
 
+msgid "More options"
+msgstr "추가 옵션"
+
+msgid "More options were cleared for the new server."
+msgstr "새 서버를 위해 추가 옵션을 지웠습니다."
+
 msgid "Move to top of queue"
 msgstr "대기열 맨 위로 이동"
 
@@ -293,6 +314,9 @@ msgstr "이름"
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
 msgstr "여기에서는 자격 증명 저장소를 사용할 수 없습니다. 로그인은 Skein을 닫을 때까지만 유지됩니다."
+
+msgid "One per line, as Name: value"
+msgstr "한 줄에 하나씩, 이름: 값 형식"
 
 msgid "Open folder"
 msgstr "폴더 열기"
@@ -363,6 +387,9 @@ msgstr "목록에서 제거(&M)\tDel"
 msgid "Re&try"
 msgstr "다시 시도(&T)"
 
+msgid "Referer"
+msgstr "리퍼러"
+
 msgid "Remember on this computer"
 msgstr "이 컴퓨터에 기억"
 
@@ -416,6 +443,9 @@ msgstr "선택"
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr "실제 Chrome의 네트워크 지문으로 요청을 보냅니다. Cloudflare 등의 브라우저 확인 페이지를 통과하는 데 도움이 됩니다."
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr "이 링크의 서버로만 전송됩니다. 다운로드가 끝날 때까지 Skein 기록에 다운로드와 함께 저장됩니다."
+
 msgid "Server"
 msgstr "서버"
 
@@ -446,6 +476,9 @@ msgstr "사이트 접근"
 
 msgid "Size"
 msgstr "크기"
+
+msgid "Skein Downloader"
+msgstr "Skein Downloader"
 
 msgid "Speed"
 msgstr "속도"
@@ -622,8 +655,14 @@ msgstr "동영상 도구가 준비되었습니다."
 msgid "Waiting for a free connection"
 msgstr "사용 가능한 연결을 기다리는 중"
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr "Skein이 서버에 알리는 자신의 정체입니다. 일부 서버는 다운로드 프로그램을 거부합니다."
+
 msgid "Working…"
 msgstr "작업 중…"
+
+msgid "name=value; name2=value2"
+msgstr "name=value; name2=value2"
 
 msgid "not available"
 msgstr "사용할 수 없음"

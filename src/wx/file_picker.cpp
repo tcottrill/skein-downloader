@@ -1,5 +1,6 @@
 #include "ui.h"
 #include <wx/menu.h>
+#include <wx/collpane.h>
 #include "util/sys_log.h"
 #include "platform/ftp.h"
 #include "signins_format.h"
@@ -59,6 +60,15 @@ class FilePicker : public wxDialog {
     std::vector<std::string> routes;
     std::vector<archive::ServerSpeed> speeds;
     std::future<Loaded> loading;
+    // "More options": a referer, cookies and extra headers for the link that is loaded. They live only in these controls and
+    // in the copies the background work takes; they are never saved to the settings or logged, and the controls are emptied
+    // when the dialog closes. extrasOrigin is the scheme, host and port of the link loaded last; another one clears the fields.
+    wxCollapsiblePane* more = nullptr;
+    wxTextCtrl *referer = nullptr, *cookies = nullptr, *extraHeaders = nullptr;
+    std::string extrasOrigin, extrasLink;
+    bool haveOrigin = false;
+    std::optional<archive::RequestExtras> loadExtras; // the validated extras of the load in progress (kept for a retry after a sign-in)
+    wxString notice;                                   // shown on the status line in front of the loading and selection text
     // The link of the load in progress. It may carry a password (ftp://user:password@host/); that is kept only until
     // the load ends, and the link box and everything stored or logged get the address without it.
     std::string loadLink;
@@ -124,7 +134,44 @@ class FilePicker : public wxDialog {
                 bytes += item.files[i].size;
                 unknown |= !item.files[i].sizeKnown;
             }
-        status->SetLabel(wxString::Format(_(L"%zu selected / %zu files / "), n, item.files.size()) + w(archive::formatBytes(bytes)) + (unknown ? _(L" + unknown sizes") : wxString()));
+        status->SetLabel((notice.empty() ? wxString() : notice + " ") + wxString::Format(_(L"%zu selected / %zu files / "), n, item.files.size()) + w(archive::formatBytes(bytes)) + (unknown ? _(L" + unknown sizes") : wxString()));
+    }
+    // "scheme://host:port" of an http or https link, empty for any other.
+    static std::string originOf(const std::string& link) {
+        try {
+            const auto bound = archive::forLink(link, {});
+            return bound.scheme + "://" + bound.host + ":" + std::to_string(bound.port);
+        } catch (const std::exception&) {
+            return {};
+        }
+    }
+    void clearExtras() {
+        if (!referer) return;
+        referer->ChangeValue(wxEmptyString);
+        cookies->ChangeValue(wxEmptyString);
+        extraHeaders->ChangeValue(wxEmptyString);
+    }
+    // The fields' content bound to the link, or no extras for a link that is not http or https. False after telling the user
+    // what is wrong (nothing is sent then). The messages name the problem and never quote a value.
+    bool readExtras(const std::string& link, std::optional<archive::RequestExtras>& result) {
+        result.reset();
+        if (originOf(link).empty()) return true;
+        archive::RequestExtras e;
+        try {
+            e.referer = archive::trim(u(referer->GetValue()));
+            e.cookie = archive::trim(u(cookies->GetValue()));
+            e.headers = archive::parseHeaderLines(u(extraHeaders->GetValue()));
+            e = archive::forLink(link, std::move(e));
+            const auto problem = archive::extrasError(e);
+            if (!problem.empty()) throw std::runtime_error(problem);
+        } catch (const std::exception& ex) {
+            LOG_WARN("More options rejected: %s", ex.what());
+            wxMessageBox(translated(ex.what()), _(L"More options"), wxOK | wxICON_WARNING, this);
+            more->Expand();
+            return false;
+        }
+        if (!e.empty()) result = std::move(e);
+        return true;
     }
     // Runs on every keystroke in the link and folder boxes, so it saves only these small values;
     // the checked files are saved by saveSelection().
@@ -230,6 +277,19 @@ class FilePicker : public wxDialog {
                 wxMessageBox(translated(e.what()), _(L"File downloads"), wxOK | wxICON_WARNING, this);
                 return;
             }
+        // Another server: the referer, cookies and headers of the last one must not follow.
+        const auto origin = originOf(link);
+        notice.clear();
+        if (haveOrigin && origin != extrasOrigin) {
+            if (!referer->IsEmpty() || !cookies->IsEmpty() || !extraHeaders->IsEmpty()) notice = _(L"More options were cleared for the new server.");
+            clearExtras();
+        }
+        haveOrigin = true;
+        extrasOrigin = origin;
+        std::optional<archive::RequestExtras> extras;
+        if (!readExtras(link, extras)) return;
+        loadExtras = std::move(extras);
+        extrasLink = link;
         preferences();
         saveSelection();
         begin(link);
@@ -241,8 +301,11 @@ class FilePicker : public wxDialog {
         // The thread's reads add to this while it runs; the thread holds it too, so a hidden dialog can be destroyed first.
         loadProgress = std::make_shared<archive::LoadProgress>();
         auto flag = stop;
-        loading = std::async(std::launch::async, [link, flag, progress = loadProgress] {
+        loading = std::async(std::launch::async, [link, flag, progress = loadProgress, extras = loadExtras] {
+            // Both live on this thread for the whole load: the extras go with every request made with this stop flag.
             archive::LoadWatch watch(*flag, *progress);
+            std::optional<archive::ExtrasScope> scope;
+            if (extras) scope.emplace(*flag, *extras);
             Loaded result;
             try {
                 result.item = archive::loadItem(link, *flag);
@@ -265,7 +328,8 @@ class FilePicker : public wxDialog {
             const auto requests = loadProgress->requests.load();
             const auto text = requests > 1 ? wxString::Format(_(L"Loading file list… %s received, %zu requests"), bytes, size_t(requests))
                                            : wxString::Format(_(L"Loading file list… %s received"), bytes);
-            if (status->GetLabel() != text) status->SetLabel(text);
+            const auto shown = notice.empty() ? text : notice + " " + text;
+            if (status->GetLabel() != shown) status->SetLabel(shown);
         }
         if (adding.valid() && addLook) {
             gauge->SetRange(int(std::max<size_t>(addTotal, 1)));
@@ -351,6 +415,7 @@ class FilePicker : public wxDialog {
             }
         wipe(value.secret);
         if (!saved) {
+            loadExtras.reset();
             wipe(link);
             return;
         }
@@ -413,11 +478,13 @@ class FilePicker : public wxDialog {
                 if (result.needed)
                     askSignIn(result);
                 else {
+                    loadExtras.reset();
                     accept(std::move(result.item));
                     offerLinkLogin();
                 }
             } catch (const std::exception& e) {
                 wipe(loadLink);
+                loadExtras.reset();
                 LOG_ERROR("Loading files failed: %s", e.what());
                 status->SetLabel(translated(e.what()));
             }
@@ -459,13 +526,16 @@ class FilePicker : public wxDialog {
             return;
         }
         if (busy() || std::find(checked.begin(), checked.end(), true) == checked.end()) return;
+        // The fields as they are now, bound to the link the files came from; a problem stops here, before anything is queued.
+        std::optional<archive::RequestExtras> extras;
+        if (!extrasLink.empty() && !readExtras(extrasLink, extras)) return;
         static constexpr unsigned counts[] = {1, 2, 4, 8, 16};
         addTotal = size_t(std::count(checked.begin(), checked.end(), true));
         addDone->store(0);
         addStop = std::make_shared<std::atomic_bool>(false);
         addStarted = std::chrono::steady_clock::now();
-        adding = std::async(std::launch::async, [item = item, checked = checked, target = archive::pathFromUtf8(u(folder->GetValue())), connections = counts[connections->GetSelection()], route = routes[size_t(servers->GetSelection())], done = addDone, halt = addStop] {
-            return fileJobs(item, checked, target, connections, route, done.get(), halt.get());
+        adding = std::async(std::launch::async, [item = item, checked = checked, target = archive::pathFromUtf8(u(folder->GetValue())), connections = counts[connections->GetSelection()], route = routes[size_t(servers->GetSelection())], done = addDone, halt = addStop, extras = std::move(extras)] {
+            return fileJobs(item, checked, target, connections, route, done.get(), halt.get(), extras ? &*extras : nullptr);
         });
         // A small selection is finished before the dialog needs to look any different.
         if (adding.wait_for(std::chrono::milliseconds(25)) == std::future_status::ready) finishAdding();
@@ -553,6 +623,36 @@ public:
             load();
         });
         box->Add(row, 0, wxEXPAND | wxBOTTOM, gap);
+        // More options: closed by default; adds nothing to the dialog's minimum size while closed.
+        more = new wxCollapsiblePane(this, wxID_ANY, _(L"More options"));
+        {
+            auto pane = more->GetPane();
+            auto grid = new wxFlexGridSizer(2, wxSize(gap, gap));
+            grid->AddGrowableCol(1);
+            grid->Add(new wxStaticText(pane, wxID_ANY, _(L"Referer")), 0, wxALIGN_CENTER_VERTICAL);
+            referer = new wxTextCtrl(pane, wxID_ANY);
+            grid->Add(referer, 1, wxEXPAND);
+            grid->Add(new wxStaticText(pane, wxID_ANY, _(L"Cookies")), 0, wxALIGN_CENTER_VERTICAL);
+            cookies = new wxTextCtrl(pane, wxID_ANY);
+            cookies->SetHint(_(L"name=value; name2=value2"));
+            grid->Add(cookies, 1, wxEXPAND);
+            grid->Add(new wxStaticText(pane, wxID_ANY, _(L"Extra headers")), 0, wxALIGN_TOP | wxTOP, FromDIP(4));
+            extraHeaders = new wxTextCtrl(pane, wxID_ANY, wxEmptyString, wxDefaultPosition, FromDIP(wxSize(-1, 56)), wxTE_MULTILINE | wxTE_DONTWRAP);
+            grid->Add(extraHeaders, 1, wxEXPAND);
+            // A multi-line box shows no hint text on every platform, so the hint is a line of its own.
+            grid->AddSpacer(0);
+            grid->Add(new wxStaticText(pane, wxID_ANY, _(L"One per line, as Name: value")));
+            grid->AddSpacer(0);
+            grid->Add(new wxStaticText(pane, wxID_ANY, _(L"Sent only to this link's server. Saved with the download in Skein's history until it finishes.")));
+            auto inner = new wxBoxSizer(wxVERTICAL);
+            inner->Add(grid, 1, wxEXPAND | wxALL, gap);
+            pane->SetSizer(inner);
+        }
+        box->Add(more, 0, wxEXPAND | wxBOTTOM, gap);
+        more->Bind(wxEVT_COLLAPSIBLEPANE_CHANGED, [this](wxCollapsiblePaneEvent& e) {
+            e.Skip();
+            Layout();
+        });
         row = new wxBoxSizer(wxHORIZONTAL);
         filter = field(this, {}, _(L"Filter by filename…"));
         row->Add(filter, 1, wxALIGN_CENTER_VERTICAL);
@@ -658,8 +758,14 @@ public:
         url->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent&) {
             load();
         });
-        url->Bind(wxEVT_TEXT, [this](wxCommandEvent&) {
+        // The options apply to http and https links only.
+        auto linkKind = [this] {
+            more->Enable(archive::isHttpUrl(u(url->GetValue().Strip(wxString::both))));
+        };
+        linkKind();
+        url->Bind(wxEVT_TEXT, [this, linkKind](wxCommandEvent&) {
             preferences();
+            linkKind();
         });
         folder->Bind(wxEVT_TEXT, [this](wxCommandEvent&) {
             preferences();
@@ -709,6 +815,8 @@ public:
         Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& e) {
             preferences();
             saveSelection();
+            clearExtras();
+            loadExtras.reset();
             *stop = true;
             *addStop = true;
             if (busy() && e.CanVeto()) {
@@ -758,6 +866,7 @@ public:
     }
     ~FilePicker() override {
         wipe(loadLink);
+        clearExtras();
         *stop = true;
         *addStop = true;
         timer.Stop();

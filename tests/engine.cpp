@@ -737,6 +737,36 @@ void noSecretOnDisk(const std::string& base) {
         hits = filesHolding(folder.path, target, forms);
         expect(hits.empty(), "After a " + std::string(c.mode) + " download finishes, no file beside it holds a secret, but " + (hits.empty() ? "" : hits[0]) + ".");
     }
+    {
+        // The same for the referer, the cookie and a header of a download's extras: paused, then resumed, with a log.
+        TempFolder folder("no-secret-extras");
+        reset(base);
+        const auto target = folder.path / "file.bin";
+        const auto url = urlFor(base, "needs-cookie", 10 * MiB);
+        archive::RequestExtras extras;
+        extras.referer = base + "/rf-SECRET-654";
+        extras.cookie = "pass=1; marker=ck-SECRET-321";
+        extras.headers.push_back({"X-Skein-Test", "hd-SECRET-987"});
+        extras = archive::forLink(url, extras);
+        std::vector<std::string> forms;
+        for (const char* marker : {"rf-SECRET-654", "ck-SECRET-321", "hd-SECRET-987"})
+            for (const auto& form : secretForms("", marker)) forms.push_back(form);
+        expect(Log::open(archive::pathUtf8(folder.path / "paused.log")), "The log opens in the test folder.");
+        run(url, target, 4, 3 * MiB, &extras);
+        Log::close();
+        auto staging = target;
+        staging += L".archive-parts";
+        expect(std::filesystem::exists(staging), "A paused download with extras leaves its staging folder.");
+        auto hits = filesHolding(folder.path, {}, forms);
+        expect(hits.empty(), "Nothing in the folder of a paused download with extras holds the referer, cookie or header, but " + (hits.empty() ? "" : hits[0]) + ".");
+        expect(readFile(folder.path / "paused.log").find("Probe") != std::string::npos, "The log of the paused download with extras has its probe line, so the search of it means something.");
+        expect(Log::open(archive::pathUtf8(folder.path / "finished.log")), "The log opens again for the resumed download.");
+        run(url, target, 4, 0, &extras);
+        Log::close();
+        expect(readFile(target) == expectedBytes(10 * MiB), "The resumed download with extras has the right content.");
+        hits = filesHolding(folder.path, target, forms);
+        expect(hits.empty(), "After a download with extras finishes, no file beside it holds the referer, cookie or header, but " + (hits.empty() ? "" : hits[0]) + ".");
+    }
 }
 
 // The User-Agent values the server saw on file requests since the last reset, in order of first appearance.

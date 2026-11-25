@@ -31,6 +31,9 @@ msgstr "+ 動画"
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr "トークンは暗号化されていないリンクでは送信できません。https のリンクを使用してください。"
 
+msgid "A web browser"
+msgstr "Web ブラウザー"
+
 msgid "About"
 msgstr "このアプリについて"
 
@@ -110,8 +113,8 @@ msgstr "ファイルを追加できません"
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell が見つかりません。"
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
-msgstr "サインインの変更はすぐに保存されます。[OK] と [キャンセル] は上の 2 つの設定に適用されます。"
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
+msgstr "サインインの変更はすぐに保存されます。[OK] と [キャンセル] は上の設定に適用されます。"
 
 msgid "Check highlighted"
 msgstr "選択項目にチェック"
@@ -153,6 +156,9 @@ msgstr "ファイルごとの接続数"
 msgid "Connections per server"
 msgstr "サーバーごとの接続数"
 
+msgid "Cookies"
+msgstr "Cookie"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookie を使うと、サイトにブラウザーのログイン状態が渡されます。信頼できるサイトでのみ使用してください。Firefox を推奨します。Windows の Chrome と Edge は他のアプリによる Cookie の読み取りを制限することがあります。ダウンロード前にブラウザーを閉じてください。"
 
@@ -162,6 +168,9 @@ msgstr "Cookie を使うと、サイトにブラウザーのログイン状態�
 #, c-format
 msgid "Could not start video tools: %s"
 msgstr "動画ツールを起動できませんでした: %s"
+
+msgid "Custom"
+msgstr "カスタム"
 
 msgid "Dark"
 msgstr "ダーク"
@@ -199,6 +208,9 @@ msgstr "シークレットキーを入力してください。"
 msgid "Enter the user name."
 msgstr "ユーザー名を入力してください。"
 
+msgid "Extra headers"
+msgstr "追加ヘッダー"
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr "FTP は常にパスワードを暗号化せずに送信します。このサーバーで許可するにはチェックボックスをオンにするか、キャンセルしてください。"
 
@@ -225,6 +237,9 @@ msgstr "履歴"
 
 msgid "How many downloads run at the same time."
 msgstr "同時に実行するダウンロードの数です。"
+
+msgid "Identify as"
+msgstr "識別方法"
 
 msgid "Install / repair tools"
 msgstr "ツールをインストール / 修復"
@@ -285,6 +300,12 @@ msgstr "MP4（iPhone 対応）"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: iPhone 再生用の H.264 動画 + AAC 音声。非対応コーデックへの代替は行いません。\n解像度の上限は適用されます。対応ストリームがない場合はエラーになります。"
 
+msgid "More options"
+msgstr "詳細オプション"
+
+msgid "More options were cleared for the new server."
+msgstr "新しいサーバー用に詳細オプションをクリアしました。"
+
 msgid "Move to top of queue"
 msgstr "キューの先頭に移動"
 
@@ -293,6 +314,9 @@ msgstr "名前"
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
 msgstr "ここでは資格情報ストアを利用できません。サインインは Skein を閉じるまでのみ保持されます。"
+
+msgid "One per line, as Name: value"
+msgstr "1 行に 1 つ、「名前: 値」の形式"
 
 msgid "Open folder"
 msgstr "フォルダーを開く"
@@ -363,6 +387,9 @@ msgstr "一覧から削除(&M)\tDel"
 msgid "Re&try"
 msgstr "再試行(&T)"
 
+msgid "Referer"
+msgstr "リファラー"
+
 msgid "Remember on this computer"
 msgstr "このコンピューターに記憶する"
 
@@ -416,6 +443,9 @@ msgstr "選択"
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr "実際の Chrome のネットワーク特性でリクエストします。Cloudflare などのブラウザー確認ページに役立ちます。"
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr "このリンクのサーバーにのみ送信されます。ダウンロードが終わるまで、Skein の履歴にダウンロードと一緒に保存されます。"
+
 msgid "Server"
 msgstr "サーバー"
 
@@ -446,6 +476,9 @@ msgstr "サイトへのアクセス"
 
 msgid "Size"
 msgstr "サイズ"
+
+msgid "Skein Downloader"
+msgstr "Skein Downloader"
 
 msgid "Speed"
 msgstr "速度"
@@ -622,8 +655,14 @@ msgstr "動画ツールの準備ができました。"
 msgid "Waiting for a free connection"
 msgstr "空き接続を待っています"
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr "Skein がサーバーに名乗る名前です。ダウンロード用プログラムを拒否するサーバーがあります。"
+
 msgid "Working…"
 msgstr "処理中…"
+
+msgid "name=value; name2=value2"
+msgstr "name=value; name2=value2"
 
 msgid "not available"
 msgstr "利用不可"

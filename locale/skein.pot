@@ -31,6 +31,9 @@ msgstr ""
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr ""
 
+msgid "A web browser"
+msgstr ""
+
 msgid "About"
 msgstr ""
 
@@ -110,7 +113,7 @@ msgstr ""
 msgid "Cannot locate Windows PowerShell."
 msgstr ""
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
 msgstr ""
 
 msgid "Check highlighted"
@@ -153,6 +156,9 @@ msgstr ""
 msgid "Connections per server"
 msgstr ""
 
+msgid "Cookies"
+msgstr ""
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr ""
 
@@ -161,6 +167,9 @@ msgstr ""
 
 #, c-format
 msgid "Could not start video tools: %s"
+msgstr ""
+
+msgid "Custom"
 msgstr ""
 
 msgid "Dark"
@@ -199,6 +208,9 @@ msgstr ""
 msgid "Enter the user name."
 msgstr ""
 
+msgid "Extra headers"
+msgstr ""
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr ""
 
@@ -224,6 +236,9 @@ msgid "History"
 msgstr ""
 
 msgid "How many downloads run at the same time."
+msgstr ""
+
+msgid "Identify as"
 msgstr ""
 
 msgid "Install / repair tools"
@@ -285,6 +300,12 @@ msgstr ""
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr ""
 
+msgid "More options"
+msgstr ""
+
+msgid "More options were cleared for the new server."
+msgstr ""
+
 msgid "Move to top of queue"
 msgstr ""
 
@@ -292,6 +313,9 @@ msgid "Name"
 msgstr ""
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
+msgstr ""
+
+msgid "One per line, as Name: value"
 msgstr ""
 
 msgid "Open folder"
@@ -363,6 +387,9 @@ msgstr ""
 msgid "Re&try"
 msgstr ""
 
+msgid "Referer"
+msgstr ""
+
 msgid "Remember on this computer"
 msgstr ""
 
@@ -416,6 +443,9 @@ msgstr ""
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr ""
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr ""
+
 msgid "Server"
 msgstr ""
 
@@ -445,6 +475,9 @@ msgid "Site access"
 msgstr ""
 
 msgid "Size"
+msgstr ""
+
+msgid "Skein Downloader"
 msgstr ""
 
 msgid "Speed"
@@ -622,7 +655,13 @@ msgstr ""
 msgid "Waiting for a free connection"
 msgstr ""
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr ""
+
 msgid "Working…"
+msgstr ""
+
+msgid "name=value; name2=value2"
 msgstr ""
 
 msgid "not available"

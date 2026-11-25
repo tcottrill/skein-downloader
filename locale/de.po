@@ -31,6 +31,9 @@ msgstr "+ Video"
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr "Ein Token kann nicht über einen unverschlüsselten Link gesendet werden. Verwenden Sie einen https-Link."
 
+msgid "A web browser"
+msgstr "Ein Webbrowser"
+
 msgid "About"
 msgstr "Über"
 
@@ -110,8 +113,8 @@ msgstr "Dateien können nicht hinzugefügt werden"
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell wurde nicht gefunden."
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
-msgstr "Änderungen an den Anmeldungen werden sofort gespeichert. OK und Abbrechen gelten für die beiden Einstellungen oben."
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
+msgstr "Änderungen an den Anmeldungen werden sofort gespeichert. OK und Abbrechen gelten für die Einstellungen oben."
 
 msgid "Check highlighted"
 msgstr "Markierte ankreuzen"
@@ -153,6 +156,9 @@ msgstr "Verbindungen pro Datei"
 msgid "Connections per server"
 msgstr "Verbindungen pro Server"
 
+msgid "Cookies"
+msgstr "Cookies"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookies verwenden Ihre Browser-Anmeldung für diese Website. Nur bei vertrauenswürdigen Websites verwenden. Firefox funktioniert am besten: Chrome und Edge unter Windows verhindern oft, dass andere Apps ihre Cookies lesen. Vor dem Download den Browser schließen."
 
@@ -162,6 +168,9 @@ msgstr "Cookies verwenden Ihre Browser-Anmeldung für diese Website. Nur bei ver
 #, c-format
 msgid "Could not start video tools: %s"
 msgstr "Videowerkzeuge konnten nicht gestartet werden: %s"
+
+msgid "Custom"
+msgstr "Benutzerdefiniert"
 
 msgid "Dark"
 msgstr "Dunkel"
@@ -199,6 +208,9 @@ msgstr "Den geheimen Schlüssel eingeben."
 msgid "Enter the user name."
 msgstr "Den Benutzernamen eingeben."
 
+msgid "Extra headers"
+msgstr "Zusätzliche Header"
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr "FTP sendet das Passwort immer unverschlüsselt. Aktivieren Sie das Kontrollkästchen, um es für diesen Server zu erlauben, oder brechen Sie ab."
 
@@ -225,6 +237,9 @@ msgstr "Verlauf"
 
 msgid "How many downloads run at the same time."
 msgstr "Wie viele Downloads gleichzeitig laufen."
+
+msgid "Identify as"
+msgstr "Auftreten als"
 
 msgid "Install / repair tools"
 msgstr "Werkzeuge installieren / reparieren"
@@ -285,6 +300,12 @@ msgstr "MP4 (iPhone-kompatibel)"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: H.264-Video + AAC-Audio für die Wiedergabe auf dem iPhone. Kein Rückgriff auf inkompatible Codecs.\nIhre Auflösungsgrenze gilt weiterhin; fehlen kompatible Streams, wird ein Fehler gemeldet."
 
+msgid "More options"
+msgstr "Weitere Optionen"
+
+msgid "More options were cleared for the new server."
+msgstr "Die weiteren Optionen wurden für den neuen Server zurückgesetzt."
+
 msgid "Move to top of queue"
 msgstr "An den Anfang der Warteschlange verschieben"
 
@@ -293,6 +314,9 @@ msgstr "Name"
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
 msgstr "Hier ist kein Anmeldedatenspeicher verfügbar: Anmeldungen werden nur bis zum Beenden von Skein behalten."
+
+msgid "One per line, as Name: value"
+msgstr "Eine pro Zeile, als Name: Wert"
 
 msgid "Open folder"
 msgstr "Ordner öffnen"
@@ -363,6 +387,9 @@ msgstr "Aus Liste &entfernen\tDel"
 msgid "Re&try"
 msgstr "Erneut &versuchen"
 
+msgid "Referer"
+msgstr "Referer"
+
 msgid "Remember on this computer"
 msgstr "Auf diesem Computer merken"
 
@@ -416,6 +443,9 @@ msgstr "Auswahl"
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr "Sendet Anfragen mit einem echten Chrome-Netzwerkfingerabdruck. Hilft bei Cloudflare und anderen Seiten zur Browserprüfung."
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr "Wird nur an den Server dieses Links gesendet. Wird mit dem Download im Verlauf von Skein gespeichert, bis er abgeschlossen ist."
+
 msgid "Server"
 msgstr "Server"
 
@@ -446,6 +476,9 @@ msgstr "Website-Zugriff"
 
 msgid "Size"
 msgstr "Größe"
+
+msgid "Skein Downloader"
+msgstr "Skein Downloader"
 
 msgid "Speed"
 msgstr "Geschwindigkeit"
@@ -622,8 +655,14 @@ msgstr "Videowerkzeuge bereit."
 msgid "Waiting for a free connection"
 msgstr "Warten auf eine freie Verbindung"
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr "Als was sich Skein gegenüber Servern ausgibt. Manche Server lehnen Download-Programme ab."
+
 msgid "Working…"
 msgstr "In Bearbeitung…"
+
+msgid "name=value; name2=value2"
+msgstr "name=value; name2=value2"
 
 msgid "not available"
 msgstr "nicht verfügbar"

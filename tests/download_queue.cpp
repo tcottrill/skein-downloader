@@ -741,7 +741,7 @@ int main() {
                 // Extras (a referer, cookies, headers of one link) are savedNow with an unfinished job, kept across a
                 // restart, reach the extrasRunner, and are gone from the job and from the file once it completes.
                 const auto file = folder / "extras.json";
-                const nlohmann::json extras = {{"cookie", "c=1-SECRET"}};
+                const nlohmann::json extras = {{"scheme", "https"}, {"host", "example.org"}, {"port", 443}, {"referer", "https://example.org/rf-SECRET-654"}, {"cookie", "pass=1; marker=ck-SECRET-321"}, {"headers", nlohmann::json::array({nlohmann::json::array({"X-Skein-Test", "hd-SECRET-987"})})}};
                 nlohmann::json seen;
                 auto noRun = [](const downloads::Job&, std::atomic_bool&, const downloads::Report&) {
                 };
@@ -766,6 +766,9 @@ int main() {
                     if (queue.addBatch(std::move(jobs)) != 2) throw std::runtime_error("The jobs with and without extras were not added");
                     queue.flush();
                     const auto savedNow = readHistory();
+                    // They are needed to resume, so an unfinished job's history entry holds all three.
+                    for (const char* marker : {"rf-SECRET-654", "ck-SECRET-321", "hd-SECRET-987"})
+                        if (slurp().find(marker) == std::string::npos) throw std::runtime_error(std::string("The history file of an unfinished job lacks the extras' ") + marker + ", so it could not resume.");
                     if (savedNow.size() != 2 || !savedNow[0].contains("extras") || savedNow[0]["extras"] != extras) throw std::runtime_error("A job's extras were not savedNow with it");
                     if (savedNow[1].contains("extras") && !savedNow[1]["extras"].empty()) throw std::runtime_error("A job without extras was savedNow with extras");
                     if (!queue.snapshot()[1].extras.is_object() || !queue.snapshot()[1].extras.empty()) throw std::runtime_error("A job without extras does not have an empty object");
@@ -787,7 +790,8 @@ int main() {
                 if (seen != extras) throw std::runtime_error("The extrasRunner was not given the job's extras");
                 if (!queue.snapshot()[0].extras.is_object() || !queue.snapshot()[0].extras.empty()) throw std::runtime_error("A completed job keeps its extras in memory");
                 queue.flush();
-                if (slurp().find("SECRET") != std::string::npos) throw std::runtime_error("A completed job's extras are still in the history file");
+                for (const char* marker : {"rf-SECRET-654", "ck-SECRET-321", "hd-SECRET-987", "SECRET"})
+                    if (slurp().find(marker) != std::string::npos) throw std::runtime_error(std::string("A completed job's extras (") + marker + ") are still in the history file");
                 if (readHistory()[0].contains("extras") && !readHistory()[0]["extras"].empty()) throw std::runtime_error("A completed job's savedNow entry still has extras");
                 if (!queue.downloadAgain(jobs[0].id)) throw std::runtime_error("A completed job could not be downloaded again");
                 if (!queue.snapshot().back().extras.empty()) throw std::runtime_error("A download again carries extras");

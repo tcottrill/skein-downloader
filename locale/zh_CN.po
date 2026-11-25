@@ -31,6 +31,9 @@ msgstr "+ 视频"
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr "令牌不能通过未加密的链接发送。请使用 https 链接。"
 
+msgid "A web browser"
+msgstr "网页浏览器"
+
 msgid "About"
 msgstr "关于"
 
@@ -110,8 +113,8 @@ msgstr "无法添加文件"
 msgid "Cannot locate Windows PowerShell."
 msgstr "找不到 Windows PowerShell。"
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
-msgstr "登录信息的更改会立即保存。“确定”和“取消”仅适用于上面的两项设置。"
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
+msgstr "登录信息的更改会立即保存。“确定”和“取消”仅适用于上面的设置。"
 
 msgid "Check highlighted"
 msgstr "勾选高亮项"
@@ -153,6 +156,9 @@ msgstr "每个文件的连接数"
 msgid "Connections per server"
 msgstr "每个服务器的连接数"
 
+msgid "Cookies"
+msgstr "Cookie"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "Cookie 会让此网站使用您在浏览器中的登录状态。仅用于您信任的网站。建议使用 Firefox：Windows 上的 Chrome 和 Edge 经常阻止其他应用读取 Cookie。下载前请关闭浏览器。"
 
@@ -162,6 +168,9 @@ msgstr "Cookie 会让此网站使用您在浏览器中的登录状态。仅用�
 #, c-format
 msgid "Could not start video tools: %s"
 msgstr "无法启动视频工具：%s"
+
+msgid "Custom"
+msgstr "自定义"
 
 msgid "Dark"
 msgstr "深色"
@@ -199,6 +208,9 @@ msgstr "请输入私密密钥。"
 msgid "Enter the user name."
 msgstr "请输入用户名。"
 
+msgid "Extra headers"
+msgstr "额外标头"
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr "FTP 始终以未加密方式发送密码。请勾选该复选框以对此服务器允许，或取消。"
 
@@ -225,6 +237,9 @@ msgstr "历史记录"
 
 msgid "How many downloads run at the same time."
 msgstr "同时进行的下载数量。"
+
+msgid "Identify as"
+msgstr "标识为"
 
 msgid "Install / repair tools"
 msgstr "安装 / 修复工具"
@@ -285,6 +300,12 @@ msgstr "MP4（兼容 iPhone）"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4：H.264 视频 + AAC 音频，适合 iPhone 播放。不会回退到不兼容的编码。\n仍受分辨率上限限制；没有兼容的流时将报错。"
 
+msgid "More options"
+msgstr "更多选项"
+
+msgid "More options were cleared for the new server."
+msgstr "已为新服务器清除“更多选项”。"
+
 msgid "Move to top of queue"
 msgstr "移到队列顶部"
 
@@ -293,6 +314,9 @@ msgstr "名称"
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
 msgstr "此处没有可用的凭据存储：登录信息仅保留到 Skein 关闭为止。"
+
+msgid "One per line, as Name: value"
+msgstr "每行一个，格式为 名称: 值"
 
 msgid "Open folder"
 msgstr "打开文件夹"
@@ -363,6 +387,9 @@ msgstr "从列表中移除(&M)\tDel"
 msgid "Re&try"
 msgstr "重试(&T)"
 
+msgid "Referer"
+msgstr "引荐来源"
+
 msgid "Remember on this computer"
 msgstr "在此计算机上记住"
 
@@ -416,6 +443,9 @@ msgstr "选择"
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr "使用真实的 Chrome 网络指纹发送请求。有助于通过 Cloudflare 等“正在检查浏览器”页面。"
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr "仅发送到此链接所在的服务器。随下载一起保存在 Skein 的历史记录中，直到下载完成。"
+
 msgid "Server"
 msgstr "服务器"
 
@@ -446,6 +476,9 @@ msgstr "网站访问"
 
 msgid "Size"
 msgstr "大小"
+
+msgid "Skein Downloader"
+msgstr "Skein Downloader"
 
 msgid "Speed"
 msgstr "速度"
@@ -622,8 +655,14 @@ msgstr "视频工具已就绪。"
 msgid "Waiting for a free connection"
 msgstr "正在等待空闲连接"
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr "Skein 向服务器表明的身份。有些服务器会拒绝下载程序。"
+
 msgid "Working…"
 msgstr "正在处理…"
+
+msgid "name=value; name2=value2"
+msgstr "name=value; name2=value2"
 
 msgid "not available"
 msgstr "不可用"

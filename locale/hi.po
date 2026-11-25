@@ -31,6 +31,9 @@ msgstr "+ वीडियो"
 msgid "A token cannot be sent over an unencrypted link. Use an https link."
 msgstr "टोकन को असुरक्षित (अनएन्क्रिप्टेड) लिंक पर नहीं भेजा जा सकता। https लिंक का उपयोग करें।"
 
+msgid "A web browser"
+msgstr "एक वेब ब्राउज़र"
+
 msgid "About"
 msgstr "परिचय"
 
@@ -110,8 +113,8 @@ msgstr "फ़ाइलें नहीं जोड़ सकते"
 msgid "Cannot locate Windows PowerShell."
 msgstr "Windows PowerShell नहीं मिल सका।"
 
-msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the two settings above."
-msgstr "साइन-इन में किए गए बदलाव तुरंत सहेजे जाते हैं। ठीक है और रद्द करें ऊपर की दोनों सेटिंग पर लागू होते हैं।"
+msgid "Changes to sign-ins are saved as soon as you make them. OK and Cancel apply to the settings above."
+msgstr "साइन-इन में किए गए बदलाव तुरंत सहेजे जाते हैं। ठीक है और रद्द करें ऊपर की सेटिंग पर लागू होते हैं।"
 
 msgid "Check highlighted"
 msgstr "हाइलाइट किए गए चुनें"
@@ -153,6 +156,9 @@ msgstr "प्रति फ़ाइल कनेक्शन"
 msgid "Connections per server"
 msgstr "प्रति सर्वर कनेक्शन"
 
+msgid "Cookies"
+msgstr "कुकीज़"
+
 msgid "Cookies give this site your browser's sign-in for it. Use only with sites you trust. Firefox works best: Chrome and Edge on Windows often block other apps from reading their cookies. Close the browser before downloading."
 msgstr "कुकीज़ इस साइट को आपके ब्राउज़र का साइन-इन देती हैं। केवल भरोसेमंद साइटों के साथ उपयोग करें। Firefox सबसे अच्छा काम करता है: Windows पर Chrome और Edge अक्सर अन्य ऐप्स को कुकीज़ पढ़ने से रोकते हैं। डाउनलोड करने से पहले ब्राउज़र बंद करें।"
 
@@ -162,6 +168,9 @@ msgstr "कुकीज़ इस साइट को आपके ब्रा�
 #, c-format
 msgid "Could not start video tools: %s"
 msgstr "वीडियो उपकरण शुरू नहीं हो सके: %s"
+
+msgid "Custom"
+msgstr "कस्टम"
 
 msgid "Dark"
 msgstr "गहरा"
@@ -199,6 +208,9 @@ msgstr "गुप्त कुंजी दर्ज करें।"
 msgid "Enter the user name."
 msgstr "उपयोगकर्ता नाम दर्ज करें।"
 
+msgid "Extra headers"
+msgstr "अतिरिक्त हेडर"
+
 msgid "FTP always sends the password unencrypted. Tick the box to allow it for this server, or cancel."
 msgstr "FTP हमेशा पासवर्ड बिना एन्क्रिप्शन के भेजता है। इस सर्वर के लिए अनुमति देने हेतु चेक बॉक्स चुनें, या निरस्त करें।"
 
@@ -225,6 +237,9 @@ msgstr "इतिहास"
 
 msgid "How many downloads run at the same time."
 msgstr "एक ही समय में कितने डाउनलोड चलें।"
+
+msgid "Identify as"
+msgstr "इस रूप में पहचान दें"
 
 msgid "Install / repair tools"
 msgstr "उपकरण स्थापित / मरम्मत करें"
@@ -285,6 +300,12 @@ msgstr "MP4 (iPhone संगत)"
 msgid "MP4: H.264 video + AAC audio for iPhone playback. No incompatible codec fallback.\nYour resolution limit still applies; unavailable compatible streams will report an error."
 msgstr "MP4: iPhone पर चलाने के लिए H.264 वीडियो + AAC ऑडियो। असंगत कोडेक का विकल्प उपयोग नहीं होगा।\nआपकी रिज़ॉल्यूशन सीमा लागू रहेगी; संगत स्ट्रीम उपलब्ध न होने पर त्रुटि दिखाई जाएगी।"
 
+msgid "More options"
+msgstr "और विकल्प"
+
+msgid "More options were cleared for the new server."
+msgstr "नए सर्वर के लिए और विकल्प साफ़ कर दिए गए।"
+
 msgid "Move to top of queue"
 msgstr "कतार में सबसे ऊपर ले जाएँ"
 
@@ -293,6 +314,9 @@ msgstr "नाम"
 
 msgid "No credential store is available here: sign-ins are kept only until Skein closes."
 msgstr "यहाँ कोई क्रेडेंशियल स्टोर उपलब्ध नहीं है: साइन-इन केवल Skein बंद होने तक रखे जाते हैं।"
+
+msgid "One per line, as Name: value"
+msgstr "हर पंक्ति में एक, नाम: मान के रूप में"
 
 msgid "Open folder"
 msgstr "फ़ोल्डर खोलें"
@@ -363,6 +387,9 @@ msgstr "सूची से हटाएँ(&M)\tDel"
 msgid "Re&try"
 msgstr "फिर कोशिश करें(&T)"
 
+msgid "Referer"
+msgstr "रेफ़रर"
+
 msgid "Remember on this computer"
 msgstr "इस कंप्यूटर पर याद रखें"
 
@@ -416,6 +443,9 @@ msgstr "चयन"
 msgid "Sends requests with a real Chrome network fingerprint. Helps with Cloudflare and other \"checking your browser\" pages."
 msgstr "वास्तविक Chrome नेटवर्क फ़िंगरप्रिंट के साथ अनुरोध भेजता है। Cloudflare और अन्य \"ब्राउज़र जाँच\" पृष्ठों में मदद करता है।"
 
+msgid "Sent only to this link's server. Saved with the download in Skein's history until it finishes."
+msgstr "केवल इस लिंक के सर्वर को भेजा जाता है। डाउनलोड पूरा होने तक Skein के इतिहास में उसके साथ सहेजा जाता है।"
+
 msgid "Server"
 msgstr "सर्वर"
 
@@ -446,6 +476,9 @@ msgstr "साइट पहुँच"
 
 msgid "Size"
 msgstr "आकार"
+
+msgid "Skein Downloader"
+msgstr "Skein Downloader"
 
 msgid "Speed"
 msgstr "गति"
@@ -622,8 +655,14 @@ msgstr "वीडियो उपकरण तैयार हैं।"
 msgid "Waiting for a free connection"
 msgstr "खाली कनेक्शन की प्रतीक्षा है"
 
+msgid "What Skein tells servers it is. Some servers refuse download programs."
+msgstr "Skein सर्वरों को अपनी क्या पहचान बताता है। कुछ सर्वर डाउनलोड प्रोग्राम को मना कर देते हैं।"
+
 msgid "Working…"
 msgstr "काम जारी…"
+
+msgid "name=value; name2=value2"
+msgstr "name=value; name2=value2"
 
 msgid "not available"
 msgstr "उपलब्ध नहीं"

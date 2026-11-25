@@ -26,6 +26,7 @@ project. It is not affiliated with or endorsed by the makers of Free Download Ma
 - **Pick the files you want** — browse Internet Archive collections, GitHub and GitLab releases, and Hugging Face repositories before adding downloads.
 - **Whole folders from file servers** — load a web folder listing ("Index of /…" pages from Apache, nginx and similar servers), an FTP folder, or a Wayback Machine copy of a folder, with every subfolder, then pick the files to download.
 - **Sign-ins for servers that need one** — passwords for web and FTP servers, and access tokens for Hugging Face, GitHub and archive.org (private and gated repositories, higher rate limits, restricted items). Skein keeps them in the system's credential store and sends each one only to the server it was saved for.
+- **Choose how Skein identifies itself** — to servers it is "SkeinDownloader" by default; a setting makes it identify as a web browser, or as text you write. A download can also carry a referer, cookies and extra headers, sent only to the server its link points at.
 - **Native light and dark themes** — follow the system theme or choose your own.
 - **13 interface languages** — English, Simplified and Traditional Chinese, German, Vietnamese, Russian, Japanese, Korean, French, Italian, Spanish, Portuguese and Hindi. Skein and its Windows installer follow your system language, with English as the fallback; choose another language from the flag button in the toolbar.
 - **Open source** — C++20 and wxWidgets, licensed under GPL-3.0-or-later.
@@ -144,7 +145,17 @@ video tools bundled in the Linux packages (see [Publishing a release](BUILDING.m
   the next time Skein starts.
 - **Settings:** the Settings button in the toolbar sets how many downloads run at once
   (1 to 4, default 4) and the maximum number of connections to one server, shared by all downloads
-  (1 to 16, default 16). A change applies at once.
+  (1 to 16, default 16), and what Skein tells servers it is (**Identify as**: Skein
+  Downloader, the default; a web browser; or custom text). Some servers refuse download
+  programs, and answering as a web browser gets past that. It applies to file downloads
+  and file lists, not to video downloads or FTP. A change applies at once.
+- **More options:** in the file picker, **More options** under the link takes a referer,
+  cookies and extra headers (one per line, as `Name: value`) for servers that check them.
+  They are used for **Load files** and **Add to downloads**, and are sent only to the
+  server the link points at, never to another server a redirect leads to. A download keeps
+  them in Skein's history file so that it can resume after a restart; they are removed when
+  the download finishes. They are never written to `settings.ini` or the log, and they are
+  cleared when you load a link on a different server.
 - **Sign-ins:** the Settings window lists the saved sign-ins, with **Add**, **Edit** and
   **Remove**. When a server refuses a link in the file picker, Skein asks for the sign-in
   there and loads the link again once it is saved. A queued download never asks: it
@@ -196,6 +207,9 @@ Sign-ins cover passwords for web and FTP servers and tokens for Hugging Face, Gi
 archive.org. They do not cover sites that need a login through a web page (other than
 those three), file lockers, or video downloads, which keep their own browser-cookie
 option. On Linux, sign-ins are remembered only when a keyring service is running.
+
+The **Identify as** setting and the referer, cookies and extra headers in **More options**
+do not apply to video downloads or FTP.
 
 The translations are a first version. Some text stays in English in every language:
 output from yt-dlp and the video tool installer, technical error details, the log file
