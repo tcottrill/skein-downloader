@@ -166,6 +166,10 @@ RequestExtras extrasFromJson(const nlohmann::json& json) {
     if (!extrasError(extras).empty()) return {};
     return extras;
 }
+bool extrasUnreadable(const nlohmann::json& stored) {
+    if (stored.is_null() || (stored.is_object() && stored.empty())) return false;
+    return extrasFromJson(stored).empty();
+}
 ExtrasScope::ExtrasScope(const std::atomic_bool& stop, RequestExtras extras)
     : stop_(&stop) {
     if (extras.empty()) return;

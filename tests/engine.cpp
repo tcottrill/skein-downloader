@@ -1,7 +1,9 @@
 // End-to-end download engine tests against the local server in tests/engine_server.py,
 // started by tests/run_engine_tests.py, which passes the server's base URL.
+#include "download_queue.h"
 #include "extras.h"
 #include "host_limit.h"
+#include "job_runner.h"
 #include "signin.h"
 #include "sites.h"
 #include "staging.h"
@@ -915,6 +917,131 @@ void extrasEnd(const std::string& base) {
            "After the ExtrasScope is gone the same stop flag sends no extras.");
 }
 
+// A real queued job with a referer, a cookie and a header goes through the program's own runner (downloads::runJob):
+// paused part way, the queue closed and opened again on the same history file (a restart), resumed and finished.
+// The runner turns the job's stored extras back into an ExtrasScope, so every request before and after the restart
+// carries them, and the history file keeps them only while the job is unfinished.
+void extrasThroughQueue(const std::string& base) {
+    const std::string referer = base + "/rf-SECRET-654", cookie = "pass=1; marker=ck-SECRET-321", header = "hd-SECRET-987";
+    const auto carryAll = [&](const std::vector<SeenHeaders>& seen) {
+        return std::all_of(seen.begin(), seen.end(), [&](const SeenHeaders& s) {
+            return s.referer == referer && s.cookie == cookie && s.x == header;
+        });
+    };
+    TempFolder folder("extras-through-queue");
+    reset(base);
+    const auto history = folder.path / "history.json", target = folder.path / "file.bin";
+    const auto url = urlFor(base, "needs-cookie", 10 * MiB);
+    archive::RequestExtras extras;
+    extras.referer = referer;
+    extras.cookie = cookie;
+    extras.headers.push_back({"X-Skein-Test", header});
+    const auto stored = archive::extrasToJson(archive::forLink(url, extras));
+    const auto slurp = [&] {
+        return readFile(history);
+    };
+    const auto waitFor = [&](downloads::Queue& queue, downloads::State state) {
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (queue.snapshot().at(0).state != state && queue.snapshot().at(0).state != downloads::State::Failed && std::chrono::steady_clock::now() < until)
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        return queue.snapshot().at(0).state == state;
+    };
+    // Pauses the first run once 3 MiB are done, the way Queue::pause stops a running job: its stop flag is set.
+    std::atomic_bool pauseFirstRun = true;
+    const downloads::Runner runner = [&](const downloads::Job& job, std::atomic_bool& stop, const downloads::Report& report) {
+        downloads::runJob(job, stop, [&](uint64_t done, uint64_t total, const std::string& status, const std::string& output) {
+            report(done, total, status, output);
+            if (pauseFirstRun && done >= 3 * MiB) stop = true;
+        });
+    };
+    {
+        downloads::Queue queue(history, runner);
+        downloads::Job job;
+        job.name = "file.bin";
+        job.kind = "Archive";
+        job.key = "extras-through-queue";
+        job.input = {{"name", "file.bin"}, {"format", "Original"}, {"sha1", ""}, {"size", 0}, {"sizeKnown", false}, {"target", archive::pathUtf8(target)}, {"url", url}, {"connections", 4}};
+        job.extras = stored;
+        expect(queue.addBatch({job}) == 1, "The job with extras is added to the queue.");
+        queue.start();
+        expect(waitFor(queue, downloads::State::Paused), "The job with extras, run by the real runner, pauses part way.");
+        queue.flush();
+        const auto text = slurp();
+        for (const char* marker : {"rf-SECRET-654", "ck-SECRET-321", "hd-SECRET-987"})
+            expect(text.find(marker) != std::string::npos, std::string("The history file of the paused job holds the extras' ") + marker + ", so it can resume.");
+    }
+    const auto before = headersOn(base, "127.0.0.1");
+    expect(!before.empty() && carryAll(before), "Every request of the first run, made by the real runner, carries the referer, the cookie and the header.");
+    pauseFirstRun = false;
+    {
+        downloads::Queue queue(history, runner); // the restart
+        const auto jobs = queue.snapshot();
+        expect(jobs.size() == 1 && jobs[0].state == downloads::State::Paused && jobs[0].extras == stored, "The paused job and its extras are read back after the restart.");
+        queue.resume(jobs[0].id);
+        queue.start();
+        expect(waitFor(queue, downloads::State::Complete), "The resumed job with extras, run by the real runner, completes.");
+        expect(readFile(target) == expectedBytes(10 * MiB), "The job resumed after a restart has the right content.");
+        queue.flush();
+        const auto text = slurp();
+        for (const char* marker : {"rf-SECRET-654", "ck-SECRET-321", "hd-SECRET-987", "SECRET"})
+            expect(text.find(marker) == std::string::npos, std::string("After the job completes the history file no longer holds ") + marker + ".");
+    }
+    const auto after = headersOn(base, "127.0.0.1");
+    expect(after.size() > before.size() && carryAll(after), "Every request after the restart, the probe and each range, also carries the referer, the cookie and the header.");
+    expect(stats(base)["bytes"].get<uint64_t>() < 15 * MiB, "The resumed job reused the data already received.");
+}
+
+// Saved options that cannot be read (a hand-edited history file) fail the job before any request, with one fixed
+// sentence; a job with no options, or the empty object a completed job keeps, downloads as usual.
+void damagedExtras(const std::string& base) {
+    const std::string sentence = "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again.";
+    const auto url = urlFor(base, "etag", 1 * MiB);
+    archive::RequestExtras extras;
+    extras.referer = base + "/rf-SECRET-654";
+    extras.cookie = "pass=1; marker=ck-SECRET-321";
+    extras.headers.push_back({"X-Skein-Test", "hd-SECRET-987"});
+    const auto valid = archive::extrasToJson(archive::forLink(url, extras));
+    auto brokenValue = valid;
+    brokenValue["headers"][0][1] = "hd-SECRET-987\r\nX-Injected: 1";
+    const auto wrongShape = nlohmann::json::array({"not", "an", "object"});
+    auto wrongField = valid;
+    wrongField["port"] = "80";
+    const downloads::Runner runner = [](const downloads::Job& job, std::atomic_bool& stop, const downloads::Report& report) {
+        downloads::runJob(job, stop, report);
+    };
+    // Runs one "Archive" job with these stored extras and returns it once it has failed or completed.
+    const auto runWith = [&](const char* name, const nlohmann::json& stored, bool setExtras) {
+        TempFolder folder(name);
+        reset(base);
+        downloads::Queue queue(folder.path / "history.json", runner);
+        downloads::Job job;
+        job.name = "file.bin";
+        job.kind = "Archive";
+        job.key = name;
+        job.input = {{"name", "file.bin"}, {"format", "Original"}, {"sha1", ""}, {"size", 0}, {"sizeKnown", false}, {"target", archive::pathUtf8(folder.path / "file.bin")}, {"url", url}, {"connections", 2}};
+        if (setExtras) job.extras = stored;
+        expect(queue.addBatch({job}) == 1, std::string("The job ") + name + " is added to the queue.");
+        queue.start();
+        const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+        while (queue.snapshot().at(0).state != downloads::State::Failed && queue.snapshot().at(0).state != downloads::State::Complete && std::chrono::steady_clock::now() < until)
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        auto done = queue.snapshot().at(0);
+        if (done.state == downloads::State::Complete) expect(readFile(folder.path / "file.bin") == expectedBytes(1 * MiB), std::string("The job ") + name + " downloaded the right content.");
+        return done;
+    };
+    for (const auto& [name, stored] : {std::pair<const char*, nlohmann::json>{"damaged-line-break", brokenValue}, {"damaged-shape", wrongShape}, {"damaged-field", wrongField}}) {
+        const auto job = runWith(name, stored, true);
+        expect(job.state == downloads::State::Failed, std::string("The job with damaged saved options (") + name + ") fails.");
+        expect(job.detail == sentence, std::string("The failed job (") + name + ") says the saved options could not be read; it said: " + job.detail);
+        expect(job.detail.find("SECRET") == std::string::npos && job.detail.find("X-") == std::string::npos, "The sentence quotes no header name or value.");
+        expect(stats(base)["requests"].get<int>() == 0, std::string("The job with damaged saved options (") + name + ") made no request.");
+    }
+    const auto none = runWith("no-extras", nullptr, false);
+    expect(none.state == downloads::State::Complete && stats(base)["requests"].get<int>() > 0, "A job with no saved options downloads as usual.");
+    const auto empty = runWith("empty-extras", nlohmann::json::object(), true);
+    expect(empty.state == downloads::State::Complete && stats(base)["requests"].get<int>() > 0, "A job whose saved options are an empty object downloads as usual.");
+}
+
 void loaderSignsIn(const std::string& base) {
     SignIns table({passwordFor("127.0.0.1", "user", "pass")});
     std::atomic_bool stop = false;
@@ -963,6 +1090,8 @@ int main(int argc, char** argv) {
         extrasWithSignIn(base);
         extrasEnd(base);
         noSecretOnDisk(base);
+        extrasThroughQueue(base);
+        damagedExtras(base);
     } catch (const std::exception& e) {
         std::cerr << "FAILED: " << e.what() << '\n';
         return 1;

@@ -1072,12 +1072,13 @@ void MainWindow::smokeCheck() {
         save("maxDownloads", before.empty() ? wxString("4") : before);
         applySettings(queue);
         const auto agentBefore = pref("userAgent");
+        const auto identityBefore = archive::userAgent();
         save("userAgent", "browser");
         applySettings(queue);
         if (archive::userAgent() != archive::browserUserAgent) throw std::runtime_error("The browser identity was not applied");
         save("userAgent", agentBefore);
         applySettings(queue);
-        if (agentBefore.empty() && archive::userAgent() != archive::defaultUserAgent) throw std::runtime_error("The default identity was not restored");
+        if (archive::userAgent() != identityBefore) throw std::runtime_error("The identity was not restored");
     }
     signInSmokeCheck();
     queue.removeAll();

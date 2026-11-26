@@ -549,6 +549,9 @@ msgstr "新しいテーマは Skein Downloader の次回起動時に適用され
 msgid "The password can be read by anyone on the network path."
 msgstr "パスワードはネットワーク経路上の誰にでも読み取られる可能性があります。"
 
+msgid "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."
+msgstr "このダウンロードに保存されていたリファラー、Cookie、ヘッダーを読み取れませんでした。ダウンロードを削除して、もう一度追加してください。"
+
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "サインインを資格情報ストアに保存できませんでした。Skein を閉じるまで保持されます。"
 

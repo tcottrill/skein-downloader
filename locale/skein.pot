@@ -549,6 +549,9 @@ msgstr ""
 msgid "The password can be read by anyone on the network path."
 msgstr ""
 
+msgid "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."
+msgstr ""
+
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr ""
 

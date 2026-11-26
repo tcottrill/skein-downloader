@@ -27,6 +27,11 @@ void runJob(const downloads::Job& job, std::atomic_bool& stop, const downloads::
     if (job.kind == "Archive") {
         // This job's referer, cookies and headers, for every request made with its stop flag (the file
         // locker lookup included); the engine sends them to the link's own host only. Names are logged, never values.
+        // Damaged saved options fail the job before any request; they are never dropped, and never quoted.
+        if (archive::extrasUnreadable(job.extras)) {
+            LOG_ERROR("Job %llu: its saved referer, cookies or headers could not be read", (unsigned long long)job.id);
+            throw std::runtime_error("The saved referer, cookies or headers of this download could not be read. Remove the download and add it again.");
+        }
         const auto extras = archive::extrasFromJson(job.extras);
         archive::ExtrasScope extrasScope(stop, extras);
         if (!extras.empty()) {

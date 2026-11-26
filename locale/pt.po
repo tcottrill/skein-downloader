@@ -549,6 +549,9 @@ msgstr "O novo tema será aplicado na próxima vez que o Skein Downloader for in
 msgid "The password can be read by anyone on the network path."
 msgstr "A palavra-passe pode ser lida por qualquer pessoa no caminho da rede."
 
+msgid "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."
+msgstr "Não foi possível ler o referer, os cookies ou os cabeçalhos guardados desta transferência. Remova a transferência e adicione-a novamente."
+
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Não foi possível guardar o início de sessão no cofre de credenciais. Será mantido até o Skein fechar."
 

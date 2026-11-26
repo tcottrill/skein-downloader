@@ -31,6 +31,9 @@ std::string extraHeadersFor(const RequestExtras&, const std::string& scheme, con
 // JSON for storing with a job, and back; an empty object for empty extras. Unknown or malformed input gives empty extras.
 nlohmann::json extrasToJson(const RequestExtras&);
 RequestExtras extrasFromJson(const nlohmann::json&);
+// True when a job has saved extras (not null, not an empty object) that extrasFromJson cannot turn into valid
+// extras; the job must then fail rather than run without them.
+bool extrasUnreadable(const nlohmann::json& stored);
 // While it lives, every request made with this stop flag carries these extras where extraHeadersFor allows.
 // One per stop flag at a time. Requests with no scope anywhere cost one atomic load.
 class ExtrasScope {

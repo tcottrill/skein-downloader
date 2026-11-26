@@ -549,6 +549,9 @@ msgstr "Giao diện mới sẽ được áp dụng khi khởi động Skein Down
 msgid "The password can be read by anyone on the network path."
 msgstr "Bất kỳ ai trên đường truyền mạng đều có thể đọc được mật khẩu."
 
+msgid "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."
+msgstr "Không đọc được Referer, cookie hoặc tiêu đề đã lưu của lượt tải này. Hãy xóa lượt tải rồi thêm lại."
+
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Không thể lưu đăng nhập vào kho thông tin xác thực. Nó sẽ được giữ đến khi Skein đóng."
 

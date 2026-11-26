@@ -119,5 +119,6 @@ wxString translated(const std::string& message) {
         wxTRANSLATE("Paste a valid HTTP or HTTPS video URL."), wxTRANSLATE("Install video tools from Add > Video first."),
         wxTRANSLATE("Operation cancelled. You can retry."), wxTRANSLATE("Stopped. Use the same URL, quality and folder to resume."),
         wxTRANSLATE("Sign-in needed for %s. Add it in Settings, then resume."), wxTRANSLATE("The sign-in for %s was not accepted."),
+        wxTRANSLATE("The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."),
         wxTRANSLATE("Video tools ready."), wxTRANSLATE("yt-dlp update finished."), wxTRANSLATE("Unexpected error while managing video tools.")};
 }

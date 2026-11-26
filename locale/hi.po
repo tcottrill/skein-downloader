@@ -549,6 +549,9 @@ msgstr "नई थीम Skein Downloader के अगली बार शु�
 msgid "The password can be read by anyone on the network path."
 msgstr "नेटवर्क मार्ग पर कोई भी पासवर्ड पढ़ सकता है।"
 
+msgid "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."
+msgstr "इस डाउनलोड के सहेजे गए रेफ़रर, कुकीज़ या हेडर पढ़े नहीं जा सके। डाउनलोड को हटाएँ और उसे फिर से जोड़ें।"
+
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "साइन-इन को क्रेडेंशियल स्टोर में सहेजा नहीं जा सका। इसे Skein बंद होने तक रखा जाएगा।"
 

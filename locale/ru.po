@@ -549,6 +549,9 @@ msgstr "Новая тема будет применена при следующ�
 msgid "The password can be read by anyone on the network path."
 msgstr "Пароль может прочитать любой, кто находится на пути передачи по сети."
 
+msgid "The saved referer, cookies or headers of this download could not be read. Remove the download and add it again."
+msgstr "Не удалось прочитать сохранённые для этой загрузки Referer, cookie или заголовки. Уберите загрузку и добавьте её снова."
+
 msgid "The sign-in could not be saved to the credential store. It will be kept until Skein closes."
 msgstr "Не удалось сохранить вход в хранилище учётных данных. Он будет храниться до закрытия Skein."
 
