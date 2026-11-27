@@ -10,3 +10,8 @@ __pycache__/
 # Working documents of the planning workflow: kept on disk, never committed.
 docs/superpowers/
 .superpowers/
+
+# Tests: kept on disk, not published. CMakeLists.txt only includes tests/tests.cmake when it exists.
+/tests/
+/tools/test_*.py
+/tools/test-*.py
